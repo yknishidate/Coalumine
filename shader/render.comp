@@ -2,67 +2,12 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_debug_printf : enable
 #include "./share.h"
+#include "./random.glsl"
+#include "./perlin.glsl"
+#include "./intersection.glsl"
 
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding = 0, rgba8) uniform image2D outputImage;
-
-int perm[] = int[](
-    151,160,137,91,90,15,
-    131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-    190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
-    88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,
-    77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,
-    102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,
-    135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,
-    5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,
-    223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
-    129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,
-    251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,
-    49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
-    138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180,
-    151
-);
-
-float fade(float t)
-{
-    return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
-float grad(int hash, float x, float y, float z)
-{
-    int h = hash & 15;
-    float u = h < 8 ? x : y;
-    float v = h < 4 ? y : (h == 12 || h == 14 ? x : z);
-    return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
-}
-
-float noise3D(float x, float y, float z)
-{
-    int X = int(floor(x)) & 0xff;
-    int Y = int(floor(y)) & 0xff;
-    int Z = int(floor(z)) & 0xff;
-    x -= int(floor(x));
-    y -= int(floor(y));
-    z -= int(floor(z));
-    float u = fade(x);
-    float v = fade(y);
-    float w = fade(z);
-    int A  = (perm[X] + Y) & 0xff;
-    int B  = (perm[X+1] + Y) & 0xff;
-    int AA = (perm[A] + Z) & 0xff;
-    int BA = (perm[B] + Z) & 0xff;
-    int AB = (perm[A+1] + Z) & 0xff;
-    int BB = (perm[B+1] + Z) & 0xff;
-    return mix(mix(mix(grad(perm[AA], x, y, z), grad(perm[BA], x-1, y, z), u),
-                   mix(grad(perm[AB], x, y-1, z), grad(perm[BB], x-1, y-1, z), u), v),
-               mix(mix(grad(perm[AA+1], x, y, z-1), grad(perm[BA+1], x-1, y, z-1), u),
-                   mix(grad(perm[AB+1], x, y-1, z-1), grad(perm[BB+1], x-1, y-1, z-1), u), v), w);
-}
-
-float noise3D(vec3 p)
-{
-    return noise3D(p.x, p.y, p.z);
-}
 
 float remap(float x, float in0, float in1, float out0, float out1) {
     return out0 + (out1 - out0) * (x - in0) / (in1 - in0);
@@ -78,64 +23,6 @@ float sampleDensity(vec3 p)
     val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
     val = clamp(val, 0.0, 1.0);
     return val;
-}
-
-uint pcg(inout uint state)
-{
-    uint prev = state * 747796405u + 2891336453u;
-    uint word = ((prev >> ((prev >> 28u) + 4u)) ^ prev) * 277803737u;
-    state     = prev;
-    return (word >> 22u) ^ word;
-}
-
-uvec2 pcg2d(uvec2 v)
-{
-  v = v * 1664525u + 1013904223u;
-
-  v.x += v.y * 1664525u;
-  v.y += v.x * 1664525u;
-
-  v = v ^ (v >> 16u);
-
-  v.x += v.y * 1664525u;
-  v.y += v.x * 1664525u;
-
-  v = v ^ (v >> 16u);
-
-  return v;
-}
-
-float rand(inout uint seed)
-{
-    uint val = pcg(seed);
-    return (float(val) * (1.0 / float(0xffffffffu)));
-}
-
-bool intersectAABB(in vec3 origin, in vec3 direction, in vec3 aabbMin, in vec3 aabbMax,
-                   out float tMin, out float tMax)
-{
-    vec3 t1 = (aabbMin - origin) / direction;
-    vec3 t2 = (aabbMax - origin) / direction;
-    vec3 min1 = min(t1, t2);
-    vec3 max1 = max(t1, t2);
-    tMin = max(max(min1.x, min1.y), min1.z);
-    tMax = min(min(max1.x, max1.y), max1.z);
-    return 0 <= tMax && tMin <= tMax;
-}
-
-bool intersectSphere(in vec3 origin, in vec3 direction, in vec3 center, in float radius,
-                     out float tMin, out float tMax)
-{
-    vec3 oc = center - origin;
-    float b = dot(oc, direction);
-    float det = b * b - dot(oc, oc) + radius * radius;
-    if(det <= 0.0){
-        return false;
-    }
-    float sqrtDet = sqrt(det);
-    tMin = b - sqrtDet;
-    tMax = b + sqrtDet;
-    return true;
 }
 
 vec3 computeRadiance(vec3 origin, vec3 direction, 
