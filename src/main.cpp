@@ -106,8 +106,6 @@ public:
         });
 
         camera = OrbitalCamera{this, width, height};
-        camera.theta = 25.0;
-        camera.phi = 45.0;
 
         gpuTimer = context.createGPUTimer({});
     }
@@ -120,9 +118,14 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
-        ImGui::SliderFloat("Noise frequency 0", &pushConstants.noiseFreq0, 1.0, 8.0);
-        ImGui::SliderFloat("Noise frequency 1", &pushConstants.noiseFreq1, 2.0, 32.0);
-        ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
+        ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
+        if (pushConstants.enableNoise) {
+            ImGui::SliderFloat("Noise frequency 0", &pushConstants.noiseFreq0, 1.0, 8.0);
+            ImGui::SliderFloat("Noise frequency 1", &pushConstants.noiseFreq1, 2.0, 32.0);
+            ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
+        }
+        ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
+        ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
         }

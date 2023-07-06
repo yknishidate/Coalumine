@@ -135,19 +135,15 @@ void main()
     uvec2 s = pcg2d(ivec2(gl_GlobalInvocationID.xy));
     uint seed = s.x + s.y;
 
-    //if(gl_WorkGroupID.xy == uvec2(0) && frame == 1){
-    //    debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
-    //    debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
-    //    debugPrintfEXT("origin: %f %f %f\n", origin.x, origin.y, origin.z);
-    //    debugPrintfEXT("direction: %f %f %f\n", direction.x, direction.y, direction.z);
-    //}
+    vec3 sunIntensity = vec3(lightIntensity);
+    vec3 sunDirection = normalize(vec3(1.0, -1.5, 0.8));
 
     float tMin;
     float tMax;
-    vec3 volumeAABBMin = vec3(-1);
-    vec3 volumeAABBMax = vec3(1);
-    vec3 color = vec3(uv, 0.5);
+    vec3 volumeAABBMin = vec3(-1.0);
+    vec3 volumeAABBMax = vec3(1.0);
 
+    vec3 radiance = vec3(0.0);
     if(intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax)){
         vec3 nearPosition = origin + direction * tMin;
         vec3 farPosition = origin + direction * tMax;
@@ -159,11 +155,26 @@ void main()
         float totalDensity = 0.0;
         for(int i = 0; i < maxSteps; i++){
             samplePosition += direction * stepSize;
-            totalDensity += sampleDensity(samplePosition);
-        }
-        totalDensity = clamp(totalDensity * 0.1, 0.0, 1.0);
-        color = mix(color, vec3(1.0), totalDensity);
-    }
+            float density = 0.1;
+            if(enableNoise == 1){
+                density = sampleDensity(samplePosition);
+            }
 
-    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1));
+            float secondRayTMin;
+            float secondRayTMax;
+            intersectAABB(samplePosition, sunDirection, 
+                          volumeAABBMin, volumeAABBMax, secondRayTMin, secondRayTMax);
+
+            //if(gl_GlobalInvocationID.xy == uvec2(resolution / 2.0) && frame == 1){
+            //    debugPrintfEXT("secondRayT: %f %f\n", secondRayTMin, secondRayTMax);
+            //}
+
+            vec3 inRadiance = sunIntensity * exp(-(vec3(1.0) - absorption.xyz) * secondRayTMax * 10);
+            radiance += (1.0 - min(1.0, totalDensity)) * density * inRadiance;
+            totalDensity += density;
+        }
+    }
+    radiance = clamp(radiance, 0.0, 1.0);
+
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(radiance, 1));
 }
