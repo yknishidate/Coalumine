@@ -1,4 +1,5 @@
-﻿#include "App.hpp"
+﻿#include "../shader/share.h"
+#include "App.hpp"
 
 #define NOMINMAX
 #include <Windows.h>
@@ -96,15 +97,17 @@ public:
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(int),
         });
+
+        camera = OrbitalCamera{this, width, height};
     }
 
-    void onUpdate() override { frame++; }
+    void onUpdate() override { pushConstants.frame++; }
 
     void onRender(const CommandBuffer& commandBuffer) override {
         ImGui::SliderInt("Test slider", &testInt, 0, 100);
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(pipeline, &frame);
+        commandBuffer.pushConstants(pipeline, &pushConstants.frame);
         commandBuffer.dispatch(pipeline, width, height, 1);
         commandBuffer.copyImage(image.getImage(), getCurrentColorImage(), vk::ImageLayout::eGeneral,
                                 vk::ImageLayout::ePresentSrcKHR, width, height);
@@ -113,8 +116,9 @@ public:
     Image image;
     DescriptorSet descSet;
     ComputePipeline pipeline;
+    OrbitalCamera camera;
     int testInt = 0;
-    int frame = 0;
+    PushConstants pushConstants;
 };
 
 int main() {
