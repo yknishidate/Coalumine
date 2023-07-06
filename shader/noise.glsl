@@ -52,7 +52,20 @@ float noise3D(float x, float y, float z)
                    mix(grad(perm[AB+1], x, y-1, z-1), grad(perm[BB+1], x-1, y-1, z-1), u), v), w);
 }
 
-float noise3D(vec3 p)
+float noise3D(vec3 coord)
 {
-    return noise3D(p.x, p.y, p.z);
+    return noise3D(coord.x, coord.y, coord.z);
+}
+
+float fbm(vec3 coord, int octave)
+{
+    float f = 0.0;
+    float w = 0.5;
+    for (int i = 0; i < octave; i++)
+    {
+        f += w * noise3D(coord);
+        coord *= 2.0;
+        w *= 0.5;
+    }
+    return f;
 }
