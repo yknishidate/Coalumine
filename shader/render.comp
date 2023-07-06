@@ -1,14 +1,79 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_debug_printf : enable
 #include "./share.h"
 
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(binding = 0, rgba8) uniform image2D outputImage;
 
+bool intersectAABB(in vec3 origin, in vec3 direction, in vec3 aabbMin, in vec3 aabbMax,
+                   out float tMin, out float tMax)
+{
+    float FLT_MAX = 10000.0;
+    float FLT_EPSILON = 0.0001;
+    tMax =  FLT_MAX;
+    tMin = -FLT_MAX;
+    for (int i=0; i<3; i++) {
+        if(abs(direction[i]) < FLT_EPSILON){
+            if(origin[i] < aabbMin[i] || aabbMax[i] < origin[i]){
+                return false;
+            }else{
+                continue;
+            }
+        }
+        float t1 = (aabbMin[i] - origin[i]) / direction[i];
+        float t2 = (aabbMax[i] - origin[i]) / direction[i];
+        float tNear = min(t1, t2);
+        float tFar = max(t1, t2);
+        tMin = max(tMin, tNear);
+        tMax = min(tMax, tFar);
+
+        if (tMin > tMax) return false;
+    }
+    return true;
+
+    //float t1 = (aabbMin[0] - origin[0]) / direction[0];
+    //float t2 = (aabbMax[0] - origin[0]) / direction[0];
+    //float t3 = (aabbMin[1] - origin[1]) / direction[1];
+    //float t4 = (aabbMax[1] - origin[1]) / direction[1];
+    //float t5 = (aabbMin[2] - origin[2]) / direction[2];
+    //float t6 = (aabbMax[2] - origin[2]) / direction[2];
+    //tMin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+    //tMax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+    //return !(tMax < 0 || tMin > tMax);
+}
+
 void main()
 {
     vec2 resolution = vec2(gl_WorkGroupSize.xy * gl_NumWorkGroups.xy);
-    vec2 uv = vec2(gl_GlobalInvocationID.xy) / resolution;
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / resolution * 2.0 - 1.0;
 
-    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(uv, sin(frame * 0.05) * 0.5 + 0.5, 1));
+    vec3 origin    = (invView * vec4(0, 0, 0, 1)).xyz;
+    vec3 target    = (invProj * vec4(uv.x, uv.y, 1, 1)).xyz;
+    vec3 direction = (invView * vec4(normalize(target), 0)).xyz;
+    if(gl_WorkGroupID.xy == uvec2(0) && frame == 1){
+        //debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
+        //debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
+        //debugPrintfEXT("origin: %f %f %f\n", origin.x, origin.y, origin.z);
+        debugPrintfEXT("direction: %f %f %f\n", direction.x, direction.y, direction.z);
+    }
+    if(gl_WorkGroupID.xy == uvec2(1279, 719) && frame == 1){
+        //debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
+        //debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
+        debugPrintfEXT("direction: %f %f %f\n", direction.x, direction.y, direction.z);
+    }
+
+    float tMin;
+    float tMax;
+    vec3 volumeAABBMin = vec3(-1);
+    vec3 volumeAABBMax = vec3(1);
+    vec3 color = vec3(uv, sin(frame * 0.05) * 0.5 + 0.5);
+    //color = direction;
+    if(intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax)){
+        vec3 nearPosition;
+        vec3 farPosition;
+        color = vec3(1);
+    }
+
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1));
 }

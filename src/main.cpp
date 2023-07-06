@@ -95,19 +95,24 @@ public:
         pipeline = context.createComputePipeline({
             .computeShader = compShader,
             .descSetLayout = descSet.getLayout(),
-            .pushSize = sizeof(int),
+            .pushSize = sizeof(PushConstants),
         });
 
         camera = OrbitalCamera{this, width, height};
     }
 
-    void onUpdate() override { pushConstants.frame++; }
+    void onUpdate() override {
+        camera.processInput();
+        pushConstants.frame++;
+        pushConstants.invView = camera.getInvView();
+        pushConstants.invProj = camera.getInvProj();
+    }
 
     void onRender(const CommandBuffer& commandBuffer) override {
         ImGui::SliderInt("Test slider", &testInt, 0, 100);
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(pipeline, &pushConstants.frame);
+        commandBuffer.pushConstants(pipeline, &pushConstants);
         commandBuffer.dispatch(pipeline, width, height, 1);
         commandBuffer.copyImage(image.getImage(), getCurrentColorImage(), vk::ImageLayout::eGeneral,
                                 vk::ImageLayout::ePresentSrcKHR, width, height);
