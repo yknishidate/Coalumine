@@ -64,8 +64,8 @@ class HelloApp : public App {
 public:
     HelloApp()
         : App({
-              .width = 1280,
-              .height = 720,
+              .width = 1920,
+              .height = 1080,
               .title = "HelloCompute",
           }) {}
 
@@ -109,7 +109,7 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
-        ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 0.01, 1.0);
+        ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 1.0, 32.0);
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
         commandBuffer.pushConstants(pipeline, &pushConstants);

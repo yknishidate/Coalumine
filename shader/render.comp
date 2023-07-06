@@ -61,8 +61,39 @@ float noise3D(float x, float y, float z)
 
 float sampleDensity(vec3 p, vec3 aabbMin, vec3 aabbMax)
 {
-    p = (p - aabbMin) / (aabbMax - aabbMin) / noiseFreq;
+    p = (p - aabbMin) / (aabbMax - aabbMin) * noiseFreq;
     return noise3D(p.x, p.y, p.z) * 0.5 + 0.5;
+}
+
+uint pcg(inout uint state)
+{
+    uint prev = state * 747796405u + 2891336453u;
+    uint word = ((prev >> ((prev >> 28u) + 4u)) ^ prev) * 277803737u;
+    state     = prev;
+    return (word >> 22u) ^ word;
+}
+
+uvec2 pcg2d(uvec2 v)
+{
+  v = v * 1664525u + 1013904223u;
+
+  v.x += v.y * 1664525u;
+  v.y += v.x * 1664525u;
+
+  v = v ^ (v >> 16u);
+
+  v.x += v.y * 1664525u;
+  v.y += v.x * 1664525u;
+
+  v = v ^ (v >> 16u);
+
+  return v;
+}
+
+float rand(inout uint seed)
+{
+    uint val = pcg(seed);
+    return (float(val) * (1.0 / float(0xffffffffu)));
 }
 
 bool intersectAABB(in vec3 origin, in vec3 direction, in vec3 aabbMin, in vec3 aabbMax,
@@ -85,6 +116,10 @@ void main()
     vec3 origin    = (invView * vec4(0, 0, 0, 1)).xyz;
     vec3 target    = (invProj * vec4(uv.x, uv.y, 1, 1)).xyz;
     vec3 direction = (invView * vec4(normalize(target), 0)).xyz;
+
+    uvec2 s = pcg2d(ivec2(gl_GlobalInvocationID.xy));
+    uint seed = s.x + s.y;
+
     //if(gl_WorkGroupID.xy == uvec2(0) && frame == 1){
     //    //debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
     //    //debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
@@ -107,17 +142,16 @@ void main()
         vec3 nearPosition = origin + direction * tMin;
         vec3 farPosition = origin + direction * tMax;
 
-        //float stepSize = 0.1;
-        //vec3 samplePosition = nearPosition;
-        //int maxSteps = int((tMax - tMin) / stepSize);
-        //float totalDensity = 0.0;
-        //for(int i = 0; i < maxSteps; i++){
-        //    samplePosition += direction * stepSize;
-        //    totalDensity += noise3D(samplePosition);
-        //}
-
-        float density = sampleDensity(nearPosition, volumeAABBMin, volumeAABBMax);
-        color = vec3(density);
+        float stepSize = 0.1;
+        float offset = stepSize * rand(seed);
+        vec3 samplePosition = nearPosition + direction * offset;
+        int maxSteps = int((tMax - tMin - offset) / stepSize);
+        float totalDensity = 0.0;
+        for(int i = 0; i < maxSteps; i++){
+            samplePosition += direction * stepSize;
+            totalDensity += sampleDensity(samplePosition, volumeAABBMin, volumeAABBMax);
+        }
+        color += vec3(totalDensity * 0.1);
     }
 
     imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1));
