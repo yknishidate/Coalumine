@@ -53,54 +53,21 @@ float noise3D(float x, float y, float z)
     int BA = (perm[B] + Z) & 0xff;
     int AB = (perm[A+1] + Z) & 0xff;
     int BB = (perm[B+1] + Z) & 0xff;
-    return mix(w, mix(v, mix(u, grad(perm[AA], x, y, z), grad(perm[BA], x-1, y, z)),
-                         mix(u, grad(perm[AB], x, y-1, z), grad(perm[BB], x-1, y-1, z))),
-                  mix(v, mix(u, grad(perm[AA+1], x, y, z-1), grad(perm[BA+1], x-1, y, z-1)),
-                         mix(u, grad(perm[AB+1], x, y-1, z-1), grad(perm[BB+1], x-1, y-1, z-1))));
+    return mix(mix(mix(grad(perm[AA], x, y, z), grad(perm[BA], x-1, y, z), u),
+                   mix(grad(perm[AB], x, y-1, z), grad(perm[BB], x-1, y-1, z), u), v),
+               mix(mix(grad(perm[AA+1], x, y, z-1), grad(perm[BA+1], x-1, y, z-1), u),
+                   mix(grad(perm[AB+1], x, y-1, z-1), grad(perm[BB+1], x-1, y-1, z-1), u), v), w);
 }
 
 float sampleDensity(vec3 p, vec3 aabbMin, vec3 aabbMax)
 {
-    p = (p - aabbMin) / (aabbMax - aabbMin) * noiseFreq;
-    return noise3D(p.x, p.y, p.z);
+    p = (p - aabbMin) / (aabbMax - aabbMin) / noiseFreq;
+    return noise3D(p.x, p.y, p.z) * 0.5 + 0.5;
 }
 
 bool intersectAABB(in vec3 origin, in vec3 direction, in vec3 aabbMin, in vec3 aabbMax,
                    out float tMin, out float tMax)
 {
-    //float FLT_MAX = 10000.0;
-    //float FLT_EPSILON = 0.0001;
-    //tMax =  FLT_MAX;
-    //tMin = -FLT_MAX;
-    //for (int i=0; i<3; i++) {
-    //    if(abs(direction[i]) < FLT_EPSILON){
-    //        if(origin[i] < aabbMin[i] || aabbMax[i] < origin[i]){
-    //            return false;
-    //        }else{
-    //            continue;
-    //        }
-    //    }
-    //    float t1 = (aabbMin[i] - origin[i]) / direction[i];
-    //    float t2 = (aabbMax[i] - origin[i]) / direction[i];
-    //    float tNear = min(t1, t2);
-    //    float tFar = max(t1, t2);
-    //    tMin = max(tMin, tNear);
-    //    tMax = min(tMax, tFar);
-    //
-    //    if (tMin > tMax) return false;
-    //}
-    //return true;
-
-    //float t1 = (aabbMin[0] - origin[0]) / direction[0];
-    //float t2 = (aabbMax[0] - origin[0]) / direction[0];
-    //float t3 = (aabbMin[1] - origin[1]) / direction[1];
-    //float t4 = (aabbMax[1] - origin[1]) / direction[1];
-    //float t5 = (aabbMin[2] - origin[2]) / direction[2];
-    //float t6 = (aabbMax[2] - origin[2]) / direction[2];
-    //tMin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
-    //tMax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
-    //return !(tMax < 0 || tMin > tMax);
-
     vec3 t1 = (aabbMin - origin) / direction;
     vec3 t2 = (aabbMax - origin) / direction;
     vec3 min1 = min(t1, t2);
@@ -139,6 +106,7 @@ void main()
     if(intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax)){
         vec3 nearPosition = origin + direction * tMin;
         vec3 farPosition = origin + direction * tMax;
+
         //float stepSize = 0.1;
         //vec3 samplePosition = nearPosition;
         //int maxSteps = int((tMax - tMin) / stepSize);

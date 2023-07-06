@@ -109,7 +109,7 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
-        ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 0.01, 100.0);
+        ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 0.01, 1.0);
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
         commandBuffer.pushConstants(pipeline, &pushConstants);
