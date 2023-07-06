@@ -7,7 +7,10 @@ set(REACTIVE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(reactive)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "source/*.hpp")
-add_executable(${PROJECT_NAME} ${SOURCES})
+file(GLOB SHADERS shader/*) # exclude spv files
+
+source_group("Shader Files" FILES ${SHADERS})
+add_executable(${PROJECT_NAME} ${SOURCES} ${SHADERS})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     reactive
