@@ -3,7 +3,7 @@
 #extension GL_EXT_debug_printf : enable
 #include "./share.h"
 
-layout(local_size_x = 1, local_size_y = 1) in;
+layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding = 0, rgba8) uniform image2D outputImage;
 
 int perm[] = int[](
@@ -136,7 +136,7 @@ void main()
     float tMax;
     vec3 volumeAABBMin = vec3(-1);
     vec3 volumeAABBMax = vec3(1);
-    vec3 color = vec3(uv, sin(frame * 0.05) * 0.5 + 0.5);
+    vec3 color = vec3(uv, 0.5);
 
     if(intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax)){
         vec3 nearPosition = origin + direction * tMin;

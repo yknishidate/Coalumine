@@ -74,10 +74,17 @@ public:
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
 
-        image = context.createImage({
+        renderImage = context.createImage({
             .usage = ImageUsage::GeneralStorage,
             .width = width,
             .height = height,
+        });
+
+        noiseImage = context.createImage({
+            .usage = ImageUsage::GeneralStorage,
+            .width = 512,
+            .height = 512,
+            .depth = 512,
         });
 
         std::vector<uint32_t> code = compileOrReadShader("render.comp");
@@ -89,7 +96,7 @@ public:
 
         descSet = context.createDescriptorSet({
             .shaders = {&compShader},
-            .images = {{"outputImage", image}},
+            .images = {{"outputImage", renderImage}},
         });
 
         pipeline = context.createComputePipeline({
@@ -99,6 +106,8 @@ public:
         });
 
         camera = OrbitalCamera{this, width, height};
+
+        gpuTimer = context.createGPUTimer({});
     }
 
     void onUpdate() override {
@@ -110,19 +119,27 @@ public:
 
     void onRender(const CommandBuffer& commandBuffer) override {
         ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 1.0, 32.0);
+        if (pushConstants.frame > 1) {
+            ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
+        }
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
         commandBuffer.pushConstants(pipeline, &pushConstants);
-        commandBuffer.dispatch(pipeline, width, height, 1);
-        commandBuffer.copyImage(image.getImage(), getCurrentColorImage(), vk::ImageLayout::eGeneral,
-                                vk::ImageLayout::ePresentSrcKHR, width, height);
+        commandBuffer.beginTimestamp(gpuTimer);
+        commandBuffer.dispatch(pipeline, width / 8, height / 8, 1);
+        commandBuffer.endTimestamp(gpuTimer);
+        commandBuffer.copyImage(renderImage.getImage(), getCurrentColorImage(),
+                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
+                                height);
     }
 
-    Image image;
+    Image renderImage;
+    Image noiseImage;
     DescriptorSet descSet;
     ComputePipeline pipeline;
     OrbitalCamera camera;
     PushConstants pushConstants;
+    GPUTimer gpuTimer;
 };
 
 int main() {
