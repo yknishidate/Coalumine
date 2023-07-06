@@ -22,51 +22,11 @@ fs::path getSpvDirectory() {
     return getExecutableDirectory() / "spv";
 }
 
-std::vector<std::string> getAllIncludedFiles(const std::string& code) {
-    std::string includePrefix = "#include \"";
-    std::string includeSuffix = "\"";
-    std::string::size_type startPos = 0;
-    std::vector<std::string> includes;
-    while (true) {
-        auto includeStartPos = code.find(includePrefix, startPos);
-        if (includeStartPos == std::string::npos)
-            break;
-
-        auto includeEndPos = code.find(includeSuffix, includeStartPos + includePrefix.length());
-        if (includeEndPos == std::string::npos)
-            break;
-
-        std::string include =
-            code.substr(includeStartPos + includePrefix.length(),
-                        includeEndPos - (includeStartPos + includePrefix.length()));
-        includes.push_back(include);
-        startPos = includeEndPos + includeSuffix.length();
-    }
-    return includes;
-}
-
 fs::path getSpvFilePath(const std::string& shaderFileName, const std::string& entryPoint = "main") {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     std::string spvFileName =
         glslFile.stem().string() + "_" + entryPoint + glslFile.extension().string() + ".spv";
     return getSpvDirectory() / spvFileName;
-}
-
-inline bool isNewerThan(const fs::path& a, const fs::path& b) {
-    return fs::last_write_time(a) > fs::last_write_time(b);
-}
-
-fs::file_time_type getLastWriteTime(const std::string& fileName) {
-    fs::path glslDirectory = getShaderSourceDirectory();
-    auto writeTime = fs::last_write_time(glslDirectory / fileName);
-    std::string code = File::readFile((glslDirectory / fileName).string());
-    for (auto& include : getAllIncludedFiles(code)) {
-        auto includeWriteTime = getLastWriteTime(include);
-        if (includeWriteTime > writeTime) {
-            writeTime = includeWriteTime;
-        }
-    }
-    return writeTime;
 }
 
 bool shouldRecompile(const std::string& shaderFileName, const std::string& entryPoint = "main") {
@@ -79,7 +39,7 @@ bool shouldRecompile(const std::string& shaderFileName, const std::string& entry
         return false;
     }
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    auto glslWriteTime = getLastWriteTime(shaderFileName);
+    auto glslWriteTime = File::getLastWriteTimeWithIncludeFiles(glslFile);
     return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
 }
 
@@ -92,9 +52,9 @@ std::vector<uint32_t> compileOrReadShader(const std::string& shaderFileName,
     if (shouldRecompile(shaderFileName, entryPoint)) {
         spdlog::info("Compile shader: {}", spvFile.string());
         spvCode = Compiler::compileToSPV(glslFile.string(), {{entryPoint, "main"}});
-        File::writeBinary(spvFile.string(), spvCode);
+        File::writeBinary(spvFile, spvCode);
     } else {
-        File::readBinary(spvFile.string(), spvCode);
+        File::readBinary(spvFile, spvCode);
     }
     return spvCode;
 }
