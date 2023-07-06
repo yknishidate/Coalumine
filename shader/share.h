@@ -1,4 +1,7 @@
 
+const int SHAPE_CUBE = 0;
+const int SHAPE_SPHERE = 1;
+
 #ifdef __cplusplus
 struct PushConstants {
     glm::mat4 invView;
@@ -11,7 +14,7 @@ struct PushConstants {
     float noiseFreq1 = 2.0f;
 
     float lightIntensity = 1.0f;
-    float _dummy0;
+    int shape = SHAPE_CUBE;
     float _dummy1;
     float _dummy2;
 
@@ -29,7 +32,7 @@ layout(push_constant) uniform PushConstants {
     float noiseFreq1;
 
     float lightIntensity;
-    float _dummy0;
+    int shape;
     float _dummy1;
     float _dummy2;
 

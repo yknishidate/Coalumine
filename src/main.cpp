@@ -118,6 +118,7 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
+        ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         if (pushConstants.enableNoise) {
             ImGui::SliderFloat("Noise frequency 0", &pushConstants.noiseFreq0, 1.0, 8.0);

@@ -123,6 +123,21 @@ bool intersectAABB(in vec3 origin, in vec3 direction, in vec3 aabbMin, in vec3 a
     return 0 <= tMax && tMin <= tMax;
 }
 
+bool intersectSphere(in vec3 origin, in vec3 direction, in vec3 center, in float radius,
+                     out float tMin, out float tMax)
+{
+    vec3 oc = center - origin;
+    float b = dot(oc, direction);
+    float det = b * b - dot(oc, oc) + radius * radius;
+    if(det <= 0.0){
+        return false;
+    }
+    float sqrtDet = sqrt(det);
+    tMin = b - sqrtDet;
+    tMax = b + sqrtDet;
+    return true;
+}
+
 void main()
 {
     vec2 resolution = vec2(gl_WorkGroupSize.xy * gl_NumWorkGroups.xy);
@@ -142,9 +157,17 @@ void main()
     float tMax;
     vec3 volumeAABBMin = vec3(-1.0);
     vec3 volumeAABBMax = vec3(1.0);
+    vec3 sphereCenter = vec3(0.0);
+    float sphereRadius = 1.0;
 
     vec3 radiance = vec3(0.0);
-    if(intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax)){
+    bool intersected;
+    if(shape == SHAPE_CUBE){
+        intersected = intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax);
+    }else if(shape == SHAPE_SPHERE){
+        intersected = intersectSphere(origin, direction, sphereCenter, sphereRadius, tMin, tMax);
+    }
+    if(intersected){
         vec3 nearPosition = origin + direction * tMin;
         vec3 farPosition = origin + direction * tMax;
 
@@ -162,8 +185,13 @@ void main()
 
             float secondRayTMin;
             float secondRayTMax;
-            intersectAABB(samplePosition, sunDirection, 
-                          volumeAABBMin, volumeAABBMax, secondRayTMin, secondRayTMax);
+            if(shape == SHAPE_CUBE){
+                intersectAABB(samplePosition, sunDirection, volumeAABBMin, volumeAABBMax, 
+                              secondRayTMin, secondRayTMax);
+            }else if(shape == SHAPE_SPHERE){
+                intersectSphere(samplePosition, sunDirection, sphereCenter, sphereRadius, 
+                              secondRayTMin, secondRayTMax);
+            }
 
             //if(gl_GlobalInvocationID.xy == uvec2(resolution / 2.0) && frame == 1){
             //    debugPrintfEXT("secondRayT: %f %f\n", secondRayTMin, secondRayTMax);
