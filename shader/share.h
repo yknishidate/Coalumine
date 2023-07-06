@@ -15,10 +15,10 @@ struct PushConstants {
 
     float lightIntensity = 1.0f;
     int shape = SHAPE_CUBE;
-    float _dummy1;
+    float stepEdge = 0.25f;
     float _dummy2;
 
-    float absorption[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -33,7 +33,7 @@ layout(push_constant) uniform PushConstants {
 
     float lightIntensity;
     int shape;
-    float _dummy1;
+    float stepEdge;
     float _dummy2;
 
     vec4 absorption;

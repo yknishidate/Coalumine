@@ -9,19 +9,19 @@
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding = 0, rgba8) uniform image2D outputImage;
 
-float remap(float x, float in0, float in1, float out0, float out1) {
-    return out0 + (out1 - out0) * (x - in0) / (in1 - in0);
+float remap(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
 
 float sampleDensity(vec3 p)
 {
-    float val0 = noise3D(p * noiseFreq0);
-    float val1 = noise3D(p * noiseFreq1);
-    val0 = max(0.0, val0);
-    val1 = max(0.0, val1);
+    // val0 and val1 are [0.0, 1.0] for multiply
+    float val0 = remap(noise3D(p * noiseFreq0), -1.0, 1.0, 0.0, 1.0);
+    float val1 = remap(noise3D(p * noiseFreq1), -1.0, 1.0, 0.0, 1.0);
     float val = val0 * val1;
     val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
     val = clamp(val, 0.0, 1.0);
+    val = step(stepEdge, val) * val;
     return val;
 }
 
