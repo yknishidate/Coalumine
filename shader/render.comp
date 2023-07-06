@@ -59,10 +59,25 @@ float noise3D(float x, float y, float z)
                    mix(grad(perm[AB+1], x, y-1, z-1), grad(perm[BB+1], x-1, y-1, z-1), u), v), w);
 }
 
-float sampleDensity(vec3 p, vec3 aabbMin, vec3 aabbMax)
+float noise3D(vec3 p)
 {
-    p = (p - aabbMin) / (aabbMax - aabbMin) * noiseFreq;
-    return noise3D(p.x, p.y, p.z) * 0.5 + 0.5;
+    return noise3D(p.x, p.y, p.z);
+}
+
+float remap(float x, float in0, float in1, float out0, float out1) {
+    return out0 + (out1 - out0) * (x - in0) / (in1 - in0);
+}
+
+float sampleDensity(vec3 p)
+{
+    float val0 = noise3D(p * noiseFreq0);
+    float val1 = noise3D(p * noiseFreq1);
+    val0 = max(0.0, val0);
+    val1 = max(0.0, val1);
+    float val = val0 * val1;
+    val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
+    val = clamp(val, 0.0, 1.0);
+    return val;
 }
 
 uint pcg(inout uint state)
@@ -121,14 +136,9 @@ void main()
     uint seed = s.x + s.y;
 
     //if(gl_WorkGroupID.xy == uvec2(0) && frame == 1){
-    //    //debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
-    //    //debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
-    //    //debugPrintfEXT("origin: %f %f %f\n", origin.x, origin.y, origin.z);
-    //    debugPrintfEXT("direction: %f %f %f\n", direction.x, direction.y, direction.z);
-    //}
-    //if(gl_WorkGroupID.xy == uvec2(1279, 719) && frame == 1){
-    //    //debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
-    //    //debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
+    //    debugPrintfEXT("res: %f %f\n", resolution.x, resolution.y);
+    //    debugPrintfEXT("uv: %f %f\n", uv.x, uv.y);
+    //    debugPrintfEXT("origin: %f %f %f\n", origin.x, origin.y, origin.z);
     //    debugPrintfEXT("direction: %f %f %f\n", direction.x, direction.y, direction.z);
     //}
 
@@ -149,9 +159,10 @@ void main()
         float totalDensity = 0.0;
         for(int i = 0; i < maxSteps; i++){
             samplePosition += direction * stepSize;
-            totalDensity += sampleDensity(samplePosition, volumeAABBMin, volumeAABBMax);
+            totalDensity += sampleDensity(samplePosition);
         }
-        color += vec3(totalDensity * 0.1);
+        totalDensity = clamp(totalDensity * 0.1, 0.0, 1.0);
+        color = mix(color, vec3(1.0), totalDensity);
     }
 
     imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1));
