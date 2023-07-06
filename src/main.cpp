@@ -109,7 +109,7 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
-        ImGui::SliderInt("Test slider", &testInt, 0, 100);
+        ImGui::SliderFloat("Noise frequency", &pushConstants.noiseFreq, 0.01, 100.0);
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
         commandBuffer.pushConstants(pipeline, &pushConstants);
@@ -122,7 +122,6 @@ public:
     DescriptorSet descSet;
     ComputePipeline pipeline;
     OrbitalCamera camera;
-    int testInt = 0;
     PushConstants pushConstants;
 };
 
