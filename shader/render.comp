@@ -17,8 +17,7 @@ float remap(float value, float min1, float max1, float min2, float max2) {
 
 float sampleDensity(vec3 p)
 {
-    // val0 and val1 are [0.0, 1.0] for multiply
-    float val = fbm(p, 4);
+    float val = fbm(p, octave);
     val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
     val = clamp(val, 0.0, 1.0);
     val = step(stepEdge, val) * val;

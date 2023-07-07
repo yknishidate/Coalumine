@@ -121,8 +121,7 @@ public:
         ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         if (pushConstants.enableNoise) {
-            ImGui::SliderFloat("Noise frequency 0", &pushConstants.noiseFreq0, 1.0, 8.0);
-            ImGui::SliderFloat("Noise frequency 1", &pushConstants.noiseFreq1, 2.0, 32.0);
+            ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
             ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
             ImGui::SliderFloat("Step edge", &pushConstants.stepEdge, 0.0, 1.0);
         }

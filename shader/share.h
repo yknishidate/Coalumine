@@ -10,12 +10,12 @@ struct PushConstants {
 
     int frame = 0;
     int enableNoise = 1;
-    float noiseFreq0 = 1.0f;
-    float noiseFreq1 = 2.0f;
+    int octave = 4;
+    int shape = SHAPE_CUBE;
 
     float lightIntensity = 1.0f;
-    int shape = SHAPE_CUBE;
-    float stepEdge = 0.25f;
+    float stepEdge = 0.1f;
+    float _dummy1;
     float _dummy2;
 
     float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
@@ -28,12 +28,12 @@ layout(push_constant) uniform PushConstants {
 
     int frame;
     int enableNoise;
-    float noiseFreq0;
-    float noiseFreq1;
+    int octave;
+    int shape;
 
     float lightIntensity;
-    int shape;
     float stepEdge;
+    float _dummy1;
     float _dummy2;
 
     vec4 absorption;
