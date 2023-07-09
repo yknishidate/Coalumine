@@ -15,20 +15,42 @@ float remap(float value, float min1, float max1, float min2, float max2) {
 
 #define linearstep(edge0, edge1, x) min(max(((x) - (edge0)) / ((edge1) - (edge0)), 0.0), 1.0)
 
+const float PI = 3.1415926535;
+
 float sampleDensity(vec3 p)
 {
-    float val = fbm(p, octave);
+    float val = fbm(p * noiseFreq, octave);
     val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
     val = clamp(val, 0.0, 1.0);
     val = step(stepEdge, val) * val;
     return val;
 }
 
-vec3 computeRadiance(vec3 origin, vec3 direction, 
-                     vec3 volumeAABBMin, vec3 volumeAABBMax,
-                     vec3 sphereCenter, float sphereRadius,
-                     vec3 sunIntensity, vec3 sunDirection,
-                     inout uint seed)
+float phaseFunction()
+{
+    return 1.0 / (4.0 * PI);
+}
+
+//vec3 computeRadiance(vec3 origin, vec3 direction)
+//{
+//    vec3 transmittance;
+//    vec3  emission;
+//    vec3 scatteringCoefficient;
+//    vec3 nextOrigin;
+//    vec3 nextDirection;
+//    vec3 inRadiance = computeRadiance(nextOrigin, nextDirection);
+//    float ds;
+//
+//    // Lo = ÅÁ T() [Le + É–s() ÅÁ fp() Li() dÉ÷] ds
+//    vec3 radiance = transmittance * (emission + scatteringCoefficient * phaseFunction() * inRadiance) * ds;
+//    return radiance;
+//}
+
+vec3 computeColor(vec3 origin, vec3 direction, 
+                  vec3 volumeAABBMin, vec3 volumeAABBMax,
+                  vec3 sphereCenter, float sphereRadius,
+                  vec3 sunIntensity, vec3 sunDirection,
+                  inout uint seed)
 {
     vec3 radiance = vec3(0.0);
     
@@ -41,13 +63,13 @@ vec3 computeRadiance(vec3 origin, vec3 direction,
         intersected = intersectSphere(origin, direction, sphereCenter, sphereRadius, tMin, tMax);
     }
     if(intersected){
-        vec3 nearPosition = origin + direction * tMin;
-        vec3 farPosition = origin + direction * tMax;
+        // If eye is in the volume area, nearPosition should be origin;
+        const vec3 nearPosition = origin + direction * max(0.0, tMin);
 
         float stepSize = 0.1;
         float offset = stepSize * rand(seed);
         vec3 samplePosition = nearPosition + direction * offset;
-        int maxSteps = int((tMax - tMin - offset) / stepSize);
+        int maxSteps = int((tMax - max(0.0, tMin) - offset) / stepSize);
         float totalDensity = 0.0;
         for(int i = 0; i < maxSteps; i++){
             samplePosition += direction * stepSize;
@@ -101,17 +123,17 @@ void main()
     vec3 sphereCenter = vec3(0.0);
     float sphereRadius = 1.0;
 
-    vec3 radiance = vec3(0.0);
+    vec3 color = vec3(0.0);
     uint sampleCount = 8;
     for(int i = 0; i < sampleCount; i++){
-        radiance += computeRadiance(
+        color += computeColor(
             origin, direction, 
             volumeAABBMin, volumeAABBMax,
             sphereCenter, sphereRadius, 
             sunIntensity, sunDirection, 
             seed);
     }
-    radiance /= sampleCount;
+    color /= sampleCount;
 
-    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(radiance, 1));
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), vec4(color, 1));
 }

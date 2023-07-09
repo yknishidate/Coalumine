@@ -122,6 +122,7 @@ public:
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         if (pushConstants.enableNoise) {
             ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
+            ImGui::SliderFloat("Noise freq.", &pushConstants.noiseFreq, 0.1, 10.0);
             ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
             ImGui::SliderFloat("Step edge", &pushConstants.stepEdge, 0.0, 1.0);
         }
