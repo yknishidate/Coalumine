@@ -7,6 +7,12 @@
 #undef far
 #undef RGB
 
+#define IMATH_HALF_NO_LOOKUP_TABLE
+#include <openvdb/openvdb.h>
+
+using FloatGrid = openvdb::FloatGrid;
+using Vec3SGrid = openvdb::Vec3SGrid;
+
 namespace fs = std::filesystem;
 fs::path getExecutableDirectory() {
     TCHAR filepath[1024];
@@ -74,6 +80,8 @@ public:
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
 
+        loadVDB();
+
         renderImage = context.createImage({
             .usage = ImageUsage::GeneralStorage,
             .width = width,
@@ -122,9 +130,9 @@ public:
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         if (pushConstants.enableNoise) {
             ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
+            ImGui::SliderFloat("fBM gain", &pushConstants.gain, 0.0, 1.0);
             ImGui::SliderFloat("Noise freq.", &pushConstants.noiseFreq, 0.1, 10.0);
             ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
-            ImGui::SliderFloat("Step edge", &pushConstants.stepEdge, 0.0, 1.0);
         }
         ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
@@ -142,8 +150,63 @@ public:
                                 height);
     }
 
+    void loadVDB() {
+        // Initialize the OpenVDB library
+        openvdb::initialize();
+
+        // Create a VDB file object
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v1.0001.vdb");
+
+        // Open the file
+        file.open();
+
+        // Read the "Alpha" grid (float data)
+        // openvdb::GridBase::Ptr grid = file.readGrid("Alpha");
+        openvdb::GridBase::Ptr grid = file.readGrid("Cd");
+        using value_type = openvdb::math::Vec3s;
+        file.close();
+
+        // Cast the grid to a FloatGrid pointer
+        // FloatGrid::Ptr alphaGrid = openvdb::gridPtrCast<FloatGrid>(grid);
+        Vec3SGrid::Ptr alphaGrid = openvdb::gridPtrCast<Vec3SGrid>(grid);
+
+        // Create a 3D vector to hold the data
+
+        openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
+        std::cout << "Min: " << bbox.min() << "\n";
+        std::cout << "Max: " << bbox.max() << "\n";
+        // Min: [-182, -192, -197]
+        // Max: [ 307, 287, 316 ]
+
+        openvdb::Coord volumeAreaSize = bbox.max() - bbox.min();
+        std::vector<value_type> gridData(volumeAreaSize.x() * volumeAreaSize.y() *
+                                         volumeAreaSize.z());
+
+        // Fill in the 3D vector with the "Alpha" grid data
+        // Note: Replace X_SIZE, Y_SIZE, Z_SIZE with the actual dimensions of your grid
+        CPUTimer timer;
+        for (int32_t z = 0; z < volumeAreaSize.z(); ++z) {
+            for (int32_t y = 0; y < volumeAreaSize.y(); ++y) {
+                for (int32_t x = 0; x < volumeAreaSize.x(); ++x) {
+                    openvdb::Coord xyz(x, y, z);
+                    value_type value = alphaGrid->getAccessor().getValue(xyz);
+                    int32_t index =
+                        x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * z);
+                    gridData[index] = value;
+                    if (value.x() > 0.0) {
+                        std::cout << "index: " << x << ", " << y << ", " << z
+                                  << " | value: " << value << std::endl;
+                    }
+                }
+            }
+            // std::cout << z << "/" << volumeAreaSize.z() << std::endl;
+        }
+        std::cout << "VDB loaded: " << timer.elapsedInMilli() << "ms" << std::endl;
+    }
+
     Image renderImage;
     Image noiseImage;
+    Image vdbImage;
     DescriptorSet descSet;
     ComputePipeline pipeline;
     OrbitalCamera camera;
