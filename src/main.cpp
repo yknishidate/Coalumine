@@ -155,20 +155,17 @@ public:
         openvdb::initialize();
 
         // Create a VDB file object
-        openvdb::io::File file("../asset/nebula_doxia.filecache1_v1.0001.vdb");
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
 
         // Open the file
         file.open();
 
         // Read the "Alpha" grid (float data)
-        // openvdb::GridBase::Ptr grid = file.readGrid("Alpha");
-        openvdb::GridBase::Ptr grid = file.readGrid("Cd");
-        using value_type = openvdb::math::Vec3s;
+        openvdb::GridBase::Ptr grid = file.readGrid("initialValue");
         file.close();
 
         // Cast the grid to a FloatGrid pointer
-        // FloatGrid::Ptr alphaGrid = openvdb::gridPtrCast<FloatGrid>(grid);
-        Vec3SGrid::Ptr alphaGrid = openvdb::gridPtrCast<Vec3SGrid>(grid);
+        FloatGrid::Ptr floatGrid = openvdb::gridPtrCast<FloatGrid>(grid);
 
         // Create a 3D vector to hold the data
 
@@ -180,7 +177,9 @@ public:
 
         openvdb::Coord volumeAreaSize = bbox.max() - bbox.min();
         uint32_t voxelCount = volumeAreaSize.x() * volumeAreaSize.y() * volumeAreaSize.z();
-        std::vector<value_type> gridData(voxelCount);
+        std::cout << "Voxel count: " << voxelCount << std::endl;
+
+        std::vector<float> gridData(voxelCount);
 
         // Fill in the 3D vector with the "Alpha" grid data
         // Note: Replace X_SIZE, Y_SIZE, Z_SIZE with the actual dimensions of your grid
@@ -189,7 +188,7 @@ public:
             for (int32_t y = 0; y < volumeAreaSize.y(); ++y) {
                 for (int32_t x = 0; x < volumeAreaSize.x(); ++x) {
                     openvdb::Coord xyz(x, y, z);
-                    value_type value = alphaGrid->getAccessor().getValue(xyz);
+                    float value = floatGrid->getAccessor().getValue(xyz);
                     int32_t index =
                         x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * z);
                     gridData[index] = value;
@@ -203,26 +202,36 @@ public:
         }
         std::cout << "VDB loaded: " << timer.elapsedInMilli() << "ms" << std::endl;
 
-        uint32_t byteSize = voxelCount * sizeof(float) * 3;
-        Buffer stagingBuffer = context.createHostBuffer({
+        uint32_t byteSize = voxelCount * sizeof(float);
+        std::cout << "Byte size: " << byteSize << std::endl;
+
+        // DeviceBuffer stagingBuffer = context.createDeviceBuffer({
+        //     .usage = BufferUsage::Staging,
+        //     .size = byteSize,
+        //     .data = gridData.data(),
+        // });
+        // std::cout << "Device buffer created" << std::endl;
+
+        HostBuffer stagingBuffer = context.createHostBuffer({
             .usage = BufferUsage::Staging,
             .size = byteSize,
             .data = gridData.data(),
         });
         std::cout << "Staging buffer created" << std::endl;
 
+        // TODO: fix aspect and layout
         vdbImage = context.createImage({
             .usage = ImageUsage::GeneralStorage,
             .width = static_cast<uint32_t>(volumeAreaSize.x()),
             .height = static_cast<uint32_t>(volumeAreaSize.y()),
             .depth = static_cast<uint32_t>(volumeAreaSize.z()),
-            .format = vk::Format::eR32G32B32Sfloat,
+            .format = vk::Format::eR32Sfloat,
             .type = vk::ImageType::e3D,
         });
         std::cout << "Texture created" << std::endl;
 
         vk::ImageSubresourceLayers subresourceLayers;
-        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
+        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eDepth);
         subresourceLayers.setMipLevel(0);
         subresourceLayers.setBaseArrayLayer(0);
         subresourceLayers.setLayerCount(1);
@@ -238,6 +247,8 @@ public:
         region.imageExtent = extent;
 
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
+            Image::setImageLayout(commandBuffer, vdbImage.getImage(),
+                                  vk::ImageLayout::eTransferDstOptimal);
             commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), vdbImage.getImage(),
                                             vk::ImageLayout::eTransferDstOptimal, region);
         });
