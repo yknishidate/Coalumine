@@ -179,8 +179,8 @@ public:
         // Max: [ 307, 287, 316 ]
 
         openvdb::Coord volumeAreaSize = bbox.max() - bbox.min();
-        std::vector<value_type> gridData(volumeAreaSize.x() * volumeAreaSize.y() *
-                                         volumeAreaSize.z());
+        uint32_t voxelCount = volumeAreaSize.x() * volumeAreaSize.y() * volumeAreaSize.z();
+        std::vector<value_type> gridData(voxelCount);
 
         // Fill in the 3D vector with the "Alpha" grid data
         // Note: Replace X_SIZE, Y_SIZE, Z_SIZE with the actual dimensions of your grid
@@ -193,15 +193,55 @@ public:
                     int32_t index =
                         x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * z);
                     gridData[index] = value;
-                    if (value.x() > 0.0) {
-                        std::cout << "index: " << x << ", " << y << ", " << z
-                                  << " | value: " << value << std::endl;
-                    }
+                    // if (value.x() > 0.0) {
+                    //     std::cout << "index: " << x << ", " << y << ", " << z
+                    //               << " | value: " << value << std::endl;
+                    // }
                 }
             }
-            // std::cout << z << "/" << volumeAreaSize.z() << std::endl;
+            std::cout << z << "/" << volumeAreaSize.z() << std::endl;
         }
         std::cout << "VDB loaded: " << timer.elapsedInMilli() << "ms" << std::endl;
+
+        uint32_t byteSize = voxelCount * sizeof(float) * 3;
+        Buffer stagingBuffer = context.createHostBuffer({
+            .usage = BufferUsage::Staging,
+            .size = byteSize,
+            .data = gridData.data(),
+        });
+        std::cout << "Staging buffer created" << std::endl;
+
+        vdbImage = context.createImage({
+            .usage = ImageUsage::GeneralStorage,
+            .width = static_cast<uint32_t>(volumeAreaSize.x()),
+            .height = static_cast<uint32_t>(volumeAreaSize.y()),
+            .depth = static_cast<uint32_t>(volumeAreaSize.z()),
+            .format = vk::Format::eR32G32B32Sfloat,
+            .type = vk::ImageType::e3D,
+        });
+        std::cout << "Texture created" << std::endl;
+
+        vk::ImageSubresourceLayers subresourceLayers;
+        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
+        subresourceLayers.setMipLevel(0);
+        subresourceLayers.setBaseArrayLayer(0);
+        subresourceLayers.setLayerCount(1);
+
+        vk::Extent3D extent;
+        extent.setWidth(static_cast<uint32_t>(volumeAreaSize.x()));
+        extent.setHeight(static_cast<uint32_t>(volumeAreaSize.y()));
+        extent.setDepth(static_cast<uint32_t>(volumeAreaSize.z()));
+
+        vk::BufferImageCopy region;
+        region.imageSubresource = subresourceLayers;
+        region.imageOffset = 0u;
+        region.imageExtent = extent;
+
+        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
+            commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), vdbImage.getImage(),
+                                            vk::ImageLayout::eTransferDstOptimal, region);
+        });
+        std::cout << "Texture filled" << std::endl;
     }
 
     Image renderImage;
