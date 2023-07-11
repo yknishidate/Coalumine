@@ -23,7 +23,6 @@ float sampleDensity(vec3 p)
     vec3 uvw = (p - volumeMin.xyz) / volumeSize.xyz;
     float val = texture(vdbImage, uvw).r;
     val = remap(val, remapValue[0], remapValue[1], remapValue[2], remapValue[3]);
-    val = clamp(val, 0.0, 1.0);
     return val;
 }
 
@@ -53,26 +52,6 @@ float phaseFunction()
 {
     return 1.0 / (4.0 * PI);
 }
-
-// GLSL cannot include recursive call.
-//vec3 computeRadiance(vec3 origin, vec3 direction)
-//{
-//    const int MAX_DEPTH = 4;
-//    vec3 weight = vec3(1.0);
-//    for(int depth = 1; depth < MAX_DEPTH; depth++){
-//        vec3 transmittance = vec3(1.0);
-//        vec3 emission = vec3(0.0);
-//        vec3 scatteringCoefficient = vec3(1.0);
-//        vec3 nextOrigin = origin;
-//        vec3 nextDirection = direction;
-//        vec3 inRadiance = computeRadiance(nextOrigin, nextDirection);
-//        float ds = 1.0;
-//    
-//        // Lo = ç T() [Le + ƒÐs() ç fp() Li() dƒÖ] ds
-//        vec3 radiance = transmittance * (emission + scatteringCoefficient * phaseFunction() * inRadiance) * ds;
-//    }
-//    //return radiance;
-//}
 
 vec3 computeDirectRadiance(vec3 position, float secondRayTMax, float stepSize, 
                            vec3 sunIntensity, vec3 sunDirection, inout uint seed)
@@ -176,12 +155,12 @@ vec3 computeColor(vec3 origin, vec3 direction,
 //            vec3 inRadiance = sunIntensity * exp(-(vec3(1.0) - absorption.xyz) * secondRayTMax * 10);
 //            radiance += (1.0 - min(1.0, totalDensity)) * density * inRadiance;
 //#endif
-            radiance += colorRamp5(density, 
+            radiance += colorRamp5(density,
                 vec3(0.00392157, 0.278431, 0.376471),
                 vec3(0.0919028, 0.000379446, 0.153744),
                 vec3(0.491768, 0.00288083, 0.0911382),
                 vec3(0.948677, 0.264162, 0.00023388),
-                vec3(0.973729, 0.996282, 0.373522)) * 0.2;
+                vec3(0.973729, 0.996282, 0.373522)) * (3.0 * stepSize);
 
             totalDensity += density;
         }

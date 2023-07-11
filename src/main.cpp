@@ -22,11 +22,7 @@ fs::path getExecutableDirectory() {
 }
 
 fs::path getShaderSourceDirectory() {
-#ifdef _DEBUG
     return getExecutableDirectory().parent_path().parent_path().parent_path() / "shader";
-#else
-    assert(false && "Shader sources are provided in debug mode only.");
-#endif
 }
 
 fs::path getSpvDirectory() {
@@ -81,6 +77,7 @@ public:
               .width = 1920,
               .height = 1080,
               .title = "HelloCompute",
+              .enableValidation = true,
           }) {}
 
     void createPipeline(const std::vector<uint32_t>& code) {
@@ -176,7 +173,8 @@ public:
         openvdb::initialize();
 
         // Create a VDB file object
-        openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
+        // openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v2.0001.vdb");
 
         // Open the file
         file.open();
