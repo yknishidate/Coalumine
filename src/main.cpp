@@ -182,12 +182,10 @@ public:
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
-        if (pushConstants.enableNoise) {
-            ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
-            ImGui::SliderFloat("fBM gain", &pushConstants.gain, 0.0, 1.0);
-            ImGui::SliderFloat("Noise freq.", &pushConstants.noiseFreq, 0.1, 10.0);
-            ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
-        }
+        ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
+        ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
+        ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
+        ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
         ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
         ImGui::SliderInt("Blur iteration", &blurIteration, 0, 128);
