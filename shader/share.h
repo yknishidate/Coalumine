@@ -21,7 +21,7 @@ struct PushConstants {
     float bloomIntensity = 10.0f;
     float bloomThreshold = 0.2f;
     float lightIntensity = 1.0f;
-    float _dummy2;
+    float flowSpeed = 0.05f;
 
     // 32
     float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
@@ -43,7 +43,7 @@ layout(push_constant) uniform PushConstants {
     float bloomIntensity;
     float bloomThreshold;
     float lightIntensity;
-    float _dummy2;
+    float flowSpeed;
 
     vec4 absorption;
     vec4 volumeMin;

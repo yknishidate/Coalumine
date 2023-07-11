@@ -24,6 +24,9 @@ float sampleVolume(vec3 p)
 {
     vec3 uvw = p / volumeSize.xyz + 0.5;
     uvw.y = -uvw.y;
+    float quantity = smoothstep(0.0, 0.2, noise3D(uvw * 5)) * 0.1;
+    vec3 flow = flowNoise(uvw * 2.0, float(frame * flowSpeed)) * quantity;
+    uvw += flow;
     float val = texture(volumeImage, uvw).r;
     return val;
 }
@@ -193,7 +196,7 @@ vec3 computeColor(vec3 origin, vec3 direction,
             }
         }
     }
-    radiance = clamp(radiance, 0.0, 1.0);
+    radiance = clamp(radiance * lightIntensity, 0.0, 1.0);
     return radiance;
 }
 
