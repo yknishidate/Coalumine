@@ -29,14 +29,14 @@ fs::path getSpvDirectory() {
     return getExecutableDirectory() / "spv";
 }
 
-fs::path getSpvFilePath(const std::string& shaderFileName, const std::string& entryPoint = "main") {
+fs::path getSpvFilePath(const std::string& shaderFileName, const std::string& entryPoint) {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     std::string spvFileName =
         glslFile.stem().string() + "_" + entryPoint + glslFile.extension().string() + ".spv";
     return getSpvDirectory() / spvFileName;
 }
 
-bool shouldRecompile(const std::string& shaderFileName, const std::string& entryPoint = "main") {
+bool shouldRecompile(const std::string& shaderFileName, const std::string& entryPoint) {
     if (shaderFileName.empty()) {
         return false;
     }
@@ -50,8 +50,18 @@ bool shouldRecompile(const std::string& shaderFileName, const std::string& entry
     return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
 }
 
+bool shouldRecompile(const std::string& shaderFileName,
+                     const std::vector<std::string>& entryPoints) {
+    for (auto& entryPoint : entryPoints) {
+        if (shouldRecompile(shaderFileName, entryPoint)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::vector<uint32_t> compileShader(const std::string& shaderFileName,
-                                    const std::string& entryPoint = "main") {
+                                    const std::string& entryPoint) {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
     std::vector<uint32_t> spvCode;
@@ -61,8 +71,7 @@ std::vector<uint32_t> compileShader(const std::string& shaderFileName,
     return spvCode;
 }
 
-std::vector<uint32_t> readShader(const std::string& shaderFileName,
-                                 const std::string& entryPoint = "main") {
+std::vector<uint32_t> readShader(const std::string& shaderFileName, const std::string& entryPoint) {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
     std::vector<uint32_t> spvCode;
@@ -80,22 +89,37 @@ public:
               .enableValidation = true,
           }) {}
 
-    void createPipeline(const std::vector<uint32_t>& code) {
-        Shader compShader = context.createShader({
-            .code = code,
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
+    void createPipelines() {
+        std::vector<Shader> shaders(entryPoints.size());
+        std::vector<const Shader*> shaderPtrs(entryPoints.size());
+        for (int i = 0; i < entryPoints.size(); i++) {
+            std::vector<uint32_t> code;
+            if (shouldRecompile(shaderFileName, entryPoints[i])) {
+                code = compileShader(shaderFileName, entryPoints[i]);
+            } else {
+                code = readShader(shaderFileName, entryPoints[i]);
+            }
+            shaders[i] = context.createShader({
+                .code = code,
+                .stage = vk::ShaderStageFlagBits::eCompute,
+            });
+            shaderPtrs[i] = &shaders[i];
+        }
 
         descSet = context.createDescriptorSet({
-            .shaders = {&compShader},
-            .images = {{"outputImage", renderImage}, {"vdbImage", vdbImage}},
+            .shaders = shaderPtrs,
+            .images = {{"outputImage", baseImage},
+                       {"vdbImage", vdbImage},
+                       {"bloomImage", bloomImage}},
         });
 
-        pipeline = context.createComputePipeline({
-            .computeShader = compShader,
-            .descSetLayout = descSet.getLayout(),
-            .pushSize = sizeof(PushConstants),
-        });
+        for (int i = 0; i < entryPoints.size(); i++) {
+            pipelines[entryPoints[i]] = context.createComputePipeline({
+                .computeShader = shaders[i],
+                .descSetLayout = descSet.getLayout(),
+                .pushSize = sizeof(PushConstants),
+            });
+        }
     }
 
     void onStart() override {
@@ -105,23 +129,27 @@ public:
 
         loadVDB();
 
-        renderImage = context.createImage({
+        baseImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
                      vk::ImageUsageFlagBits::eTransferSrc,
             .initialLayout = vk::ImageLayout::eGeneral,
             .aspect = vk::ImageAspectFlagBits::eColor,
             .width = width,
             .height = height,
+            //.format = vk::Format::eR32G32B32A32Sfloat,
         });
 
-        std::vector<uint32_t> code;
-        if (shouldRecompile(shaderFileName)) {
-            code = compileShader(shaderFileName);
-        } else {
-            code = readShader(shaderFileName);
-        }
+        bloomImage = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+            .width = width,
+            .height = height,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+        });
 
-        createPipeline(code);
+        createPipelines();
 
         camera = OrbitalCamera{this, width, height};
 
@@ -136,6 +164,8 @@ public:
     }
 
     void onRender(const CommandBuffer& commandBuffer) override {
+        static int imageIndex = 0;
+        ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         if (pushConstants.enableNoise) {
@@ -149,23 +179,33 @@ public:
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
         }
-        if (shouldRecompile(shaderFileName)) {
+        if (shouldRecompile(shaderFileName, entryPoints)) {
             try {
-                std::vector<uint32_t> code = compileShader(shaderFileName);
-                createPipeline(code);
+                createPipelines();
             } catch (const std::exception& e) {
                 spdlog::error(e.what());
             }
         }
-        commandBuffer.bindDescriptorSet(descSet, pipeline);
-        commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(pipeline, &pushConstants);
+
+        commandBuffer.bindDescriptorSet(descSet, pipelines["main_base"]);
+
         commandBuffer.beginTimestamp(gpuTimer);
-        commandBuffer.dispatch(pipeline, width / 8, height / 8, 1);
+
+        commandBuffer.bindPipeline(pipelines["main_base"]);
+        commandBuffer.pushConstants(pipelines["main_base"], &pushConstants);
+        commandBuffer.dispatch(pipelines["main_base"], width / 8, height / 8, 1);
+
         commandBuffer.endTimestamp(gpuTimer);
-        commandBuffer.copyImage(renderImage.getImage(), getCurrentColorImage(),
-                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
-                                height);
+
+        if (imageIndex == 0) {
+            commandBuffer.copyImage(baseImage.getImage(), getCurrentColorImage(),
+                                    vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR,
+                                    width, height);
+        } else {
+            commandBuffer.copyImage(bloomImage.getImage(), getCurrentColorImage(),
+                                    vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR,
+                                    width, height);
+        }
     }
 
     void loadVDB() {
@@ -191,20 +231,17 @@ public:
         openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
         std::cout << "Min: " << bbox.min() << "\n";
         std::cout << "Max: " << bbox.max() << "\n";
-        pushConstants.volumeMin[0] = bbox.min().x() * 0.01f;
-        pushConstants.volumeMin[1] = bbox.min().y() * 0.01f;
-        pushConstants.volumeMin[2] = bbox.min().z() * 0.01f;
-        pushConstants.volumeMin[3] = 1.0f;
-        pushConstants.volumeSize[0] = bbox.max().x() * 0.01f - pushConstants.volumeMin[0];
-        pushConstants.volumeSize[1] = bbox.max().y() * 0.01f - pushConstants.volumeMin[1];
-        pushConstants.volumeSize[2] = bbox.max().z() * 0.01f - pushConstants.volumeMin[2];
-        pushConstants.volumeSize[3] = 1.0f;
         // Min: [-182, -192, -197]
         // Max: [ 307, 287, 316 ]
 
         openvdb::Coord volumeAreaSize = bbox.max() - bbox.min();
         uint32_t voxelCount = volumeAreaSize.x() * volumeAreaSize.y() * volumeAreaSize.z();
         std::cout << "Voxel count: " << voxelCount << std::endl;
+
+        pushConstants.volumeSize[0] = volumeAreaSize.x() * 0.01f;
+        pushConstants.volumeSize[1] = volumeAreaSize.y() * 0.01f;
+        pushConstants.volumeSize[2] = volumeAreaSize.z() * 0.01f;
+        pushConstants.volumeSize[3] = 1.0f;
 
         std::vector<float> gridData(voxelCount);
         CPUTimer timer;
@@ -270,10 +307,14 @@ public:
     }
 
     std::string shaderFileName = "render.comp";
-    Image renderImage;
+    std::vector<std::string> entryPoints = {"main_base"};
+
+    Image baseImage;
     Image vdbImage;
+    Image bloomImage;
+
     DescriptorSet descSet;
-    ComputePipeline pipeline;
+    std::unordered_map<std::string, ComputePipeline> pipelines;
     OrbitalCamera camera;
     PushConstants pushConstants;
     GPUTimer gpuTimer;
