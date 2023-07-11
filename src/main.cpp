@@ -87,7 +87,7 @@ public:
 
         descSet = context.createDescriptorSet({
             .shaders = {&compShader},
-            .images = {{"outputImage", renderImage}},
+            .images = {{"outputImage", renderImage}, {"vdbImage", vdbImage}},
         });
 
         pipeline = context.createComputePipeline({
@@ -105,16 +105,12 @@ public:
         loadVDB();
 
         renderImage = context.createImage({
-            .usage = ImageUsage::GeneralStorage,
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
             .width = width,
             .height = height,
-        });
-
-        noiseImage = context.createImage({
-            .usage = ImageUsage::GeneralStorage,
-            .width = 512,
-            .height = 512,
-            .depth = 512,
         });
 
         std::vector<uint32_t> code;
@@ -153,8 +149,12 @@ public:
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
         }
         if (shouldRecompile(shaderFileName)) {
-            std::vector<uint32_t> code = compileShader(shaderFileName);
-            createPipeline(code);
+            try {
+                std::vector<uint32_t> code = compileShader(shaderFileName);
+                createPipeline(code);
+            } catch (const std::exception& e) {
+                spdlog::error(e.what());
+            }
         }
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
@@ -222,12 +222,18 @@ public:
         uint32_t byteSize = voxelCount * sizeof(float);
         std::cout << "Byte size: " << byteSize << std::endl;
 
-        // DeviceBuffer stagingBuffer = context.createDeviceBuffer({
-        //     .usage = BufferUsage::Staging,
-        //     .size = byteSize,
-        //     .data = gridData.data(),
-        // });
-        // std::cout << "Device buffer created" << std::endl;
+        // for (int32_t y = 0; y < volumeAreaSize.y(); ++y) {
+        //     for (int32_t x = 0; x < volumeAreaSize.x(); ++x) {
+        //         int32_t index =
+        //             x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * 100);
+        //         if (gridData[index] == 0.0) {
+        //             std::cout << " ";
+        //         } else {
+        //             std::cout << "*";
+        //         }
+        //     }
+        //     std::cout << std::endl;
+        // }
 
         HostBuffer stagingBuffer = context.createHostBuffer({
             .usage = BufferUsage::Staging,
@@ -236,19 +242,20 @@ public:
         });
         std::cout << "Staging buffer created" << std::endl;
 
-        // TODO: fix aspect and layout
         vdbImage = context.createImage({
-            .usage = ImageUsage::GeneralStorage,
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled,
+            .initialLayout = vk::ImageLayout::eTransferDstOptimal,
+            .aspect = vk::ImageAspectFlagBits::eColor,
             .width = static_cast<uint32_t>(volumeAreaSize.x()),
             .height = static_cast<uint32_t>(volumeAreaSize.y()),
             .depth = static_cast<uint32_t>(volumeAreaSize.z()),
             .format = vk::Format::eR32Sfloat,
-            .type = vk::ImageType::e3D,
         });
         std::cout << "Texture created" << std::endl;
 
         vk::ImageSubresourceLayers subresourceLayers;
-        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eDepth);
+        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
         subresourceLayers.setMipLevel(0);
         subresourceLayers.setBaseArrayLayer(0);
         subresourceLayers.setLayerCount(1);
@@ -260,21 +267,20 @@ public:
 
         vk::BufferImageCopy region;
         region.imageSubresource = subresourceLayers;
-        region.imageOffset = 0u;
         region.imageExtent = extent;
 
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
-            Image::setImageLayout(commandBuffer, vdbImage.getImage(),
-                                  vk::ImageLayout::eTransferDstOptimal);
+            // Image::setImageLayout(commandBuffer, vdbImage.getImage(),
+            //                       vk::ImageLayout::eTransferDstOptimal);
             commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), vdbImage.getImage(),
                                             vk::ImageLayout::eTransferDstOptimal, region);
+            Image::setImageLayout(commandBuffer, vdbImage.getImage(), vk::ImageLayout::eGeneral);
         });
         std::cout << "Texture filled" << std::endl;
     }
 
     std::string shaderFileName = "render.comp";
     Image renderImage;
-    Image noiseImage;
     Image vdbImage;
     DescriptorSet descSet;
     ComputePipeline pipeline;
