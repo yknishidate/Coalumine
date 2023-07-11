@@ -50,19 +50,23 @@ bool shouldRecompile(const std::string& shaderFileName, const std::string& entry
     return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
 }
 
-std::vector<uint32_t> compileOrReadShader(const std::string& shaderFileName,
-                                          const std::string& entryPoint = "main") {
+std::vector<uint32_t> compileShader(const std::string& shaderFileName,
+                                    const std::string& entryPoint = "main") {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
     std::vector<uint32_t> spvCode;
-    spdlog::info("Check last write time of the shader: {}", shaderFileName);
-    if (shouldRecompile(shaderFileName, entryPoint)) {
-        spdlog::info("Compile shader: {}", spvFile.string());
-        spvCode = Compiler::compileToSPV(glslFile.string(), {{entryPoint, "main"}});
-        File::writeBinary(spvFile, spvCode);
-    } else {
-        File::readBinary(spvFile, spvCode);
-    }
+    spdlog::info("Compile shader: {}", spvFile.string());
+    spvCode = Compiler::compileToSPV(glslFile.string(), {{entryPoint, "main"}});
+    File::writeBinary(spvFile, spvCode);
+    return spvCode;
+}
+
+std::vector<uint32_t> readShader(const std::string& shaderFileName,
+                                 const std::string& entryPoint = "main") {
+    auto glslFile = getShaderSourceDirectory() / shaderFileName;
+    auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
+    std::vector<uint32_t> spvCode;
+    File::readBinary(spvFile, spvCode);
     return spvCode;
 }
 
@@ -74,6 +78,24 @@ public:
               .height = 1080,
               .title = "HelloCompute",
           }) {}
+
+    void createPipeline(const std::vector<uint32_t>& code) {
+        Shader compShader = context.createShader({
+            .code = code,
+            .stage = vk::ShaderStageFlagBits::eCompute,
+        });
+
+        descSet = context.createDescriptorSet({
+            .shaders = {&compShader},
+            .images = {{"outputImage", renderImage}},
+        });
+
+        pipeline = context.createComputePipeline({
+            .computeShader = compShader,
+            .descSetLayout = descSet.getLayout(),
+            .pushSize = sizeof(PushConstants),
+        });
+    }
 
     void onStart() override {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
@@ -95,23 +117,14 @@ public:
             .depth = 512,
         });
 
-        std::vector<uint32_t> code = compileOrReadShader("render.comp");
+        std::vector<uint32_t> code;
+        if (shouldRecompile(shaderFileName)) {
+            code = compileShader(shaderFileName);
+        } else {
+            code = readShader(shaderFileName);
+        }
 
-        Shader compShader = context.createShader({
-            .code = code,
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
-
-        descSet = context.createDescriptorSet({
-            .shaders = {&compShader},
-            .images = {{"outputImage", renderImage}},
-        });
-
-        pipeline = context.createComputePipeline({
-            .computeShader = compShader,
-            .descSetLayout = descSet.getLayout(),
-            .pushSize = sizeof(PushConstants),
-        });
+        createPipeline(code);
 
         camera = OrbitalCamera{this, width, height};
 
@@ -138,6 +151,10 @@ public:
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
+        }
+        if (shouldRecompile(shaderFileName)) {
+            std::vector<uint32_t> code = compileShader(shaderFileName);
+            createPipeline(code);
         }
         commandBuffer.bindDescriptorSet(descSet, pipeline);
         commandBuffer.bindPipeline(pipeline);
@@ -255,6 +272,7 @@ public:
         std::cout << "Texture filled" << std::endl;
     }
 
+    std::string shaderFileName = "render.comp";
     Image renderImage;
     Image noiseImage;
     Image vdbImage;
