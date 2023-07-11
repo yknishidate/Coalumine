@@ -16,10 +16,10 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${SHADERS})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     reactive
-    openvdb
+    OpenVDB::openvdb
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/reactive/source
 )
