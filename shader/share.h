@@ -9,7 +9,7 @@ struct PushConstants {
     glm::mat4 invProj;
 
     // 32
-    float remapValue[4] = {0.0f, 1.0f, 0.0f, 1.0f};
+    float remapValue[4] = {0.0f, 1.0f, 0.0f, 1.5f};
 
     // 32
     int frame = 0;
