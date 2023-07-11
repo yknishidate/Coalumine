@@ -28,6 +28,29 @@ float sampleDensity(vec3 p)
     return val;
 }
 
+vec3 colorRamp2(float value, vec3 color0, vec3 color1) {
+    //float t = (value - knot0) / (knot1 - knot0);
+    if(value == 0.0) return vec3(0.0);
+    return mix(color0, color1, value);
+}
+
+vec3 colorRamp5(float value, vec3 color0, vec3 color1, vec3 color2, vec3 color3, vec3 color4) {
+    if(value == 0.0) return vec3(0.0);
+    if(value < 0.25){
+        float t = value * 4.0;
+        return mix(color0, color1, t);
+    }else if(value < 0.5){
+        float t = (value - 0.25) * 4.0;
+        return mix(color1, color2, t);
+    }else if(value < 0.75){
+        float t = (value - 0.5) * 4.0;
+        return mix(color1, color2, t);
+    }else{
+        float t = (value - 0.75) * 4.0;
+        return mix(color1, color2, t);
+    }
+}
+
 float phaseFunction()
 {
     return 1.0 / (4.0 * PI);
@@ -155,7 +178,17 @@ vec3 computeColor(vec3 origin, vec3 direction,
 //            vec3 inRadiance = sunIntensity * exp(-(vec3(1.0) - absorption.xyz) * secondRayTMax * 10);
 //            radiance += (1.0 - min(1.0, totalDensity)) * density * inRadiance;
 //#endif
-            radiance += density;
+            float maxValue = 1.52996;
+            radiance += colorRamp5(density / maxValue, 
+                vec3(0.00392157, 0.278431, 0.376471),
+                vec3(0.0919028, 0.000379446, 0.153744),
+                vec3(0.491768, 0.00288083, 0.0911382),
+                vec3(0.948677, 0.264162, 0.00023388),
+                vec3(0.973729, 0.996282, 0.373522)) * 0.2;
+                
+            //radiance += colorRamp2(density, 
+            //    vec3(1.0, 0.0, 0.0),
+            //    vec3(0.0, 0.0, 1.0)) * 0.1;
             totalDensity += density;
         }
     }
