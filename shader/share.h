@@ -25,6 +25,9 @@ struct PushConstants {
 
     // 32
     float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
+
+    float volumeMin[4];
+    float volumeSize[4];
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -43,5 +46,7 @@ layout(push_constant) uniform PushConstants {
     float _dummy2;
 
     vec4 absorption;
+    vec4 volumeMin;
+    vec4 volumeSize;
 };
 #endif

@@ -17,12 +17,16 @@ namespace fs = std::filesystem;
 fs::path getExecutableDirectory() {
     TCHAR filepath[1024];
     auto length = GetModuleFileName(NULL, filepath, 1024);
-    assert(length > 0, "Failed to query the executable path.");
+    assert(length > 0 && "Failed to query the executable path.");
     return fs::path(filepath).remove_filename();
 }
 
 fs::path getShaderSourceDirectory() {
+#ifdef _DEBUG
     return getExecutableDirectory().parent_path().parent_path().parent_path() / "shader";
+#else
+    assert(false && "Shader sources are provided in debug mode only.");
+#endif
 }
 
 fs::path getSpvDirectory() {
@@ -189,6 +193,14 @@ public:
         openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
         std::cout << "Min: " << bbox.min() << "\n";
         std::cout << "Max: " << bbox.max() << "\n";
+        pushConstants.volumeMin[0] = bbox.min().x() * 0.01f;
+        pushConstants.volumeMin[1] = bbox.min().y() * 0.01f;
+        pushConstants.volumeMin[2] = bbox.min().z() * 0.01f;
+        pushConstants.volumeMin[3] = 1.0f;
+        pushConstants.volumeSize[0] = bbox.max().x() * 0.01f - pushConstants.volumeMin[0];
+        pushConstants.volumeSize[1] = bbox.max().y() * 0.01f - pushConstants.volumeMin[1];
+        pushConstants.volumeSize[2] = bbox.max().z() * 0.01f - pushConstants.volumeMin[2];
+        pushConstants.volumeSize[3] = 1.0f;
         // Min: [-182, -192, -197]
         // Max: [ 307, 287, 316 ]
 
@@ -197,22 +209,15 @@ public:
         std::cout << "Voxel count: " << voxelCount << std::endl;
 
         std::vector<float> gridData(voxelCount);
-
-        // Fill in the 3D vector with the "Alpha" grid data
-        // Note: Replace X_SIZE, Y_SIZE, Z_SIZE with the actual dimensions of your grid
         CPUTimer timer;
         for (int32_t z = 0; z < volumeAreaSize.z(); ++z) {
             for (int32_t y = 0; y < volumeAreaSize.y(); ++y) {
                 for (int32_t x = 0; x < volumeAreaSize.x(); ++x) {
                     openvdb::Coord xyz(x, y, z);
-                    float value = floatGrid->getAccessor().getValue(xyz);
+                    float value = floatGrid->getAccessor().getValue(bbox.min() + xyz);
                     int32_t index =
                         x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * z);
                     gridData[index] = value;
-                    // if (value.x() > 0.0) {
-                    //     std::cout << "index: " << x << ", " << y << ", " << z
-                    //               << " | value: " << value << std::endl;
-                    // }
                 }
             }
             std::cout << z << "/" << volumeAreaSize.z() << std::endl;
@@ -221,19 +226,6 @@ public:
 
         uint32_t byteSize = voxelCount * sizeof(float);
         std::cout << "Byte size: " << byteSize << std::endl;
-
-        // for (int32_t y = 0; y < volumeAreaSize.y(); ++y) {
-        //     for (int32_t x = 0; x < volumeAreaSize.x(); ++x) {
-        //         int32_t index =
-        //             x + volumeAreaSize.x() * y + (volumeAreaSize.x() * volumeAreaSize.y() * 100);
-        //         if (gridData[index] == 0.0) {
-        //             std::cout << " ";
-        //         } else {
-        //             std::cout << "*";
-        //         }
-        //     }
-        //     std::cout << std::endl;
-        // }
 
         HostBuffer stagingBuffer = context.createHostBuffer({
             .usage = BufferUsage::Staging,
