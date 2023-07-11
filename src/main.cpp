@@ -108,9 +108,13 @@ public:
 
         descSet = context.createDescriptorSet({
             .shaders = shaderPtrs,
-            .images = {{"outputImage", baseImage},
-                       {"vdbImage", vdbImage},
-                       {"bloomImage", bloomImage}},
+            .images =
+                {
+                    {"baseImage", baseImage},
+                    {"volumeImage", volumeImage},
+                    {"bloomImage", bloomImage},
+                    {"finalImage", finalImage},
+                },
         });
 
         for (int i = 0; i < entryPoints.size(); i++) {
@@ -136,7 +140,7 @@ public:
             .aspect = vk::ImageAspectFlagBits::eColor,
             .width = width,
             .height = height,
-            //.format = vk::Format::eR32G32B32A32Sfloat,
+            .format = vk::Format::eR32G32B32A32Sfloat,
         });
 
         bloomImage = context.createImage({
@@ -147,6 +151,15 @@ public:
             .width = width,
             .height = height,
             .format = vk::Format::eR32G32B32A32Sfloat,
+        });
+
+        finalImage = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+            .width = width,
+            .height = height,
         });
 
         createPipelines();
@@ -165,6 +178,7 @@ public:
 
     void onRender(const CommandBuffer& commandBuffer) override {
         static int imageIndex = 0;
+        static int blurIteration = 0;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
@@ -176,6 +190,8 @@ public:
         }
         ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
+        ImGui::SliderInt("Blur iteration", &blurIteration, 0, 128);
+
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
         }
@@ -191,21 +207,41 @@ public:
 
         commandBuffer.beginTimestamp(gpuTimer);
 
+        // Base rendering
         commandBuffer.bindPipeline(pipelines["main_base"]);
         commandBuffer.pushConstants(pipelines["main_base"], &pushConstants);
         commandBuffer.dispatch(pipelines["main_base"], width / 8, height / 8, 1);
 
+        commandBuffer.imageBarrier(
+            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
+            {}, baseImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
+
+        commandBuffer.imageBarrier(
+            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
+            {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
+
+        // Blur
+        for (int i = 0; i < blurIteration; i++) {
+            commandBuffer.bindPipeline(pipelines["main_blur"]);
+            commandBuffer.pushConstants(pipelines["main_blur"], &pushConstants);
+            commandBuffer.dispatch(pipelines["main_blur"], width / 8, height / 8, 1);
+
+            commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                       vk::PipelineStageFlagBits::eComputeShader, {}, bloomImage,
+                                       vk::AccessFlagBits::eShaderWrite,
+                                       vk::AccessFlagBits::eShaderRead);
+        }
+
+        // Composite
+        commandBuffer.bindPipeline(pipelines["main_composite"]);
+        commandBuffer.pushConstants(pipelines["main_composite"], &pushConstants);
+        commandBuffer.dispatch(pipelines["main_composite"], width / 8, height / 8, 1);
+
         commandBuffer.endTimestamp(gpuTimer);
 
-        if (imageIndex == 0) {
-            commandBuffer.copyImage(baseImage.getImage(), getCurrentColorImage(),
-                                    vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR,
-                                    width, height);
-        } else {
-            commandBuffer.copyImage(bloomImage.getImage(), getCurrentColorImage(),
-                                    vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR,
-                                    width, height);
-        }
+        commandBuffer.copyImage(finalImage.getImage(), getCurrentColorImage(),
+                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
+                                height);
     }
 
     void loadVDB() {
@@ -227,12 +263,9 @@ public:
         FloatGrid::Ptr floatGrid = openvdb::gridPtrCast<FloatGrid>(grid);
 
         // Create a 3D vector to hold the data
-
         openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
         std::cout << "Min: " << bbox.min() << "\n";
         std::cout << "Max: " << bbox.max() << "\n";
-        // Min: [-182, -192, -197]
-        // Max: [ 307, 287, 316 ]
 
         openvdb::Coord volumeAreaSize = bbox.max() - bbox.min();
         uint32_t voxelCount = volumeAreaSize.x() * volumeAreaSize.y() * volumeAreaSize.z();
@@ -269,7 +302,7 @@ public:
         });
         std::cout << "Staging buffer created" << std::endl;
 
-        vdbImage = context.createImage({
+        volumeImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
                      vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled,
             .initialLayout = vk::ImageLayout::eTransferDstOptimal,
@@ -297,21 +330,22 @@ public:
         region.imageExtent = extent;
 
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
-            // Image::setImageLayout(commandBuffer, vdbImage.getImage(),
+            // Image::setImageLayout(commandBuffer, volumeImage.getImage(),
             //                       vk::ImageLayout::eTransferDstOptimal);
-            commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), vdbImage.getImage(),
+            commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), volumeImage.getImage(),
                                             vk::ImageLayout::eTransferDstOptimal, region);
-            Image::setImageLayout(commandBuffer, vdbImage.getImage(), vk::ImageLayout::eGeneral);
+            Image::setImageLayout(commandBuffer, volumeImage.getImage(), vk::ImageLayout::eGeneral);
         });
         std::cout << "Texture filled" << std::endl;
     }
 
     std::string shaderFileName = "render.comp";
-    std::vector<std::string> entryPoints = {"main_base"};
+    std::vector<std::string> entryPoints = {"main_base", "main_blur", "main_composite"};
 
     Image baseImage;
-    Image vdbImage;
+    Image volumeImage;
     Image bloomImage;
+    Image finalImage;
 
     DescriptorSet descSet;
     std::unordered_map<std::string, ComputePipeline> pipelines;
