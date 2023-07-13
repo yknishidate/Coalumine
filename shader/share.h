@@ -15,8 +15,8 @@ struct PushConstants {
     int enableFlowNoise = 1;
 
     // 32
-    float bloomIntensity = 15.0f;
-    float bloomThreshold = 0.3f;
+    float bloomIntensity = 10.0f;
+    float bloomThreshold = 0.4f;
     float lightIntensity = 1.0f;
     float flowSpeed = 0.05f;
 
@@ -24,7 +24,7 @@ struct PushConstants {
     float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
 
     float volumeSize[4];
-    int blurSize = 20;
+    int blurSize = 32;
 };
 #else
 layout(push_constant) uniform PushConstants {
