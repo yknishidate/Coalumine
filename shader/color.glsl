@@ -9,63 +9,26 @@ vec3 colorRamp5(float value, vec3 color0, vec3 color1, vec3 color2, vec3 color3,
     if (value == 0.0)
         return vec3(0.0);
     float knot0 = 0.0;
-    float knot1 = 0.1;   // violet
-    float knot2 = 0.25;  // blue
-    float knot3 = 0.6;   // red
-    float knot4 = 0.8;   // yellow
+    float knot1 = 0.2;  // violet
+    float knot2 = 0.4;  // blue
+    float knot3 = 0.8;  // red
+    float knot4 = 1.0;  // yellow
     if (value < knot0) {
         return color0;
     } else if (value < knot1) {
-        float t = (value - knot0) * (knot1 - knot0);
+        float t = (value - knot0) / (knot1 - knot0);
         return mix(color0, color1, t);
     } else if (value < knot2) {
-        float t = (value - knot1) * (knot2 - knot1);
+        float t = (value - knot1) / (knot2 - knot1);
         return mix(color1, color2, t);
     } else if (value < knot3) {
-        float t = (value - knot2) * (knot3 - knot2);
+        float t = (value - knot2) / (knot3 - knot2);
         return mix(color2, color3, t);
     } else if (value < knot4) {
-        float t = (value - knot3) * (knot4 - knot3);
+        float t = (value - knot3) / (knot4 - knot3);
         return mix(color3, color4, t);
     } else {
         return color4;
-    }
-}
-
-vec3 colorRamp6(float value,
-                vec3 color0,
-                vec3 color1,
-                vec3 color2,
-                vec3 color3,
-                vec3 color4,
-                vec3 color5) {
-    if (value == 0.0)
-        return vec3(0.0);
-    float knot0 = 0.0;
-    float knot1 = 0.2;
-    float knot2 = 0.4;
-    float knot3 = 0.5;
-    float knot4 = 0.8;
-    float knot5 = 1.0;
-    if (value < knot0) {
-        return color0;
-    } else if (value < knot1) {
-        float t = (value - knot0) * (knot1 - knot0);
-        return mix(color0, color1, t);
-    } else if (value < knot2) {
-        float t = (value - knot1) * (knot2 - knot1);
-        return mix(color1, color2, t);
-    } else if (value < knot3) {
-        float t = (value - knot2) * (knot3 - knot2);
-        return mix(color2, color3, t);
-    } else if (value < knot4) {
-        float t = (value - knot3) * (knot4 - knot3);
-        return mix(color3, color4, t);
-    } else if (value < knot5) {
-        float t = (value - knot4) * (knot5 - knot4);
-        return mix(color4, color5, t);
-    } else {
-        return color5;
     }
 }
 
