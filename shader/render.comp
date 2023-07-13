@@ -19,20 +19,20 @@ float remap(float value, float min1, float max1, float min2, float max2) {
 
 const float PI = 3.1415926535;
 
-float sampleVolume(vec3 p)
+float sampleVolume(vec3 p, inout uint seed)
 {
     vec3 uvw = p / volumeSize.xyz + 0.5;
     uvw.y = -uvw.y;
     if(enableFlowNoise == 1){
         vec3 scale = vec3(10.0);
         vec3 shift = vec3(0.0);
-        float radius = 10.1;
-        float quantity = smoothstep(0.0, 0.2, noise3D(uvw * 10)) * 0.1;
-        //float quantity = 0.1;
+        float radius = 1.0;
+        float quantity = (noise3D(uvw * 10) + 1.0) * 0.02;
         float t = float(frame * flowSpeed);
         vec3 flow = flowNoise(uvw, t, scale, shift, radius) * quantity;
         uvw += flow;
     }
+    //uvw += (vec3(rand(seed), rand(seed), rand(seed)) - 0.5) * 0.005;
     float val = texture(volumeImage, uvw).r;
     return val;
 }
@@ -46,21 +46,17 @@ vec3 computeDirectRadiance(vec3 position, float secondRayTMax, float stepSize,
                            vec3 sunIntensity, vec3 sunDirection, inout uint seed)
 {
     // secondRayTMin is alway minus, so length = secondRayTMax.
-    
-    //vec3 startPosition = position + sunDirection * max(0.0, tMin);
     float offset = stepSize * rand(seed);
     int maxSteps = int((secondRayTMax - offset) / stepSize);
 
     float totalDensity = 0.0;
-    //int secondMaxSteps = int(secondRayTMax / stepSize);
     vec3 samplePosition = position + sunDirection * offset;
 
     for(int j = 0; j < maxSteps; j++){
         samplePosition += sunDirection * stepSize;
-        //totalDensity += sampleVolume(samplePosition);
         float density = 0.1;
         if(enableNoise == 1){
-            density = sampleVolume(samplePosition);
+            density = sampleVolume(samplePosition, seed);
         }
         totalDensity += density;
     }
@@ -82,10 +78,8 @@ vec3 computeTransmittance(float totalDensity)
     return transmittance;
 }
 
-vec3 computeColor(vec3 origin, vec3 direction, 
+vec3 renderNebula(vec3 origin, vec3 direction, 
                   vec3 volumeAABBMin, vec3 volumeAABBMax,
-                  vec3 sphereCenter, float sphereRadius,
-                  vec3 sunIntensity, vec3 sunDirection,
                   inout uint seed)
 {
     vec3 radiance = vec3(0.0);
@@ -107,7 +101,7 @@ vec3 computeColor(vec3 origin, vec3 direction,
             samplePosition += direction * stepSize;
             float value = 0.1;
             if(enableNoise == 1){
-                value = sampleVolume(samplePosition);
+                value = sampleVolume(samplePosition, seed);
             }
 
             if(value > 0.0){
@@ -142,23 +136,12 @@ void main_base()
     uvec2 s = pcg2d(ivec2(gl_GlobalInvocationID.xy));
     uint seed = s.x + s.y;
 
-    vec3 sunIntensity = vec3(lightIntensity);
-    vec3 sunDirection = normalize(vec3(1.0, -1.5, 0.8));
-
-    float tMin;
-    float tMax;
-    vec3 sphereCenter = vec3(0.0);
-    float sphereRadius = 1.0;
-
     vec3 color = vec3(0.0);
-    uint sampleCount = 8;
+    uint sampleCount = 4;
     for(int i = 0; i < sampleCount; i++){
-        color += computeColor(
-            origin, direction, 
-            -volumeSize.xyz * 0.5, volumeSize.xyz * 0.5,
-            sphereCenter, sphereRadius, 
-            sunIntensity, sunDirection, 
-            seed);
+        color += renderNebula(origin, direction, 
+                              -volumeSize.xyz * 0.5, volumeSize.xyz * 0.5,
+                              seed);
     }
     color /= sampleCount;
 
@@ -217,10 +200,12 @@ void main_composite()
         color += bloomColor * bloomIntensity;
     }
     
-    //color = toneMapping(color, lightIntensity);
-    //color = pow(color, vec3(1.0/2.2));
-
     color = saturate(color, 1.1);
+    //color *= 1.5;
+
+    //color = toneMapping(color, lightIntensity);
+    //color = toneMappingACESFilmic(color, lightIntensity);
+    //color = pow(color, vec3(1.0/2.2));
 
     imageStore(finalImage, st, vec4(color, 1.0));
 }

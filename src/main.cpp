@@ -191,7 +191,7 @@ public:
             ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
             ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
             ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-            ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 32);
+            ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 64);
         }
 
         // Flow noise
