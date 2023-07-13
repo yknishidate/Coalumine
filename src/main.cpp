@@ -182,14 +182,18 @@ public:
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
-        ImGui::SliderInt("fBM octave", &pushConstants.octave, 1, 8);
-        ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
-        ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
         ImGui::SliderFloat("Flow speed", &pushConstants.flowSpeed, 0.0, 1.0);
         ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
         ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
-        ImGui::SliderInt("Blur iteration", &blurIteration, 0, 128);
+
+        // Bloom
+        ImGui::Checkbox("Enable bloom", reinterpret_cast<bool*>(&pushConstants.enableBloom));
+        if (pushConstants.enableBloom) {
+            ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
+            ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
+            ImGui::SliderInt("Blur iteration", &blurIteration, 0, 128);
+        }
 
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
@@ -220,15 +224,17 @@ public:
             {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
 
         // Blur
-        for (int i = 0; i < blurIteration; i++) {
-            commandBuffer.bindPipeline(pipelines["main_blur"]);
-            commandBuffer.pushConstants(pipelines["main_blur"], &pushConstants);
-            commandBuffer.dispatch(pipelines["main_blur"], width / 8, height / 8, 1);
+        if (pushConstants.enableBloom) {
+            for (int i = 0; i < blurIteration; i++) {
+                commandBuffer.bindPipeline(pipelines["main_blur"]);
+                commandBuffer.pushConstants(pipelines["main_blur"], &pushConstants);
+                commandBuffer.dispatch(pipelines["main_blur"], width / 8, height / 8, 1);
 
-            commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                       vk::PipelineStageFlagBits::eComputeShader, {}, bloomImage,
-                                       vk::AccessFlagBits::eShaderWrite,
-                                       vk::AccessFlagBits::eShaderRead);
+                commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
+                                           vk::PipelineStageFlagBits::eComputeShader, {},
+                                           bloomImage, vk::AccessFlagBits::eShaderWrite,
+                                           vk::AccessFlagBits::eShaderRead);
+            }
         }
 
         // Composite

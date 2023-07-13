@@ -14,7 +14,7 @@ struct PushConstants {
     // 32
     int frame = 0;
     int enableNoise = 1;
-    int octave = 4;
+    int enableBloom = 1;
     int shape = SHAPE_CUBE;
 
     // 32
@@ -37,7 +37,7 @@ layout(push_constant) uniform PushConstants {
 
     int frame;
     int enableNoise;
-    int octave;
+    int enableBloom;
     int shape;
 
     float bloomIntensity;
