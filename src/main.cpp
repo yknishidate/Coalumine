@@ -178,11 +178,9 @@ public:
 
     void onRender(const CommandBuffer& commandBuffer) override {
         static int imageIndex = 0;
-        static int blurIteration = 64;
+        static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
-        ImGui::Combo("Shape", &pushConstants.shape, "Cube\0Sphere");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
-        ImGui::SliderFloat("Flow speed", &pushConstants.flowSpeed, 0.0, 1.0);
         ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
         ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
@@ -192,7 +190,15 @@ public:
         if (pushConstants.enableBloom) {
             ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
             ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
-            ImGui::SliderInt("Blur iteration", &blurIteration, 0, 128);
+            ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
+            ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 32);
+        }
+
+        // Flow noise
+        ImGui::Checkbox("Enable flow noise",
+                        reinterpret_cast<bool*>(&pushConstants.enableFlowNoise));
+        if (pushConstants.enableFlowNoise) {
+            ImGui::SliderFloat("Flow speed", &pushConstants.flowSpeed, 0.0, 0.2);
         }
 
         if (pushConstants.frame > 1) {
@@ -254,8 +260,7 @@ public:
         openvdb::initialize();
 
         // Create a VDB file object
-        // openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
-        openvdb::io::File file("../asset/nebula_doxia.filecache1_v2.0001.vdb");
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
 
         // Open the file
         file.open();

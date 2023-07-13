@@ -1,7 +1,4 @@
 
-const int SHAPE_CUBE = 0;
-const int SHAPE_SPHERE = 1;
-
 #ifdef __cplusplus
 struct PushConstants {
     // 128
@@ -15,19 +12,19 @@ struct PushConstants {
     int frame = 0;
     int enableNoise = 1;
     int enableBloom = 1;
-    int shape = SHAPE_CUBE;
+    int enableFlowNoise = 1;
 
     // 32
-    float bloomIntensity = 10.0f;
-    float bloomThreshold = 0.2f;
+    float bloomIntensity = 15.0f;
+    float bloomThreshold = 0.3f;
     float lightIntensity = 1.0f;
     float flowSpeed = 0.05f;
 
     // 32
     float absorption[4] = {0.9f, 0.9f, 0.9f, 0.9f};
 
-    float volumeMin[4];
     float volumeSize[4];
+    int blurSize = 20;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -38,7 +35,7 @@ layout(push_constant) uniform PushConstants {
     int frame;
     int enableNoise;
     int enableBloom;
-    int shape;
+    int enableFlowNoise;
 
     float bloomIntensity;
     float bloomThreshold;
@@ -46,7 +43,7 @@ layout(push_constant) uniform PushConstants {
     float flowSpeed;
 
     vec4 absorption;
-    vec4 volumeMin;
     vec4 volumeSize;
+    int blurSize;
 };
 #endif

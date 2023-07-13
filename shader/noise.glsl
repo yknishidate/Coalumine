@@ -308,11 +308,8 @@ float fbm(vec3 coord, int octave, float gain) {
     return f;
 }
 
-vec3 flowNoise(vec3 uvw, float t) {
-    const vec3 scale = vec3(10.0, 10.0, 10.0);
-    const vec3 shift = vec3(1000.0);
-    const float rotationRadius = 2.0;
-
+// return: [-1.0,  1.0]
+vec3 flowNoise(vec3 uvw, float t, vec3 scale, vec3 shift, float rotationRadius) {
     mat3 rot = mat3(cos(rotationRadius), sin(rotationRadius), 0, -sin(rotationRadius),
                     cos(rotationRadius), 0, 0, 0, 1);
     uvw = rot * uvw;
@@ -323,5 +320,5 @@ vec3 flowNoise(vec3 uvw, float t) {
     float n2 = noise3D(vec3(uvw.x, uvw.y, uvw.z + t + 5.0));
     float n3 = noise3D(vec3(uvw.x, uvw.y, uvw.z + t + 10.0));
     float n = (n1 + n2 + n3) / 3.0;
-    return vec3(n) * 0.5 + 0.5;
+    return vec3(n);
 }

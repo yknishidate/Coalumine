@@ -24,9 +24,16 @@ float sampleVolume(vec3 p)
 {
     vec3 uvw = p / volumeSize.xyz + 0.5;
     uvw.y = -uvw.y;
-    float quantity = smoothstep(0.0, 0.2, noise3D(uvw * 10)) * 0.1;
-    vec3 flow = flowNoise(uvw * 2.0, float(frame * flowSpeed)) * quantity;
-    uvw += flow;
+    if(enableFlowNoise == 1){
+        vec3 scale = vec3(10.0);
+        vec3 shift = vec3(0.0);
+        float radius = 10.1;
+        float quantity = smoothstep(0.0, 0.2, noise3D(uvw * 10)) * 0.1;
+        //float quantity = 0.1;
+        float t = float(frame * flowSpeed);
+        vec3 flow = flowNoise(uvw, t, scale, shift, radius) * quantity;
+        uvw += flow;
+    }
     float val = texture(volumeImage, uvw).r;
     return val;
 }
@@ -159,11 +166,7 @@ vec3 computeColor(vec3 origin, vec3 direction,
     float tMin;
     float tMax;
     bool intersected;
-    if(shape == SHAPE_CUBE){
-        intersected = intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax);
-    }else if(shape == SHAPE_SPHERE){
-        intersected = intersectSphere(origin, direction, sphereCenter, sphereRadius, tMin, tMax);
-    }
+    intersected = intersectAABB(origin, direction, volumeAABBMin, volumeAABBMax, tMin, tMax);
     if(intersected){
         // If eye is in the volume area, nearPosition should be origin;
         const vec3 startPosition = origin + direction * max(0.0, tMin);
@@ -264,7 +267,7 @@ vec3 blur(ivec2 st)
     int halfKernelSize = kernelSize / 2;
     for (int i = -halfKernelSize; i <= halfKernelSize; i++) {
         for (int j = -halfKernelSize; j <= halfKernelSize; j++) {
-            int scale = 12 + int(step(rand(seed), 0.5));
+            int scale = blurSize + int(rand(seed) * (blurSize * 0.25));
             vec3 currentColor = imageLoad(bloomImage, st + ivec2(i, j) * scale).rgb;
             bluredColor += currentColor * kernel[j + halfKernelSize][i + halfKernelSize];
             //bluredColor += currentColor / (kernelSize * kernelSize);
@@ -293,14 +296,14 @@ void main_composite()
     ivec2 st = ivec2(gl_GlobalInvocationID.xy);
 
     vec3 baseColor = imageLoad(baseImage, st).rgb;
+    vec3 bloomColor = imageLoad(bloomImage, st).rgb;
+    
     vec3 color = baseColor;
-
     if(enableBloom == 1){
-        vec3 bloomColor = imageLoad(bloomImage, st).rgb;
         color += bloomColor * bloomIntensity;
     }
     
-    //color = toneMapping(color * 3, 1.0);
+    //color = toneMapping(color, lightIntensity);
     //color = pow(color, vec3(1.0/2.2));
 
     imageStore(finalImage, st, vec4(color, 1.0));
