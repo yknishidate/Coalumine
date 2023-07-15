@@ -5,6 +5,10 @@ float computeLuminance(vec3 color) {
     return dot(color, W);
 }
 
+vec3 colorRamp2(float value, vec3 color0, vec3 color1) {
+    return mix(color0, color1, value);
+}
+
 vec3 colorRamp5(float value, vec3 color0, vec3 color1, vec3 color2, vec3 color3, vec3 color4) {
     if (value == 0.0)
         return vec3(0.0);
