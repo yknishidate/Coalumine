@@ -183,14 +183,21 @@ public:
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         ImGui::ColorPicker4("Absorption color", pushConstants.absorption);
         ImGui::SliderFloat("Absorption intensity", &pushConstants.absorptionIntensity, 0.0, 10.0);
-        ImGui::SliderFloat("Emission intensity", &pushConstants.emissionIntensity, 0.0, 10.0);
+        ImGui::SliderFloat("Scattering intensity", &pushConstants.scatterIntensity, 0.0, 10.0);
+        ImGui::SliderFloat("Emission intensity", &pushConstants.emissionIntensity, 0.0, 50.0);
 
-        // ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
+        ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
+
+        // Post effects
+        ImGui::Checkbox("Enable tone mapping",
+                        reinterpret_cast<bool*>(&pushConstants.enableToneMapping));
+        ImGui::Checkbox("Enable gamma correction",
+                        reinterpret_cast<bool*>(&pushConstants.enableGammaCorrection));
 
         // Bloom
         ImGui::Checkbox("Enable bloom", reinterpret_cast<bool*>(&pushConstants.enableBloom));
         if (pushConstants.enableBloom) {
-            ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 100.0);
+            ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 10.0);
             ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
             ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
             ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 64);
@@ -258,17 +265,12 @@ public:
     }
 
     void loadVDB() {
-        // Initialize the OpenVDB library
         openvdb::initialize();
 
-        // Create a VDB file object
-        openvdb::io::File file("../asset/nebula_doxia.filecache1_v3.0001.vdb");
-
-        // Open the file
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v13.0001.vdb");
         file.open();
 
-        // Read the "Alpha" grid (float data)
-        openvdb::GridBase::Ptr grid = file.readGrid("initialValue");
+        openvdb::GridBase::Ptr grid = file.readGrid("emission");
         file.close();
 
         // Cast the grid to a FloatGrid pointer

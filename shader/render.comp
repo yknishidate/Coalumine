@@ -73,13 +73,33 @@ vec3 computeDirectRadiance(vec3 position, float secondRayTMax, float stepSize,
     return radiance;
 }
 
+vec3 computeEmission(float value)
+{
+    //if(value < 0.3){
+    //    return vec3(0.0);
+    //}
+    return colorRamp5(value * 10.0,
+        vec3(0.0919028, 0.000379446, 0.153744),
+        vec3(0.00392157, 0.278431, 0.376471),
+        vec3(0.491768, 0.00288083, 0.0911382),
+        vec3(0.948677, 0.264162, 0.00023388),
+        vec3(0.973729, 0.996282, 0.373522)) * emissionIntensity;
+    //return colorRamp5(value * 20.0,
+    //    vec3(0.2, 0.0, 1.0),
+    //    vec3(0.0, 0.85, 1.0),
+    //    vec3(0.0, 1.0, 0.1),
+    //    vec3(0.95, 1.0, 0.0),
+    //    vec3(1.0, 0.0, 0.0)) * emissionIntensity;
+}
+
 vec3 computeTransmittance(float totalDensity)
 {
-    vec3 absorptionCoefficient = (vec3(1.0) - absorption.xyz) * totalDensity * absorptionIntensity;
-    //vec3 scatteringCoefficient = vec3(1.0) * totalDensity;
-    //vec3 extinctionCoefficient = absorptionCoefficient + scatteringCoefficient;
-    //vec3 transmittance = exp(-extinctionCoefficient);
-    vec3 transmittance = exp(-absorptionCoefficient);
+    //vec3 absorptionCoefficient = (vec3(1.0) - absorption.xyz) * totalDensity * absorptionIntensity;
+    vec3 absorptionCoefficient = vec3(totalDensity * absorptionIntensity);
+    vec3 scatteringCoefficient = vec3(totalDensity * scatterIntensity);
+    vec3 extinctionCoefficient = absorptionCoefficient + scatteringCoefficient;
+    vec3 transmittance = exp(-extinctionCoefficient);
+    //vec3 transmittance = exp(-absorptionCoefficient);
     return transmittance;
 }
 
@@ -87,17 +107,16 @@ vec3 computeRadianceFromPointLight(vec3 position, float stepSize, inout uint see
 {
     // secondRayTMin is alway minus, so length = secondRayTMax.
     vec3 lightPosition = vec3(0.0);
-    vec3 lightIntensity = vec3(10.0);
 
     float offset = stepSize * rand(seed);
     vec3 positionToLight = lightPosition - position;
     float distanceToLight = length(positionToLight);
     vec3 directionToLight = positionToLight / distanceToLight;
-    int maxSteps = int((distanceToLight - offset) / stepSize);
+    int maxSteps = int((distanceToLight - offset) / stepSize * 0.5);
 
+    // Compute total density from light to position
     float totalDensity = 0.0;
     vec3 samplePosition = position + directionToLight * offset;
-
     for(int j = 0; j < maxSteps; j++){
         samplePosition += directionToLight * stepSize;
         float value = 0.0;
@@ -109,10 +128,19 @@ vec3 computeRadianceFromPointLight(vec3 position, float stepSize, inout uint see
         }
     }
 
+    vec3 color = colorRamp5(sampleVolume(position, seed) * 3.0,
+        vec3(0.0919028, 0.000379446, 0.153744),
+        vec3(0.00392157, 0.278431, 0.376471),
+        vec3(0.491768, 0.00288083, 0.0911382),
+        vec3(0.948677, 0.264162, 0.00023388),
+        vec3(0.973729, 0.996282, 0.373522));
+
     // Consider only absorption.
     // Ignore scattering and emission.
-    vec3 transmittance = computeTransmittance(totalDensity);
-    vec3 radiance = transmittance * lightIntensity / (distanceToLight * distanceToLight);
+    vec3 transmittance = color * computeTransmittance(totalDensity);
+    //vec3 radiance = 20 * transmittance * lightIntensity / (distanceToLight * distanceToLight);
+    vec3 radiance = 20 * transmittance * lightIntensity / distanceToLight;
+    //vec3 radiance = 10 * transmittance * lightIntensity / sqrt(distanceToLight);
     return radiance;
 }
 
@@ -125,19 +153,6 @@ vec3 randomDirection(inout uint seed) {
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
     return vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
-}
-
-vec3 computeEmission(float value)
-{
-    //if(value < 0.3){
-    //    return vec3(0.0);
-    //}
-    return colorRamp5(value,
-        vec3(0.0919028, 0.000379446, 0.153744),
-        vec3(0.00392157, 0.278431, 0.376471),
-        vec3(0.491768, 0.00288083, 0.0911382),
-        vec3(0.948677, 0.264162, 0.00023388),
-        vec3(0.973729, 0.996282, 0.373522)) * emissionIntensity;
 }
 
 float computeDensity(float value)
@@ -158,23 +173,24 @@ vec3 computeScatteringCoeff(float value)
 
 vec3 computeInScattering(vec3 position, float value, float stepSize, inout uint seed)
 {
-    vec3 scatteringCoefficient = computeScatteringCoeff(value);
+    //vec3 scatteringCoefficient = computeScatteringCoeff(value);
 
-    vec3 sumRadiance = vec3(0.0);
-    float totalDensity = 0.0;
+    //vec3 sumRadiance = vec3(0.0);
+    //float totalDensity = 0.0;
+    //
+    //vec3 samplePosition = position;
+    //for(int i = 0; i < 1; i++){
+    //    vec3 direction = randomDirection(seed);
+    //    samplePosition += direction * stepSize;
+    //    float value = sampleVolume(samplePosition, seed);
+    //    vec3 transmittance = computeTransmittance(totalDensity);
+    //    sumRadiance += phaseFunction() * transmittance * computeEmission(value) * 10.0;
+    //    totalDensity += computeDensity(value);
+    //}
+    //return scatteringCoefficient * sumRadiance;
 
-    vec3 samplePosition = position;
-    for(int i = 0; i < 8; i++){
-        vec3 direction = randomDirection(seed);
-        samplePosition += direction * stepSize;
-        float value = sampleVolume(samplePosition, seed);
-        vec3 transmittance = computeTransmittance(totalDensity);
-        sumRadiance += phaseFunction() * transmittance * computeEmission(value) * 10.0;
-        totalDensity += computeDensity(value);
-    }
-
-    //vec3 value = computeRadianceFromPointLight(position, stepSize, seed);
-    return scatteringCoefficient * sumRadiance;
+    vec3 radiance = computeRadianceFromPointLight(position, stepSize, seed);
+    return 0.01 * radiance;
 }
 
 vec3 renderNebula(vec3 origin, vec3 direction, 
@@ -206,10 +222,10 @@ vec3 renderNebula(vec3 origin, vec3 direction,
                 vec3 emission = computeEmission(value) * stepSize;
 
                 // Compute in-scattering
-                //vec3 inScattering = computeInScattering(samplePosition, value, stepSize, seed);
+                vec3 inScattering = computeInScattering(samplePosition, value, stepSize, seed);
                 vec3 transmittance = computeTransmittance(totalDensity);
-                //radiance += transmittance * (emission + inScattering);
-                radiance += transmittance * emission;
+                radiance += transmittance * (emission + inScattering);
+                //radiance += transmittance * emission;
                 //radiance += emission;
                 totalDensity += g_density;
             }
@@ -242,10 +258,11 @@ void main_base()
     vec3 backgroundColor = colorRamp2(value,
                             vec3(0.0919028, 0.000379446, 0.153744),
                             vec3(0.00392157, 0.278431, 0.376471));
+    //backgroundColor = vec3(0.0);
 
     vec3 nebulaColor = vec3(0.0);
     float totalDensity = 0.0;
-    uint sampleCount = 4;
+    uint sampleCount = 32;
     for(int i = 0; i < sampleCount; i++){
         float density = 0.0;
         nebulaColor += renderNebula(origin, direction, 
@@ -260,7 +277,6 @@ void main_base()
     vec3 color = nebulaColor + transmittance * backgroundColor;
     //vec3 color = nebulaColor + backgroundColor;
 
-    //float luminace = computeLuminance(color * lightIntensity);
     float luminace = computeLuminance(color);
     vec3 bloomColor = color * max(vec3(0.0), luminace - bloomThreshold);
     imageStore(bloomImage, ivec2(gl_GlobalInvocationID.xy), vec4(bloomColor, 1));
@@ -317,9 +333,13 @@ void main_composite()
     
     color = saturate(color, 1.1);
 
-    //color = toneMapping(color, lightIntensity);
-    //color = toneMappingACESFilmic(color, lightIntensity);
-    //color = pow(color, vec3(1.0/2.2));
+    if(enableToneMapping == 1){
+        color = toneMapping(color, 1.0);
+        //color = toneMappingACESFilmic(color, 1.0);
+    }
+    if(enableGammaCorrection == 1){
+        color = pow(color, vec3(1.0/2.2));
+    }
 
     imageStore(finalImage, st, vec4(color, 1.0));
 }

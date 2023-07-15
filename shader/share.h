@@ -6,10 +6,10 @@ struct PushConstants {
     glm::mat4 invProj;
 
     // 32
-    float absorptionIntensity;
-    float emissionIntensity;
-    float _dummy0;
-    float _dummy1;
+    float absorptionIntensity = 0.0f;
+    float emissionIntensity = 1.0f;
+    int enableToneMapping = 0;
+    int enableGammaCorrection = 0;
 
     // 32
     int frame = 0;
@@ -28,6 +28,7 @@ struct PushConstants {
 
     float volumeSize[4];
     int blurSize = 32;
+    float scatterIntensity = 1.0;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -36,8 +37,8 @@ layout(push_constant) uniform PushConstants {
 
     float absorptionIntensity;
     float emissionIntensity;
-    float _dummy0;
-    float _dummy1;
+    int enableToneMapping;
+    int enableGammaCorrection;
 
     int frame;
     int enableNoise;
@@ -52,5 +53,6 @@ layout(push_constant) uniform PushConstants {
     vec4 absorption;
     vec4 volumeSize;
     int blurSize;
+    float scatterIntensity;
 };
 #endif
