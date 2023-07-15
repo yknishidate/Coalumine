@@ -302,7 +302,7 @@ float fbm(vec3 coord, int octave, float gain) {
     float amplitude = 0.5;
     for (int i = 0; i < octave; i++) {
         f += amplitude * noise3D(coord);
-        coord *= 2.0;
+        coord *= 3.0;
         amplitude *= gain;
     }
     return f;

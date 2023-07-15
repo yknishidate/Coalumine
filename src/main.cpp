@@ -181,9 +181,11 @@ public:
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
-        ImGui::DragFloat4("Remap", pushConstants.remapValue, 0.01, -2.0, 2.0);
-        ImGui::ColorPicker4("Absorption coefficient", pushConstants.absorption);
-        ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
+        ImGui::ColorPicker4("Absorption color", pushConstants.absorption);
+        ImGui::SliderFloat("Absorption intensity", &pushConstants.absorptionIntensity, 0.0, 10.0);
+        ImGui::SliderFloat("Emission intensity", &pushConstants.emissionIntensity, 0.0, 10.0);
+
+        // ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
 
         // Bloom
         ImGui::Checkbox("Enable bloom", reinterpret_cast<bool*>(&pushConstants.enableBloom));

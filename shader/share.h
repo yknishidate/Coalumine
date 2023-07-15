@@ -6,7 +6,10 @@ struct PushConstants {
     glm::mat4 invProj;
 
     // 32
-    float remapValue[4] = {0.0f, 1.0f, 0.0f, 1.5f};
+    float absorptionIntensity;
+    float emissionIntensity;
+    float _dummy0;
+    float _dummy1;
 
     // 32
     int frame = 0;
@@ -30,7 +33,11 @@ struct PushConstants {
 layout(push_constant) uniform PushConstants {
     mat4 invView;
     mat4 invProj;
-    float remapValue[4];
+
+    float absorptionIntensity;
+    float emissionIntensity;
+    float _dummy0;
+    float _dummy1;
 
     int frame;
     int enableNoise;
