@@ -70,6 +70,7 @@ public:
               .height = 1080,
               .title = "rtcamp9",
               .enableValidation = true,
+              .enableRayTracing = true,
           }) {}
 
     void createPipelines() {
@@ -96,7 +97,7 @@ public:
         });
 
         descSet = context.createDescriptorSet({
-            .shaders = {&shaders[0], &shaders[1]},
+            .shaders = shaders,
             .images =
                 {
                     {"baseImage", baseImage},
