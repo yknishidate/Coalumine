@@ -182,9 +182,9 @@ public:
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::Checkbox("Enable noise", reinterpret_cast<bool*>(&pushConstants.enableNoise));
         ImGui::ColorPicker4("Absorption color", pushConstants.absorption);
-        ImGui::SliderFloat("Absorption intensity", &pushConstants.absorptionIntensity, 0.0, 10.0);
-        ImGui::SliderFloat("Scattering intensity", &pushConstants.scatterIntensity, 0.0, 10.0);
-        ImGui::SliderFloat("Emission intensity", &pushConstants.emissionIntensity, 0.0, 50.0);
+        ImGui::SliderFloat("Absorption intensity", &pushConstants.absorptionIntensity, 0.0, 1.0);
+        ImGui::SliderFloat("Scattering intensity", &pushConstants.scatterIntensity, 0.0, 1.0);
+        ImGui::SliderFloat("Emission intensity", &pushConstants.emissionIntensity, 0.0, 10.0);
 
         ImGui::SliderFloat("Light intensity", &pushConstants.lightIntensity, 0.0, 10.0);
 
@@ -267,7 +267,7 @@ public:
     void loadVDB() {
         openvdb::initialize();
 
-        openvdb::io::File file("../asset/nebula_doxia.filecache1_v13.0001.vdb");
+        openvdb::io::File file("../asset/nebula_doxia.filecache1_v18.0001.vdb");
         file.open();
 
         openvdb::GridBase::Ptr grid = file.readGrid("emission");
