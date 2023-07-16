@@ -1,0 +1,34 @@
+#version 460
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_debug_printf : enable
+#include "./share.h"
+#include "./color.h"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(binding = 0, rgba32f) uniform image2D baseImage;
+layout(binding = 2, rgba32f) uniform image2D bloomImage;
+layout(binding = 3, rgba8) uniform image2D finalImage;
+
+void main()
+{
+    ivec2 st = ivec2(gl_GlobalInvocationID.xy);
+
+    vec3 baseColor = imageLoad(baseImage, st).rgb;
+    vec3 bloomColor = imageLoad(bloomImage, st).rgb;
+    
+    vec3 color = baseColor;
+    if(enableBloom == 1){
+        color += bloomColor * bloomIntensity;
+    }
+    
+    color = saturate(color, 1.1);
+
+    if(enableToneMapping == 1){
+        color = toneMappingACESFilmic(color, 1.0);
+    }
+    if(enableGammaCorrection == 1){
+        color = pow(color, vec3(1.0/2.2));
+    }
+
+    imageStore(finalImage, st, vec4(color, 1.0));
+}

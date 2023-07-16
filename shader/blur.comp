@@ -1,0 +1,44 @@
+#version 460
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_debug_printf : enable
+#include "./share.h"
+#include "./random.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(binding = 2, rgba32f) uniform image2D bloomImage;
+
+float kernel[5][5] = float[][](
+    float[](0.003, 0.013, 0.022, 0.013, 0.003),
+    float[](0.013, 0.059, 0.097, 0.059, 0.013),
+    float[](0.022, 0.097, 0.159, 0.097, 0.022),
+    float[](0.013, 0.059, 0.097, 0.059, 0.013),
+    float[](0.003, 0.013, 0.022, 0.013, 0.003)
+);
+
+vec3 blur(ivec2 st)
+{
+    uvec2 s = pcg2d(ivec2(gl_GlobalInvocationID.xy));
+    uint seed = s.x + s.y;
+
+    vec3 bluredColor = vec3(0.0);
+    int kernelSize = 5;
+    int halfKernelSize = kernelSize / 2;
+    for (int i = -halfKernelSize; i <= halfKernelSize; i++) {
+        for (int j = -halfKernelSize; j <= halfKernelSize; j++) {
+            int scale = blurSize + int(rand(seed) * (blurSize * 0.25));
+            vec3 currentColor = imageLoad(bloomImage, st + ivec2(i, j) * scale).rgb;
+            bluredColor += currentColor * kernel[j + halfKernelSize][i + halfKernelSize];
+            //bluredColor += currentColor / (kernelSize * kernelSize);
+        }
+    }
+    return bluredColor;
+}
+
+void main()
+{
+    vec2 resolution = vec2(gl_WorkGroupSize.xy * gl_NumWorkGroups.xy);
+    ivec2 st = ivec2(gl_GlobalInvocationID.xy);
+
+    vec3 bloomColor = blur(st);
+    imageStore(bloomImage, st, vec4(bloomColor, 1.0));
+}
