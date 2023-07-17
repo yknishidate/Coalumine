@@ -74,6 +74,45 @@ public:
               .enableRayTracing = true,
           }) {}
 
+    void loadFromFile() {
+        vertices.clear();
+        indices.clear();
+
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+        std::string warn, err;
+
+        std::string objFilePath = (getAssetDirectory() / "CornellBox-Original.obj").string();
+        std::string matDirectory = getAssetDirectory().string();
+
+        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, objFilePath.c_str(),
+                              matDirectory.c_str())) {
+            throw std::runtime_error(warn + err);
+        }
+
+        for (const auto& shape : shapes) {
+            for (const auto& index : shape.mesh.indices) {
+                Vertex vertex{};
+                vertex.pos[0] = attrib.vertices[3 * index.vertex_index + 0];
+                vertex.pos[1] = -attrib.vertices[3 * index.vertex_index + 1];
+                vertex.pos[2] = attrib.vertices[3 * index.vertex_index + 2];
+                vertices.push_back(vertex);
+                indices.push_back(static_cast<uint32_t>(indices.size()));
+            }
+            // for (const auto& matIndex : shape.mesh.material_ids) {
+            //     Face face;
+            //     face.diffuse[0] = materials[matIndex].diffuse[0];
+            //     face.diffuse[1] = materials[matIndex].diffuse[1];
+            //     face.diffuse[2] = materials[matIndex].diffuse[2];
+            //     face.emission[0] = materials[matIndex].emission[0];
+            //     face.emission[1] = materials[matIndex].emission[1];
+            //     face.emission[2] = materials[matIndex].emission[2];
+            //     faces.push_back(face);
+            // }
+        }
+    }
+
     void createPipelines() {
         std::vector<Shader> shaders(5);
         shaders[0] = context.createShader({
@@ -133,6 +172,8 @@ public:
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
         fs::create_directory(getSpvDirectory());
+
+        loadFromFile();
 
         mesh = context.createMesh({
             .vertices = vertices,
