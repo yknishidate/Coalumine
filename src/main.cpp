@@ -29,13 +29,15 @@ fs::path getSpvFilePath(const std::string& shaderFileName, const std::string& en
     return getSpvDirectory() / spvFileName;
 }
 
+fs::path getAssetDirectory() {
+    return getExecutableDirectory() / "asset";
+}
+
 bool shouldRecompile(const std::string& shaderFileName, const std::string& entryPoint) {
-    if (shaderFileName.empty()) {
-        return false;
-    }
-    fs::create_directory(getSpvDirectory());
+    assert(!shaderFileName.empty());
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     if (!fs::exists(glslFile)) {
+        spdlog::warn("GLSL file doesn't exists: {}", glslFile.string());
         return false;
     }
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
@@ -47,9 +49,8 @@ std::vector<uint32_t> compileShader(const std::string& shaderFileName,
                                     const std::string& entryPoint) {
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    std::vector<uint32_t> spvCode;
     spdlog::info("Compile shader: {}", spvFile.string());
-    spvCode = Compiler::compileToSPV(glslFile.string(), {{entryPoint, "main"}});
+    std::vector<uint32_t> spvCode = Compiler::compileToSPV(glslFile.string());
     File::writeBinary(spvFile, spvCode);
     return spvCode;
 }
@@ -104,6 +105,7 @@ public:
                     {"bloomImage", bloomImage},
                     {"finalImage", finalImage},
                 },
+            .accels = {{"topLevelAS", topAccel}},
         });
 
         computePipelines["blur"] = context.createComputePipeline({
@@ -130,6 +132,20 @@ public:
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
+        fs::create_directory(getSpvDirectory());
+
+        mesh = context.createMesh({
+            .vertices = vertices,
+            .indices = indices,
+        });
+
+        bottomAccel = context.createBottomAccel({
+            .mesh = &mesh,
+        });
+
+        topAccel = context.createTopAccel({
+            .bottomAccels = {{&bottomAccel, glm::mat4{1.0}}},
+        });
 
         baseImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
@@ -176,8 +192,8 @@ public:
 
     void recreatePipelinesIfShadersWereUpdated() {
         bool shouldRecreate = false;
-        shouldRecreate |= shouldRecompile("blur.main", "main");
-        shouldRecreate |= shouldRecompile("composite.main", "main");
+        shouldRecreate |= shouldRecompile("blur.comp", "main");
+        shouldRecreate |= shouldRecompile("composite.comp", "main");
         if (shouldRecreate) {
             try {
                 createPipelines();
@@ -216,29 +232,36 @@ public:
         ///
         /// Render base image here
         ///
+        commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
+        commandBuffer.bindPipeline(rayTracingPipeline);
+        commandBuffer.pushConstants(rayTracingPipeline, &pushConstants);
+        commandBuffer.traceRays(rayTracingPipeline, width, height, 1);
 
-        commandBuffer.imageBarrier(
-            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
-            {}, baseImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
-        commandBuffer.imageBarrier(
-            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
-            {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
+        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+                                   vk::PipelineStageFlagBits::eComputeShader, {}, baseImage,
+                                   vk::AccessFlagBits::eShaderWrite,
+                                   vk::AccessFlagBits::eShaderRead);
+        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+                                   vk::PipelineStageFlagBits::eComputeShader, {}, bloomImage,
+                                   vk::AccessFlagBits::eShaderWrite,
+                                   vk::AccessFlagBits::eShaderRead);
 
-        // Blur
-        if (pushConstants.enableBloom) {
-            for (int i = 0; i < blurIteration; i++) {
-                commandBuffer.bindPipeline(computePipelines["blur"]);
-                commandBuffer.pushConstants(computePipelines["blur"], &pushConstants);
-                commandBuffer.dispatch(computePipelines["blur"], width / 8, height / 8, 1);
+        //// Blur
+        // if (pushConstants.enableBloom) {
+        //     for (int i = 0; i < blurIteration; i++) {
+        //         commandBuffer.bindPipeline(computePipelines["blur"]);
+        //         commandBuffer.pushConstants(computePipelines["blur"], &pushConstants);
+        //         commandBuffer.dispatch(computePipelines["blur"], width / 8, height / 8, 1);
 
-                commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
-                                           vk::PipelineStageFlagBits::eComputeShader, {},
-                                           bloomImage, vk::AccessFlagBits::eShaderWrite,
-                                           vk::AccessFlagBits::eShaderRead);
-            }
-        }
+        //        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
+        //                                   vk::PipelineStageFlagBits::eComputeShader, {},
+        //                                   bloomImage, vk::AccessFlagBits::eShaderWrite,
+        //                                   vk::AccessFlagBits::eShaderRead);
+        //    }
+        //}
 
         // Composite
+        commandBuffer.bindDescriptorSet(descSet, computePipelines["composite"]);
         commandBuffer.bindPipeline(computePipelines["composite"]);
         commandBuffer.pushConstants(computePipelines["composite"], &pushConstants);
         commandBuffer.dispatch(computePipelines["composite"], width / 8, height / 8, 1);
@@ -249,6 +272,12 @@ public:
                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
                                 height);
     }
+
+    std::vector<Vertex> vertices{{{-1, 0, 0}}, {{0, -1, 0}}, {{1, 0, 0}}};
+    std::vector<uint32_t> indices{0, 1, 2};
+    Mesh mesh;
+    BottomAccel bottomAccel;
+    TopAccel topAccel;
 
     Image baseImage;
     Image volumeImage;

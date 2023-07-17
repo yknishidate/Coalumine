@@ -6,6 +6,8 @@ struct PushConstants {
     glm::mat4 invProj;
 
     int frame = 0;
+    int enableToneMapping;
+    int enableGammaCorrection;
 
     // Bloom
     int enableBloom = 0;
@@ -19,6 +21,8 @@ layout(push_constant) uniform PushConstants {
     mat4 invProj;
 
     int frame;
+    int enableToneMapping;
+    int enableGammaCorrection;
 
     int enableBloom;
     int blurSize;

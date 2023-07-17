@@ -6,8 +6,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(REACTIVE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(reactive)
 
-find_package(openvdb CONFIG REQUIRED)
-
 file(GLOB_RECURSE SOURCES "src/*.cpp" "source/*.hpp")
 file(GLOB SHADERS shader/*) # exclude spv files
 
@@ -16,10 +14,13 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${SHADERS})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     reactive
-    OpenVDB::openvdb
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/reactive/source
 )
+
+# copy files in ./asset to binary directory
+file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Debug)
+file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Release)

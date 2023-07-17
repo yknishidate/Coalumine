@@ -15,7 +15,6 @@
         "vulkan-binding",
         "docking-experimental"
       ]
-    },
-    "openvdb"
+    }
   ]
 }
