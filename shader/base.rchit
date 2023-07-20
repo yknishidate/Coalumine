@@ -49,15 +49,16 @@ vec3 calcNormal(Vertex v0, Vertex v1, Vertex v2)
 
 void main()
 {
-    Vertex v0 = unpackVertex(indices[3 * gl_PrimitiveID + 0]);
-    Vertex v1 = unpackVertex(indices[3 * gl_PrimitiveID + 1]);
-    Vertex v2 = unpackVertex(indices[3 * gl_PrimitiveID + 2]);
+    //Vertex v0 = unpackVertex(indices[3 * gl_PrimitiveID + 0]);
+    //Vertex v1 = unpackVertex(indices[3 * gl_PrimitiveID + 1]);
+    //Vertex v2 = unpackVertex(indices[3 * gl_PrimitiveID + 2]);
+    //
+    //const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
+    //vec3 pos = v0.pos * barycentricCoords.x + v1.pos * barycentricCoords.y + v2.pos * barycentricCoords.z;
+    //vec3 normal = calcNormal(v0, v1, v2);
+    //
+    //Face face = unpackFace(gl_PrimitiveID);
 
-    const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
-    vec3 pos = v0.pos * barycentricCoords.x + v1.pos * barycentricCoords.y + v2.pos * barycentricCoords.z;
-    vec3 normal = calcNormal(v0, v1, v2);
-
-    Face face = unpackFace(gl_PrimitiveID);
-
-    payload = face.diffuse + face.emission;
+    //payload = face.diffuse + face.emission;
+    payload = vec3(attribs.xy, 1);
 }
