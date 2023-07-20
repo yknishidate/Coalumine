@@ -1,6 +1,8 @@
 ﻿#include "../shader/share.h"
 #include "App.hpp"
 
+#include <tiny_gltf.h>
+
 #include <Windows.h>
 #undef near
 #undef far
@@ -63,6 +65,11 @@ std::vector<uint32_t> readShader(const std::string& shaderFileName, const std::s
     return spvCode;
 }
 
+struct Face {
+    float diffuse[3];
+    float emission[3];
+};
+
 class HelloApp : public App {
 public:
     HelloApp()
@@ -77,6 +84,7 @@ public:
     void loadFromFile() {
         vertices.clear();
         indices.clear();
+        faces.clear();
 
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
@@ -100,16 +108,16 @@ public:
                 vertices.push_back(vertex);
                 indices.push_back(static_cast<uint32_t>(indices.size()));
             }
-            // for (const auto& matIndex : shape.mesh.material_ids) {
-            //     Face face;
-            //     face.diffuse[0] = materials[matIndex].diffuse[0];
-            //     face.diffuse[1] = materials[matIndex].diffuse[1];
-            //     face.diffuse[2] = materials[matIndex].diffuse[2];
-            //     face.emission[0] = materials[matIndex].emission[0];
-            //     face.emission[1] = materials[matIndex].emission[1];
-            //     face.emission[2] = materials[matIndex].emission[2];
-            //     faces.push_back(face);
-            // }
+            for (const auto& matIndex : shape.mesh.material_ids) {
+                Face face;
+                face.diffuse[0] = materials[matIndex].diffuse[0];
+                face.diffuse[1] = materials[matIndex].diffuse[1];
+                face.diffuse[2] = materials[matIndex].diffuse[2];
+                face.emission[0] = materials[matIndex].emission[0];
+                face.emission[1] = materials[matIndex].emission[1];
+                face.emission[2] = materials[matIndex].emission[2];
+                faces.push_back(face);
+            }
         }
     }
 
@@ -138,6 +146,12 @@ public:
 
         descSet = context.createDescriptorSet({
             .shaders = shaders,
+            .buffers =
+                {
+                    {"Vertices", mesh.vertexBuffer},
+                    {"Indices", mesh.indexBuffer},
+                    {"Faces", faceBuffer},
+                },
             .images =
                 {
                     {"baseImage", baseImage},
@@ -178,6 +192,12 @@ public:
         mesh = context.createMesh({
             .vertices = vertices,
             .indices = indices,
+        });
+
+        faceBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = faces.size() * sizeof(Face),
+            .data = faces.data(),
         });
 
         bottomAccel = context.createBottomAccel({
@@ -235,6 +255,9 @@ public:
         bool shouldRecreate = false;
         shouldRecreate |= shouldRecompile("blur.comp", "main");
         shouldRecreate |= shouldRecompile("composite.comp", "main");
+        shouldRecreate |= shouldRecompile("base.rgen", "main");
+        shouldRecreate |= shouldRecompile("base.rchit", "main");
+        shouldRecreate |= shouldRecompile("base.rmiss", "main");
         if (shouldRecreate) {
             try {
                 createPipelines();
@@ -314,8 +337,9 @@ public:
                                 height);
     }
 
-    std::vector<Vertex> vertices{{{-1, 0, 0}}, {{0, -1, 0}}, {{1, 0, 0}}};
-    std::vector<uint32_t> indices{0, 1, 2};
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    std::vector<Face> faces;
     Mesh mesh;
     BottomAccel bottomAccel;
     TopAccel topAccel;
@@ -324,6 +348,8 @@ public:
     Image volumeImage;
     Image bloomImage;
     Image finalImage;
+
+    DeviceBuffer faceBuffer;
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;
