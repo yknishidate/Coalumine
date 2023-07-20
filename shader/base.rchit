@@ -2,6 +2,8 @@
 #extension GL_EXT_ray_tracing : enable
 #include "./share.h"
 
+layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
+
 layout(binding = 16, set = 0) buffer Vertices{float vertices[];};
 layout(binding = 17, set = 0) buffer Indices{uint indices[];};
 
@@ -39,6 +41,25 @@ void main()
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
     
     payload.depth += 1;
+
+    vec3 origin = gl_WorldRayOriginEXT.xyz;
+    vec3 direction = gl_WorldRayDirectionEXT.xyz;
+    direction = -direction;
+
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsOpaqueEXT,
+        0xff, // cullMask
+        0,    // sbtRecordOffset
+        0,    // sbtRecordStride
+        0,    // missIndex
+        origin,
+        gl_RayTminEXT,
+        direction,
+        gl_RayTmaxEXT,
+        0     // payloadLocation
+    );
+
     payload.radiance = pos * 0.5 + 0.5;
     payload.radiance = normal * 0.5 + 0.5;
     //payload.radiance = vec3(texCoord, 0.0);
