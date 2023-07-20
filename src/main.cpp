@@ -76,7 +76,7 @@ public:
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "Box.gltf").string();
+        std::string filepath = (getAssetDirectory() / "cube.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -88,7 +88,7 @@ public:
             throw std::runtime_error("Failed to parse glTF: " + filepath);
         }
 
-        spdlog::info("Meshes: {}\n", model.meshes.size());
+        spdlog::info("Meshes: {}", model.meshes.size());
         loadMeshes(context, model);
     }
 
@@ -197,13 +197,7 @@ public:
                     }
                 }
 
-                spdlog::info("Mesh: vertex={}, index={}\n", vertices.size(), indices.size());
-                for (auto& v : vertices) {
-                    std::cerr << glm::to_string(v.pos) << std::endl;
-                }
-                for (auto& i : indices) {
-                    std::cerr << i << std::endl;
-                }
+                spdlog::info("Mesh: vertex={}, index={}", vertices.size(), indices.size());
                 meshes.push_back(context.createMesh({
                     .vertices = vertices,
                     .indices = indices,

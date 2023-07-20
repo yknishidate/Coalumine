@@ -40,6 +40,6 @@ void main()
     
     payload = pos * 0.5 + 0.5;
     payload = normal * 0.5 + 0.5;
-    payload = vec3(texCoord, 0.0);
+    //payload = vec3(texCoord, 0.0);
     //payload = vec3(attribs.xy, 1);
 }
