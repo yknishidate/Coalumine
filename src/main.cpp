@@ -2,8 +2,6 @@
 #include "App.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
-// #define STB_IMAGE_IMPLEMENTATION
-// #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
 #include <Windows.h>
@@ -69,7 +67,7 @@ std::vector<uint32_t> readShader(const std::string& shaderFileName, const std::s
 }
 
 class Scene {
-public:
+   public:
     Scene() = default;
 
     void loadFromFile(const Context& context) {
@@ -79,7 +77,6 @@ public:
         std::string warn;
 
         std::string filepath = (getAssetDirectory() / "cube_v5.gltf").string();
-        // std::string filepath = (getAssetDirectory() / "Box.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -210,7 +207,7 @@ public:
 };
 
 class HelloApp : public App {
-public:
+   public:
     HelloApp()
         : App({
               .width = 1920,
@@ -275,7 +272,7 @@ public:
             .chitShader = shaders[4],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
-            .maxRayRecursionDepth = 2,
+            .maxRayRecursionDepth = 31,
         });
     }
 
@@ -284,6 +281,13 @@ public:
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
         fs::create_directory(getSpvDirectory());
+
+        // Output ray tracing props
+        auto rtProps =
+            context
+                .getPhysicalDeviceProperties2<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
+        spdlog::info("RayTracingPipelineProperties::maxRayRecursionDepth: {}",
+                     rtProps.maxRayRecursionDepth);
 
         scene.loadFromFile(context);
 
