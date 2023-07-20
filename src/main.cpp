@@ -67,7 +67,7 @@ std::vector<uint32_t> readShader(const std::string& shaderFileName, const std::s
 }
 
 class Scene {
-   public:
+public:
     Scene() = default;
 
     void loadFromFile(const Context& context) {
@@ -76,7 +76,7 @@ class Scene {
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "cube_v5.gltf").string();
+        std::string filepath = (getAssetDirectory() / "Box.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -98,48 +98,57 @@ class Scene {
             for (const auto& gltfPrimitive : gltfMesh.primitives) {
                 // Vertex attributes
                 auto& attributes = gltfPrimitive.attributes;
+
                 assert(attributes.find("POSITION") != attributes.end());
-                assert(attributes.find("NORMAL") != attributes.end());
-                assert(attributes.find("TEXCOORD_0") != attributes.end());
-
-                // Get the accessor indices for the POSITION, NORMAL, and TEXCOORD_0 attributes
                 int positionIndex = attributes.find("POSITION")->second;
-                int normalIndex = attributes.find("NORMAL")->second;
-                int texCoordIndex = attributes.find("TEXCOORD_0")->second;
+                tinygltf::Accessor* positionAccessor = &gltfModel.accessors[positionIndex];
+                tinygltf::BufferView* positionBufferView =
+                    &gltfModel.bufferViews[positionAccessor->bufferView];
 
-                // Get the accessors
-                auto& positionAccessor = gltfModel.accessors[positionIndex];
-                auto& normalAccessor = gltfModel.accessors[normalIndex];
-                auto& texCoordAccessor = gltfModel.accessors[texCoordIndex];
+                tinygltf::Accessor* normalAccessor = nullptr;
+                tinygltf::BufferView* normalBufferView = nullptr;
+                if (attributes.find("NORMAL") != attributes.end()) {
+                    int normalIndex = attributes.find("NORMAL")->second;
+                    normalAccessor = &gltfModel.accessors[normalIndex];
+                    normalBufferView = &gltfModel.bufferViews[normalAccessor->bufferView];
+                }
 
-                // Get the bufferViews
-                auto& positionBufferView = gltfModel.bufferViews[positionAccessor.bufferView];
-                auto& normalBufferView = gltfModel.bufferViews[normalAccessor.bufferView];
-                auto& texCoordBufferView = gltfModel.bufferViews[texCoordAccessor.bufferView];
+                tinygltf::Accessor* texCoordAccessor = nullptr;
+                tinygltf::BufferView* texCoordBufferView = nullptr;
+                if (attributes.find("TEXCOORD_0") != attributes.end()) {
+                    int texCoordIndex = attributes.find("TEXCOORD_0")->second;
+                    texCoordAccessor = &gltfModel.accessors[texCoordIndex];
+                    texCoordBufferView = &gltfModel.bufferViews[texCoordAccessor->bufferView];
+                }
 
                 // Create a vector to store the vertices
-                std::vector<Vertex> vertices(positionAccessor.count);
+                std::vector<Vertex> vertices(positionAccessor->count);
 
                 // Loop over the vertices
-                for (size_t i = 0; i < positionAccessor.count; i++) {
+                for (size_t i = 0; i < positionAccessor->count; i++) {
                     // Compute the byteOffsets
-                    size_t positionByteOffset = positionAccessor.byteOffset +
-                                                positionBufferView.byteOffset +
-                                                i * positionBufferView.byteStride;
-                    size_t normalByteOffset = normalAccessor.byteOffset +
-                                              normalBufferView.byteOffset +
-                                              i * normalBufferView.byteStride;
-                    size_t texCoordByteOffset = texCoordAccessor.byteOffset +
-                                                texCoordBufferView.byteOffset +
-                                                i * texCoordBufferView.byteStride;
-
-                    // Cast the data to the appropriate types and add to the vertices vector
+                    size_t positionByteOffset = positionAccessor->byteOffset +
+                                                positionBufferView->byteOffset +
+                                                i * positionBufferView->byteStride;
                     vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
-                        &(gltfModel.buffers[positionBufferView.buffer].data[positionByteOffset]));
-                    vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
-                        &(gltfModel.buffers[normalBufferView.buffer].data[normalByteOffset]));
-                    vertices[i].texCoord = *reinterpret_cast<const glm::vec2*>(
-                        &(gltfModel.buffers[texCoordBufferView.buffer].data[texCoordByteOffset]));
+                        &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
+
+                    if (normalBufferView) {
+                        size_t normalByteOffset = normalAccessor->byteOffset +
+                                                  normalBufferView->byteOffset +
+                                                  i * normalBufferView->byteStride;
+                        vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
+                            &(gltfModel.buffers[normalBufferView->buffer].data[normalByteOffset]));
+                    }
+
+                    if (texCoordBufferView) {
+                        size_t texCoordByteOffset = texCoordAccessor->byteOffset +
+                                                    texCoordBufferView->byteOffset +
+                                                    i * texCoordBufferView->byteStride;
+                        vertices[i].texCoord = *reinterpret_cast<const glm::vec2*>(
+                            &(gltfModel.buffers[texCoordBufferView->buffer]
+                                  .data[texCoordByteOffset]));
+                    }
                 }
 
                 // Get indices
@@ -207,7 +216,7 @@ class Scene {
 };
 
 class HelloApp : public App {
-   public:
+public:
     HelloApp()
         : App({
               .width = 1920,
