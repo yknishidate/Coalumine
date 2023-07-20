@@ -12,6 +12,8 @@ file(GLOB SHADERS shader/*) # exclude spv files
 source_group("Shader Files" FILES ${SHADERS})
 add_executable(${PROJECT_NAME} ${SOURCES} ${SHADERS})
 
+find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
+
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     reactive
 )
@@ -19,6 +21,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/reactive/source
+    ${TINYGLTF_INCLUDE_DIRS}
 )
 
 # copy files in ./asset to binary directory
