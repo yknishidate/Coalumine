@@ -99,72 +99,54 @@ public:
         for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
             auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
             for (const auto& gltfPrimitive : gltfMesh.primitives) {
-                std::vector<Vertex> vertices;
-                std::vector<uint32_t> indices;
-
                 // Vertex attributes
                 auto& attributes = gltfPrimitive.attributes;
-                const float* pos = nullptr;
-                const float* normal = nullptr;
-                const float* uv = nullptr;
-
                 assert(attributes.find("POSITION") != attributes.end());
+                assert(attributes.find("NORMAL") != attributes.end());
+                assert(attributes.find("TEXCOORD_0") != attributes.end());
 
-                // auto& accessor = gltfModel.accessors[attributes.find("POSITION")->second];
-                // auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
-                // auto& buffer = gltfModel.buffers[bufferView.buffer];
-                // pos = reinterpret_cast<const float*>(&(buffer.data[accessor.byteOffset +
-                // bufferView.byteOffset])); size_t verticesCount = accessor.count;
+                // Get the accessor indices for the POSITION, NORMAL, and TEXCOORD_0 attributes
+                int positionIndex = attributes.find("POSITION")->second;
+                int normalIndex = attributes.find("NORMAL")->second;
+                int texCoordIndex = attributes.find("TEXCOORD_0")->second;
 
-                auto& accessor = gltfModel.accessors[attributes.find("POSITION")->second];
-                auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
-                auto& buffer = gltfModel.buffers[bufferView.buffer];
+                // Get the accessors
+                auto& positionAccessor = gltfModel.accessors[positionIndex];
+                auto& normalAccessor = gltfModel.accessors[normalIndex];
+                auto& texCoordAccessor = gltfModel.accessors[texCoordIndex];
 
-                // Get the byteOffset and byteStride
-                size_t byteOffset = accessor.byteOffset + bufferView.byteOffset;
-                size_t byteStride =
-                    bufferView.byteStride
-                        ? bufferView.byteStride
-                        : sizeof(float) * 3;  // Assume 3 components if byteStride is not defined
+                // Get the bufferViews
+                auto& positionBufferView = gltfModel.bufferViews[positionAccessor.bufferView];
+                auto& normalBufferView = gltfModel.bufferViews[normalAccessor.bufferView];
+                auto& texCoordBufferView = gltfModel.bufferViews[texCoordAccessor.bufferView];
 
-                // Loop over the data considering the byteStride
-                for (size_t i = byteOffset; i < byteOffset + byteStride * accessor.count;
-                     i += byteStride) {
-                    // Cast the data to float and add to the positions vector
-                    vertices.push_back(
-                        Vertex(*reinterpret_cast<const glm::vec3*>(&(buffer.data[i]))));
+                // Create a vector to store the vertices
+                std::vector<Vertex> vertices(positionAccessor.count);
+
+                // Loop over the vertices
+                for (size_t i = 0; i < positionAccessor.count; i++) {
+                    // Compute the byteOffsets
+                    size_t positionByteOffset = positionAccessor.byteOffset +
+                                                positionBufferView.byteOffset +
+                                                i * positionBufferView.byteStride;
+                    size_t normalByteOffset = normalAccessor.byteOffset +
+                                              normalBufferView.byteOffset +
+                                              i * normalBufferView.byteStride;
+                    size_t texCoordByteOffset = texCoordAccessor.byteOffset +
+                                                texCoordBufferView.byteOffset +
+                                                i * texCoordBufferView.byteStride;
+
+                    // Cast the data to the appropriate types and add to the vertices vector
+                    vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
+                        &(gltfModel.buffers[positionBufferView.buffer].data[positionByteOffset]));
+                    vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
+                        &(gltfModel.buffers[normalBufferView.buffer].data[normalByteOffset]));
+                    vertices[i].texCoord = *reinterpret_cast<const glm::vec2*>(
+                        &(gltfModel.buffers[texCoordBufferView.buffer].data[texCoordByteOffset]));
                 }
 
-                // if (attributes.find("NORMAL") != attributes.end()) {
-                //     auto& accessor = gltfModel.accessors[attributes.find("NORMAL")->second];
-                //     auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
-                //     auto& buffer = gltfModel.buffers[bufferView.buffer];
-                //     normal = reinterpret_cast<const float*>(
-                //         &(buffer.data[accessor.byteOffset + bufferView.byteOffset]));
-                // }
-                // if (attributes.find("TEXCOORD_0") != attributes.end()) {
-                //     auto& accessor = gltfModel.accessors[attributes.find("TEXCOORD_0")->second];
-                //     auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
-                //     auto& buffer = gltfModel.buffers[bufferView.buffer];
-                //     uv = reinterpret_cast<const float*>(
-                //         &(buffer.data[accessor.byteOffset + bufferView.byteOffset]));
-                // }
-
-                // Pack data to vertex array
-                // for (size_t v = 0; v < verticesCount; v++) {
-                //    Vertex vert{};
-                //    vert.pos = glm::make_vec3(&pos[v * 3]);
-                //    // vert.normal = glm::normalize(
-                //    //     glm::vec3(normal ? glm::make_vec3(&normal[v * 3]) : glm::vec3(0.0f)));
-                //    //// vert.pos = -vert.pos;
-                //    //// vert.normal = -vert.normal;
-                //    // vert.texCoord = uv ? glm::make_vec2(&uv[v * 2]) : glm::vec2(0.0f);
-                //    // spdlog::info("pos: {}, norm: {}, uv: {}\n", glm::to_string(vert.pos),
-                //    //              glm::to_string(vert.normal), glm::to_string(vert.texCoord));
-                //    vertices.push_back(vert);
-                //}
-
                 // Get indices
+                std::vector<uint32_t> indices;
                 {
                     auto& accessor = gltfModel.accessors[gltfPrimitive.indices];
                     auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
