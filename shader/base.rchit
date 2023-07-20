@@ -44,7 +44,7 @@ void main()
 
     vec3 origin = gl_WorldRayOriginEXT.xyz;
     vec3 direction = gl_WorldRayDirectionEXT.xyz;
-    direction = -direction;
+    direction = reflect(direction, normal);
 
     traceRayEXT(
         topLevelAS,
@@ -60,8 +60,8 @@ void main()
         0     // payloadLocation
     );
 
-    payload.radiance = pos * 0.5 + 0.5;
-    payload.radiance = normal * 0.5 + 0.5;
+    payload.radiance = payload.radiance * 0.5;
+    //payload.radiance = normal * 0.5 + 0.5;
     //payload.radiance = vec3(texCoord, 0.0);
     //payload.radiance = vec3(attribs.xy, 1);
 }

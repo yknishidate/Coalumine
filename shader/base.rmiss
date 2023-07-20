@@ -4,7 +4,19 @@
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 
+const float PI = 3.1415926535;
+const vec2 invAtan = vec2(0.1591, 0.3183);
+
+vec2 sampleSphericalMap(vec3 v)
+{
+    vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
+    uv = uv * invAtan + 0.5; // radian -> uv
+    return uv;
+}
+
 void main()
 {
-    payload.radiance = vec3(0.0, 0.0, 0.5);
+    vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
+    vec2 value = mod(uv, vec2(0.1));
+    payload.radiance = vec3(value * 10.0, 0.0);
 }
