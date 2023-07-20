@@ -5,7 +5,7 @@
 layout(binding = 16, set = 0) buffer Vertices{float vertices[];};
 layout(binding = 17, set = 0) buffer Indices{uint indices[];};
 
-layout(location = 0) rayPayloadInEXT vec3 payload;
+layout(location = 0) rayPayloadInEXT HitPayload payload;
 
 hitAttributeEXT vec3 attribs;
 
@@ -38,8 +38,9 @@ void main()
     vec3 normal = v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z;
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
     
-    payload = pos * 0.5 + 0.5;
-    payload = normal * 0.5 + 0.5;
-    //payload = vec3(texCoord, 0.0);
-    //payload = vec3(attribs.xy, 1);
+    payload.depth += 1;
+    payload.radiance = pos * 0.5 + 0.5;
+    payload.radiance = normal * 0.5 + 0.5;
+    //payload.radiance = vec3(texCoord, 0.0);
+    //payload.radiance = vec3(attribs.xy, 1);
 }

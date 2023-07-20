@@ -5,7 +5,7 @@
 layout(binding = 0, rgba32f) uniform image2D baseImage;
 layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
 
-layout(location = 0) rayPayloadEXT vec3 payload;
+layout(location = 0) rayPayloadEXT HitPayload payload;
 
 void main()
 {
@@ -14,6 +14,9 @@ void main()
     vec4 origin    = invView * vec4(0, 0, 0, 1);
     vec4 target    = invProj * vec4(uv.x, uv.y, 1, 1);
     vec4 direction = invView * vec4(normalize(target.xyz), 0);
+
+    payload.radiance = vec3(0.0);
+    payload.depth = 0;
 
     traceRayEXT(
         topLevelAS,
@@ -28,5 +31,5 @@ void main()
         10000.0,
         0     // payloadLocation
     );
-    imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), vec4(payload, 1));
+    imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), vec4(payload.radiance, 1));
 }

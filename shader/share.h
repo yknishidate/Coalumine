@@ -30,3 +30,15 @@ layout(push_constant) uniform PushConstants {
     float bloomThreshold;
 };
 #endif
+
+#ifndef __cplusplus
+struct HitPayload {
+    vec3 radiance;
+    int depth;
+    // vec3 position;
+    // vec3 normal;
+    // vec3 emission;
+    // vec3 brdf;
+    // bool done;
+};
+#endif
