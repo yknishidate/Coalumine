@@ -92,13 +92,23 @@ public:
                   const Image& bloomImage,
                   uint32_t width,
                   uint32_t height) {
-        finalImage = context.createImage({
+        finalImageRGBA = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
                      vk::ImageUsageFlagBits::eTransferSrc,
             .initialLayout = vk::ImageLayout::eGeneral,
             .aspect = vk::ImageAspectFlagBits::eColor,
             .width = width,
             .height = height,
+            .format = vk::Format::eR8G8B8A8Unorm,
+        });
+        finalImageBGRA = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+            .width = width,
+            .height = height,
+            .format = vk::Format::eB8G8R8A8Unorm,
         });
 
         shader = context.createShader({
@@ -112,7 +122,8 @@ public:
                 {
                     {"baseImage", baseImage},
                     {"bloomImage", bloomImage},
-                    {"finalImage", finalImage},
+                    {"finalImageRGBA", finalImageRGBA},
+                    {"finalImageBGRA", finalImageBGRA},
                 },
         });
 
@@ -133,12 +144,14 @@ public:
         commandBuffer.dispatch(pipeline, countX, countY, 1);
     }
 
-    vk::Image getOutputImage() const { return finalImage.getImage(); }
+    vk::Image getOutputImageRGBA() const { return finalImageRGBA.getImage(); }
+    vk::Image getOutputImageBGRA() const { return finalImageBGRA.getImage(); }
 
     Shader shader;
     DescriptorSet descSet;
     ComputePipeline pipeline;
-    Image finalImage;
+    Image finalImageRGBA;
+    Image finalImageBGRA;
 };
 
 struct BloomInfo {

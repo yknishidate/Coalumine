@@ -6,7 +6,8 @@
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding = 0, rgba32f) uniform image2D baseImage;
 layout(binding = 1, rgba32f) uniform image2D bloomImage;
-layout(binding = 2, rgba8) uniform image2D finalImage;
+layout(binding = 2, rgba8) uniform image2D finalImageRGBA;
+layout(binding = 3, rgba8) uniform image2D finalImageBGRA;
 
 layout(push_constant) uniform CompositeInfo {
     float bloomIntensity;
@@ -29,5 +30,6 @@ void main()
     if(enableToneMapping == 1) color = toneMappingACESFilmic(color, exposure);
     if(enableGammaCorrection == 1) color = pow(color, vec3(1.0 / gamma));
 
-    imageStore(finalImage, st, vec4(color, 1.0));
+    imageStore(finalImageRGBA, st, vec4(color, 1.0));
+    imageStore(finalImageBGRA, st, vec4(color, 1.0));
 }

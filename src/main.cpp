@@ -384,6 +384,9 @@ public:
         spdlog::info("RayTracingPipelineProperties::maxRayRecursionDepth: {}",
                      rtProps.maxRayRecursionDepth);
 
+        // Output surface formats
+        listSurfaceFormats();
+
         scene.loadFromFile(context);
         scene.buildAccels(context);
         scene.loadDomeLightTexture(context);
@@ -501,7 +504,7 @@ public:
 
         commandBuffer.endTimestamp(gpuTimer);
 
-        commandBuffer.copyImage(compositePass.getOutputImage(), getCurrentColorImage(),
+        commandBuffer.copyImage(compositePass.getOutputImageBGRA(), getCurrentColorImage(),
                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
                                 height);
     }
@@ -514,17 +517,17 @@ public:
 
         auto* pixels = static_cast<uint8_t*>(imageSavingBuffer.map());
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
-            Image::setImageLayout(commandBuffer, compositePass.getOutputImage(),
+            Image::setImageLayout(commandBuffer, compositePass.getOutputImageRGBA(),
                                   vk::ImageLayout::eTransferSrcOptimal);
 
             vk::BufferImageCopy copyInfo;
             copyInfo.setImageExtent({width, height, 1});
             copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
-            commandBuffer.copyImageToBuffer(compositePass.getOutputImage(),
+            commandBuffer.copyImageToBuffer(compositePass.getOutputImageRGBA(),
                                             vk::ImageLayout::eTransferSrcOptimal,
                                             imageSavingBuffer.getBuffer(), copyInfo);
 
-            Image::setImageLayout(commandBuffer, compositePass.getOutputImage(),
+            Image::setImageLayout(commandBuffer, compositePass.getOutputImageRGBA(),
                                   vk::ImageLayout::eGeneral);
         });
 

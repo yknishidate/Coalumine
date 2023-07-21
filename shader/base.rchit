@@ -119,26 +119,15 @@ void main()
         return;
     }
 
+    // Importance sampling
     vec3 origin = pos;
-
-    // uniform
-    //vec3 direction = sampleHemisphereUniform(normal, payload.seed);
-    //float cosTheta = dot(normal, direction);
-    //float pdf = 1.0 / (2.0 * PI);
-
-    // importance
-    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
-    float cosTheta = dot(normal, direction);
-    float pdf = cosTheta / PI; // importance
-
+    vec3 direction = sampleHemisphereCosine(normal, payload.seed);
     traceRay(origin, direction);
 
-    // fr = ƒÏ / pi
+    // Radiance (with Importance sampling)
+    // Lo = brdf * Li * cos(theta) / pdf
+    //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
+    //    = color * Li
     vec3 color = vec3(0.9);
-    vec3 brdf = color / PI;
-
-    // Lo = fr * Li * cosƒÆ / pdf
-    payload.radiance = brdf * payload.radiance * cosTheta / pdf;
-    //payload.radiance = pos * 0.5 + 0.5;
-    //payload.radiance = normal * 0.5 + 0.5;
+    payload.radiance = color * payload.radiance;
 }
