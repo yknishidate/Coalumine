@@ -58,7 +58,9 @@ public:
         int width;
         int height;
         int comp;
-        std::string filepath = (getAssetDirectory() / "solitude_interior_4k.hdr").string();
+        // std::string filepath = (getAssetDirectory() / "solitude_interior_4k.hdr").string();
+        std::string filepath =
+            (getAssetDirectory() / "drakensberg_solitary_mountain_8k.hdr").string();
         float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &comp, 0);
         if (!pixels) {
             throw std::runtime_error("Failed to load image: " + filepath);
@@ -136,7 +138,20 @@ public:
                 node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
             }
             nodes.push_back(node);
+            // transformMatrices.push_back(node.computeTransformMatrix());
+            // normalMatrices.push_back(node.computeNormalMatrix());
         }
+
+        // transformMatrixBuffer = context.createDeviceBuffer({
+        //     .usage = BufferUsage::Storage,
+        //     .size = transformMatrices.size() * sizeof(glm::mat4),
+        //     .data = transformMatrices.data(),
+        // });
+        // normalMatrixBuffer = context.createDeviceBuffer({
+        //     .usage = BufferUsage::Storage,
+        //     .size = normalMatrices.size() * sizeof(glm::mat3),
+        //     .data = normalMatrices.data(),
+        // });
     }
 
     void loadMeshes(const Context& context, tinygltf::Model& gltfModel) {
@@ -294,6 +309,11 @@ public:
     std::vector<BottomAccel> bottomAccels;
     TopAccel topAccel;
     Image domeLightTexture;
+
+    // std::vector<glm::mat4> transformMatrices;
+    // std::vector<glm::mat4> normalMatrices;
+    // DeviceBuffer transformMatrixBuffer;
+    // DeviceBuffer normalMatrixBuffer;
 };
 
 class HelloApp : public App {
