@@ -1,4 +1,5 @@
-﻿#include "../shader/share.h"
+﻿#include <future>
+#include "../shader/share.h"
 #include "App.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
@@ -515,8 +516,12 @@ public:
     }
 
     void saveImage() {
-        auto* pixels = static_cast<uint8_t*>(imageSavingBuffer.map());
+        // If a previous write task was launched, wait for it to complete
+        if (writeTask.valid()) {
+            writeTask.get();
+        }
 
+        auto* pixels = static_cast<uint8_t*>(imageSavingBuffer.map());
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
             Image::setImageLayout(commandBuffer, compositePass.getOutputImage(),
                                   vk::ImageLayout::eTransferSrcOptimal);
@@ -535,7 +540,9 @@ public:
         std::string frame = std::to_string(pushConstants.frame);
         std::string zeros = std::string(std::max(0, 3 - (int)frame.size()), '0');
         std::string img = zeros + frame + ".png";
-        stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
+        writeTask = std::async(std::launch::async, [=]() {
+            stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
+        });
     }
 
     Scene scene;
@@ -555,6 +562,7 @@ public:
     GPUTimer gpuTimer;
 
     HostBuffer imageSavingBuffer;
+    std::future<void> writeTask;
 };
 
 int main() {
