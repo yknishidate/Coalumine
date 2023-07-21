@@ -336,7 +336,6 @@ public:
                 {
                     {"baseImage", baseImage},
                     {"bloomImage", bloomImage},
-                    //{"finalImage", finalImage},
                     {"domeLightTexture", scene.domeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
@@ -401,6 +400,11 @@ public:
         camera = OrbitalCamera{this, width, height};
 
         gpuTimer = context.createGPUTimer({});
+
+        imageSavingBuffer = context.createHostBuffer({
+            .usage = BufferUsage::Staging,
+            .size = width * height * 4 * sizeof(uint8_t),
+        });
     }
 
     void onUpdate() override {
@@ -433,15 +437,34 @@ public:
         // Bloom
         ImGui::Checkbox("Enable bloom", reinterpret_cast<bool*>(&pushConstants.enableBloom));
         if (pushConstants.enableBloom) {
-            ImGui::SliderFloat("Bloom intensity", &pushConstants.bloomIntensity, 0.0, 10.0);
+            ImGui::SliderFloat("Bloom intensity", &compositeInfo.bloomIntensity, 0.0, 10.0);
             ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
             ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
             ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 64);
         }
 
+        // Tone mapping
+        ImGui::Checkbox("Enable tone mapping",
+                        reinterpret_cast<bool*>(&compositeInfo.enableToneMapping));
+        if (compositeInfo.enableToneMapping) {
+            ImGui::SliderFloat("Exposure", &compositeInfo.exposure, 0.0, 5.0);
+        }
+
+        // Gamma correction
+        ImGui::Checkbox("Enable gamma correction",
+                        reinterpret_cast<bool*>(&compositeInfo.enableGammaCorrection));
+        if (compositeInfo.enableGammaCorrection) {
+            ImGui::SliderFloat("Gamma", &compositeInfo.gamma, 0.0, 5.0);
+        }
+
         // Show GPU time
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
+        }
+
+        // Save image
+        if (ImGui::Button("Save image")) {
+            saveImage();
         }
 
         // Check shader files
@@ -491,6 +514,29 @@ public:
                                 height);
     }
 
+    void saveImage() {
+        auto* pixels = static_cast<uint8_t*>(imageSavingBuffer.map());
+
+        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
+            Image::setImageLayout(commandBuffer, compositePass.getOutputImage(),
+                                  vk::ImageLayout::eTransferSrcOptimal);
+
+            vk::BufferImageCopy copyInfo;
+            copyInfo.setImageExtent({width, height, 1});
+            copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
+            commandBuffer.copyImageToBuffer(compositePass.getOutputImage(),
+                                            vk::ImageLayout::eTransferSrcOptimal,
+                                            imageSavingBuffer.getBuffer(), copyInfo);
+
+            Image::setImageLayout(commandBuffer, compositePass.getOutputImage(),
+                                  vk::ImageLayout::eGeneral);
+        });
+
+        std::string frame = std::to_string(pushConstants.frame);
+        std::string img = std::string(std::max(0, 3 - (int)frame.size()), '0') + frame + ".png";
+        stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
+    }
+
     Scene scene;
 
     CompositeInfo compositeInfo;
@@ -506,6 +552,8 @@ public:
     OrbitalCamera camera;
     PushConstants pushConstants;
     GPUTimer gpuTimer;
+
+    HostBuffer imageSavingBuffer;
 };
 
 int main() {
