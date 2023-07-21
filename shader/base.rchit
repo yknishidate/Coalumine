@@ -46,22 +46,22 @@ void main()
     vec3 direction = gl_WorldRayDirectionEXT.xyz;
     direction = reflect(direction, normal);
 
-    traceRayEXT(
-        topLevelAS,
-        gl_RayFlagsOpaqueEXT,
-        0xff, // cullMask
-        0,    // sbtRecordOffset
-        0,    // sbtRecordStride
-        0,    // missIndex
-        origin,
-        gl_RayTminEXT,
-        direction,
-        gl_RayTmaxEXT,
-        0     // payloadLocation
-    );
+    //traceRayEXT(
+    //    topLevelAS,
+    //    gl_RayFlagsOpaqueEXT,
+    //    0xff, // cullMask
+    //    0,    // sbtRecordOffset
+    //    0,    // sbtRecordStride
+    //    0,    // missIndex
+    //    origin,
+    //    gl_RayTminEXT,
+    //    direction,
+    //    gl_RayTmaxEXT,
+    //    0     // payloadLocation
+    //);
 
-    payload.radiance = payload.radiance * 0.5;
-    //payload.radiance = normal * 0.5 + 0.5;
+    //payload.radiance = payload.radiance * 0.5;
+    payload.radiance = normal * 0.5 + 0.5;
     //payload.radiance = vec3(texCoord, 0.0);
     //payload.radiance = vec3(attribs.xy, 1);
 }

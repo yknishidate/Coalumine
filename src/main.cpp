@@ -66,6 +66,25 @@ std::vector<uint32_t> readShader(const std::string& shaderFileName, const std::s
     return spvCode;
 }
 
+class Node {
+public:
+    int meshIndex;
+    glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
+    glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
+    glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
+
+    glm::mat4 computeTransformMatrix() const {
+        glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
+        glm::mat4 R = glm::mat4_cast(rotation);
+        glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
+        return T * R * S;
+    }
+
+    glm::mat3 computeNormalMatrix() const {
+        return glm::transpose(glm::inverse(glm::mat3{computeTransformMatrix()}));
+    }
+};
+
 class Scene {
 public:
     Scene() = default;
@@ -76,7 +95,7 @@ public:
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "cube.gltf").string();
+        std::string filepath = (getAssetDirectory() / "glass_test_v2.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -88,8 +107,42 @@ public:
             throw std::runtime_error("Failed to parse glTF: " + filepath);
         }
 
+        spdlog::info("Nodes: {}", model.nodes.size());
         spdlog::info("Meshes: {}", model.meshes.size());
+        loadNodes(context, model);
         loadMeshes(context, model);
+    }
+
+    void loadNodes(const Context& context, tinygltf::Model& gltfModel) {
+        for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
+            auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
+            if (gltfNode.camera != -1) {
+                continue;
+            }
+            if (gltfNode.skin != -1) {
+                continue;
+            }
+
+            Node node;
+            node.meshIndex = gltfNode.mesh;
+            if (!gltfNode.translation.empty()) {
+                node.translation = glm::vec3{gltfNode.translation[0],
+                                             -gltfNode.translation[1],  // invert y
+                                             gltfNode.translation[2]};
+            }
+
+            if (!gltfNode.rotation.empty()) {
+                node.rotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
+                                          static_cast<float>(gltfNode.rotation[0]),
+                                          static_cast<float>(gltfNode.rotation[1]),
+                                          static_cast<float>(gltfNode.rotation[2])};
+            }
+
+            if (!gltfNode.scale.empty()) {
+                node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
+            }
+            nodes.push_back(node);
+        }
     }
 
     void loadMeshes(const Context& context, tinygltf::Model& gltfModel) {
@@ -132,6 +185,7 @@ public:
                                                 i * positionBufferView->byteStride;
                     vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
                         &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
+                    vertices[i].pos.y = -vertices[i].pos.y;  // invert y
 
                     if (normalBufferView) {
                         size_t normalByteOffset = normalAccessor->byteOffset +
@@ -139,6 +193,7 @@ public:
                                                   i * normalBufferView->byteStride;
                         vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
                             &(gltfModel.buffers[normalBufferView->buffer].data[normalByteOffset]));
+                        vertices[i].normal.y = -vertices[i].normal.y;  // invert y
                     }
 
                     if (texCoordBufferView) {
@@ -206,7 +261,29 @@ public:
         }
     }
 
+    void buildAccels(const Context& context) {
+        bottomAccels.resize(meshes.size());
+        for (int i = 0; i < meshes.size(); i++) {
+            bottomAccels[i] = context.createBottomAccel({
+                .mesh = &meshes[i],
+            });
+        }
+
+        std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
+        for (auto& node : nodes) {
+            buildAccels.push_back({&bottomAccels[node.meshIndex], node.computeTransformMatrix()});
+        }
+
+        topAccel = context.createTopAccel({
+            .bottomAccels = buildAccels,
+            //.bottomAccels = {{&bottomAccels[1], glm::mat4{1.0}}},
+        });
+    }
+
+    std::vector<Node> nodes;
     std::vector<Mesh> meshes;
+    std::vector<BottomAccel> bottomAccels;
+    TopAccel topAccel;
 };
 
 class HelloApp : public App {
@@ -256,7 +333,7 @@ public:
                     {"bloomImage", bloomImage},
                     {"finalImage", finalImage},
                 },
-            .accels = {{"topLevelAS", topAccel}},
+            .accels = {{"topLevelAS", scene.topAccel}},
         });
 
         computePipelines["blur"] = context.createComputePipeline({
@@ -293,14 +370,7 @@ public:
                      rtProps.maxRayRecursionDepth);
 
         scene.loadFromFile(context);
-
-        bottomAccel = context.createBottomAccel({
-            .mesh = &scene.meshes[0],
-        });
-
-        topAccel = context.createTopAccel({
-            .bottomAccels = {{&bottomAccel, glm::mat4{1.0}}},
-        });
+        scene.buildAccels(context);
 
         baseImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
@@ -433,13 +503,12 @@ public:
 
     Scene scene;
 
-    BottomAccel bottomAccel;
-    TopAccel topAccel;
-
     Image baseImage;
     Image volumeImage;
     Image bloomImage;
     Image finalImage;
+
+    std::vector<Image> textures;
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;
