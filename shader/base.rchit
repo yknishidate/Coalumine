@@ -40,7 +40,7 @@ Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
 
 void main()
 {
-    uint meshIndex = 0;
+    uint meshIndex = gl_InstanceID;
     Vertex v0 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 0]);
     Vertex v1 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 1]);
     Vertex v2 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 2]);
