@@ -13,6 +13,8 @@ layout(push_constant) uniform CompositeInfo {
     float saturation;
     float exposure;
     float gamma;
+    int enableToneMapping;
+    int enableGammaCorrection;
 };
 
 void main()
@@ -24,8 +26,8 @@ void main()
 
     vec3 color = baseColor + bloomColor * bloomIntensity;
     color = saturate(color, saturation);
-    color = toneMappingACESFilmic(color, exposure);
-    color = pow(color, vec3(1.0 / gamma));
+    if(enableToneMapping == 1) color = toneMappingACESFilmic(color, exposure);
+    if(enableGammaCorrection == 1) color = pow(color, vec3(1.0 / gamma));
 
     imageStore(finalImage, st, vec4(color, 1.0));
 }

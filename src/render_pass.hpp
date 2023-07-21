@@ -79,6 +79,8 @@ struct CompositeInfo {
     float saturation = 1.0;
     float exposure = 1.0;
     float gamma = 2.2;
+    int enableToneMapping = 1;
+    int enableGammaCorrection = 1;
 };
 
 class CompositePass {
@@ -133,7 +135,6 @@ public:
 
     vk::Image getOutputImage() const { return finalImage.getImage(); }
 
-private:
     std::string shaderFile = "composite.comp";
     std::string entryPoint = "main";
     Shader shader;
