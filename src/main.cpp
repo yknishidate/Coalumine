@@ -36,7 +36,7 @@ public:
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "glass_test_v2.gltf").string();
+        std::string filepath = (getAssetDirectory() / "glass_test_v3.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;

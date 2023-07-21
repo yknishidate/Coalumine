@@ -119,17 +119,17 @@ void main()
         return;
     }
 
-    vec3 origin = gl_WorldRayOriginEXT.xyz;
+    vec3 origin = pos;
 
     // uniform
-    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
-    float cosTheta = dot(normal, direction);
-    float pdf = 1.0 / (2.0 * PI);
-
-    // importance
     //vec3 direction = sampleHemisphereUniform(normal, payload.seed);
     //float cosTheta = dot(normal, direction);
-    //float pdf = cosTheta / PI; // importance
+    //float pdf = 1.0 / (2.0 * PI);
+
+    // importance
+    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
+    float cosTheta = dot(normal, direction);
+    float pdf = cosTheta / PI; // importance
 
     traceRay(origin, direction);
 

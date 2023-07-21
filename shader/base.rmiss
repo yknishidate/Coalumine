@@ -19,4 +19,5 @@ void main()
 {
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
     payload.radiance = texture(domeLightTexture, uv).rgb;
+    //payload.radiance = vec3(1.0);
 }
