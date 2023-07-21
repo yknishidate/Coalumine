@@ -533,7 +533,8 @@ public:
         });
 
         std::string frame = std::to_string(pushConstants.frame);
-        std::string img = std::string(std::max(0, 3 - (int)frame.size()), '0') + frame + ".png";
+        std::string zeros = std::string(std::max(0, 3 - (int)frame.size()), '0');
+        std::string img = zeros + frame + ".png";
         stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
     }
 
