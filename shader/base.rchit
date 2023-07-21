@@ -59,6 +59,23 @@ vec3 sampleHemisphereUniform(in vec3 normal, inout uint seed) {
     return normalize(sampledDir);
 }
 
+void traceRay(vec3 origin, vec3 direction)
+{
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsOpaqueEXT,
+        0xff, // cullMask
+        0,    // sbtRecordOffset
+        0,    // sbtRecordStride
+        0,    // missIndex
+        origin,
+        gl_RayTminEXT,
+        direction,
+        gl_RayTmaxEXT,
+        0     // payloadLocation
+    );
+}
+
 void main()
 {
     uint meshIndex = gl_InstanceID;
@@ -78,27 +95,11 @@ void main()
 
     vec3 origin = gl_WorldRayOriginEXT.xyz;
     vec3 direction = sampleHemisphereUniform(normal, payload.seed);
+    traceRay(origin, direction);
 
-    traceRayEXT(
-        topLevelAS,
-        gl_RayFlagsOpaqueEXT,
-        0xff, // cullMask
-        0,    // sbtRecordOffset
-        0,    // sbtRecordStride
-        0,    // missIndex
-        origin,
-        gl_RayTminEXT,
-        direction,
-        gl_RayTmaxEXT,
-        0     // payloadLocation
-    );
-
-    //float brdf  = 1.0 / PI;
-    //vec3 color = normal * 0.5 + 0.5;
+    // Uniform sampling
     vec3 color = vec3(0.9);
+    vec3 brdf = color / PI;
     float cosFactor = dot(normal, direction);
-    //payload.radiance = payload.radiance * 0.5;
-    payload.radiance = color * payload.radiance * cosFactor;
-    //payload.radiance = vec3(texCoord, 0.0);
-    //payload.radiance = vec3(attribs.xy, 1);
+    payload.radiance = brdf * payload.radiance * cosFactor;
 }
