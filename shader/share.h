@@ -6,11 +6,7 @@ struct PushConstants {
     glm::mat4 invProj;
 
     int frame = 0;
-
-    // Bloom
-    int enableBloom = 0;
-    int blurSize = 16;
-    float bloomThreshold = 0.5f;
+    float bloomThreshold = 0.5;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -18,9 +14,6 @@ layout(push_constant) uniform PushConstants {
     mat4 invProj;
 
     int frame;
-
-    int enableBloom;
-    int blurSize;
     float bloomThreshold;
 };
 #endif

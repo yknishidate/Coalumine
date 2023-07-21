@@ -143,7 +143,6 @@ public:
 
 struct BloomInfo {
     int blurSize = 16;
-    float bloomThreshold = 0.5f;
 };
 
 class BloomPass {
@@ -189,6 +188,9 @@ public:
         commandBuffer.bindPipeline(pipeline);
         commandBuffer.pushConstants(pipeline, &info);
         commandBuffer.dispatch(pipeline, countX, countY, 1);
+        commandBuffer.imageBarrier(
+            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
+            {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
     }
 
     vk::Image getOutputImage() const { return bloomImage.getImage(); }

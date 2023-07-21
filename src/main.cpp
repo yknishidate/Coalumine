@@ -413,16 +413,17 @@ public:
 
     void onRender(const CommandBuffer& commandBuffer) override {
         static int imageIndex = 0;
+        static bool enableBloom = false;
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
 
         // Bloom
-        ImGui::Checkbox("Enable bloom", reinterpret_cast<bool*>(&pushConstants.enableBloom));
-        if (pushConstants.enableBloom) {
+        ImGui::Checkbox("Enable bloom", &enableBloom);
+        if (enableBloom) {
             ImGui::SliderFloat("Bloom intensity", &compositeInfo.bloomIntensity, 0.0, 10.0);
-            ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 2.0);
+            ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0, 10.0);
             ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-            ImGui::SliderInt("Blur size", &pushConstants.blurSize, 0, 64);
+            ImGui::SliderInt("Blur size", &bloomInfo.blurSize, 0, 64);
         }
 
         // Tone mapping
@@ -454,11 +455,7 @@ public:
 
         commandBuffer.beginTimestamp(gpuTimer);
 
-        // Base rendering
-
-        ///
-        /// Render base image here
-        ///
+        // Ray tracing
         commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
         commandBuffer.bindPipeline(rayTracingPipeline);
         commandBuffer.pushConstants(rayTracingPipeline, &pushConstants);
@@ -473,23 +470,16 @@ public:
                                    bloomPass.bloomImage, vk::AccessFlagBits::eShaderWrite,
                                    vk::AccessFlagBits::eShaderRead);
 
-        //// Blur
-        // if (pushConstants.enableBloom) {
-        //     for (int i = 0; i < blurIteration; i++) {
-        //         commandBuffer.bindPipeline(computePipelines["blur"]);
-        //         commandBuffer.pushConstants(computePipelines["blur"], &pushConstants);
-        //         commandBuffer.dispatch(computePipelines["blur"], width / 8, height / 8, 1);
-
-        //        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eComputeShader,
-        //                                   vk::PipelineStageFlagBits::eComputeShader, {},
-        //                                   bloomImage, vk::AccessFlagBits::eShaderWrite,
-        //                                   vk::AccessFlagBits::eShaderRead);
-        //    }
-        //}
-
-        commandBuffer.endTimestamp(gpuTimer);
+        // Blur
+        if (enableBloom) {
+            for (int i = 0; i < blurIteration; i++) {
+                bloomPass.render(commandBuffer, width / 8, height / 8, bloomInfo);
+            }
+        }
 
         compositePass.render(commandBuffer, width / 8, height / 8, compositeInfo);
+
+        commandBuffer.endTimestamp(gpuTimer);
 
         commandBuffer.copyImage(compositePass.getOutputImage(), getCurrentColorImage(),
                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
