@@ -1,11 +1,12 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 #include "./share.h"
 
 layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
 
-layout(binding = 16, set = 0) buffer Vertices{float vertices[];};
-layout(binding = 17, set = 0) buffer Indices{uint indices[];};
+layout(binding = 16) buffer VertexBuffers{float vertices[];} vertexBuffers[];
+layout(binding = 17) buffer IndexBuffers{uint indices[];} indexBuffers[];
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 
@@ -18,22 +19,31 @@ struct Vertex
     vec2 texCoord;
 };
 
-Vertex unpackVertex(uint index)
+Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
 {
     uint stride = 8;
-    uint offset = index * stride;
+    uint offset = vertexIndex * stride;
     Vertex v;
-    v.pos = vec3(vertices[offset +  0], vertices[offset +  1], vertices[offset + 2]);
-    v.normal = vec3(vertices[offset +  3], vertices[offset +  4], vertices[offset + 5]);
-    v.texCoord = vec2(vertices[offset +  6], vertices[offset +  7]);
+    v.pos = vec3(
+        vertexBuffers[meshIndex].vertices[offset +  0], 
+        vertexBuffers[meshIndex].vertices[offset +  1], 
+        vertexBuffers[meshIndex].vertices[offset + 2]);
+    v.normal = vec3(
+        vertexBuffers[meshIndex].vertices[offset +  3], 
+        vertexBuffers[meshIndex].vertices[offset +  4], 
+        vertexBuffers[meshIndex].vertices[offset + 5]);
+    v.texCoord = vec2(
+        vertexBuffers[meshIndex].vertices[offset +  6], 
+        vertexBuffers[meshIndex].vertices[offset +  7]);
     return v;
 }
 
 void main()
 {
-    Vertex v0 = unpackVertex(indices[3 * gl_PrimitiveID + 0]);
-    Vertex v1 = unpackVertex(indices[3 * gl_PrimitiveID + 1]);
-    Vertex v2 = unpackVertex(indices[3 * gl_PrimitiveID + 2]);
+    uint meshIndex = 0;
+    Vertex v0 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 0]);
+    Vertex v1 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 1]);
+    Vertex v2 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 2]);
     
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
     vec3 pos = v0.pos * barycentricCoords.x + v1.pos * barycentricCoords.y + v2.pos * barycentricCoords.z;

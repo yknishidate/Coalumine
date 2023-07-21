@@ -324,8 +324,8 @@ public:
             .shaders = shaders,
             .buffers =
                 {
-                    {"Vertices", scene.meshes[0].vertexBuffer},
-                    {"Indices", scene.meshes[0].indexBuffer},
+                    {"VertexBuffers", scene.meshes[0].vertexBuffer},
+                    {"IndexBuffers", scene.meshes[0].indexBuffer},
                 },
             .images =
                 {
