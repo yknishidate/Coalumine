@@ -307,24 +307,20 @@ public:
           }) {}
 
     void createPipelines() {
-        std::vector<Shader> shaders(5);
+        std::vector<Shader> shaders(4);
         shaders[0] = context.createShader({
             .code = compileShader("blur.comp", "main"),
             .stage = vk::ShaderStageFlagBits::eCompute,
         });
         shaders[1] = context.createShader({
-            .code = compileShader("composite.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
-        shaders[2] = context.createShader({
             .code = compileShader("base.rgen", "main"),
             .stage = vk::ShaderStageFlagBits::eRaygenKHR,
         });
-        shaders[3] = context.createShader({
+        shaders[2] = context.createShader({
             .code = compileShader("base.rmiss", "main"),
             .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
-        shaders[4] = context.createShader({
+        shaders[3] = context.createShader({
             .code = compileShader("base.rchit", "main"),
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
@@ -340,7 +336,7 @@ public:
                 {
                     {"baseImage", baseImage},
                     {"bloomImage", bloomImage},
-                    {"finalImage", finalImage},
+                    //{"finalImage", finalImage},
                     {"domeLightTexture", scene.domeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
@@ -351,19 +347,16 @@ public:
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
         });
-        computePipelines["composite"] = context.createComputePipeline({
-            .computeShader = shaders[1],
-            .descSetLayout = descSet.getLayout(),
-            .pushSize = sizeof(PushConstants),
-        });
         rayTracingPipeline = context.createRayTracingPipeline({
-            .rgenShader = shaders[2],
-            .missShader = shaders[3],
-            .chitShader = shaders[4],
+            .rgenShader = shaders[1],
+            .missShader = shaders[2],
+            .chitShader = shaders[3],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = 31,
         });
+
+        compositePass = CompositePass(context, baseImage, bloomImage, width, height);
     }
 
     void onStart() override {
@@ -403,15 +396,6 @@ public:
             .format = vk::Format::eR32G32B32A32Sfloat,
         });
 
-        finalImage = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
-            .width = width,
-            .height = height,
-        });
-
         createPipelines();
 
         camera = OrbitalCamera{this, width, height};
@@ -429,7 +413,6 @@ public:
     void recreatePipelinesIfShadersWereUpdated() {
         bool shouldRecreate = false;
         shouldRecreate |= shouldRecompile("blur.comp", "main");
-        shouldRecreate |= shouldRecompile("composite.comp", "main");
         shouldRecreate |= shouldRecompile("base.rgen", "main");
         shouldRecreate |= shouldRecompile("base.rchit", "main");
         shouldRecreate |= shouldRecompile("base.rmiss", "main");
@@ -499,25 +482,23 @@ public:
         //    }
         //}
 
-        // Composite
-        commandBuffer.bindDescriptorSet(descSet, computePipelines["composite"]);
-        commandBuffer.bindPipeline(computePipelines["composite"]);
-        commandBuffer.pushConstants(computePipelines["composite"], &pushConstants);
-        commandBuffer.dispatch(computePipelines["composite"], width / 8, height / 8, 1);
-
         commandBuffer.endTimestamp(gpuTimer);
 
-        commandBuffer.copyImage(finalImage.getImage(), getCurrentColorImage(),
+        compositePass.render(commandBuffer, width / 8, height / 8, compositeInfo);
+
+        commandBuffer.copyImage(compositePass.getOutputImage(), getCurrentColorImage(),
                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
                                 height);
     }
 
     Scene scene;
 
+    CompositeInfo compositeInfo;
+    CompositePass compositePass;
+
     Image baseImage;
     Image volumeImage;
     Image bloomImage;
-    Image finalImage;
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;
