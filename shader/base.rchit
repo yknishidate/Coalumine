@@ -39,7 +39,7 @@ Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
     return v;
 }
 
-vec3 sampleHemisphere(in vec3 normal, inout uint seed) {
+vec3 sampleHemisphereUniform(in vec3 normal, inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
 
@@ -77,7 +77,7 @@ void main()
     }
 
     vec3 origin = gl_WorldRayOriginEXT.xyz;
-    vec3 direction = sampleHemisphere(normal, payload.seed);
+    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
 
     traceRayEXT(
         topLevelAS,

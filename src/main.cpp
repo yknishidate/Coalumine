@@ -113,6 +113,59 @@ public:
         loadMeshes(context, model);
     }
 
+    void loadDomeLightTexture(const Context& context) {
+        int width;
+        int height;
+        int comp;
+        std::string filepath = (getAssetDirectory() / "solitude_interior_4k.hdr").string();
+        float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &comp, 0);
+        if (!pixels) {
+            throw std::runtime_error("Failed to load image: " + filepath);
+        }
+        spdlog::info("DomeLightTexture: w={}, h={}, c={}", width, height, comp);
+
+        Buffer stagingBuffer = context.createHostBuffer({
+            .usage = BufferUsage::Staging,
+            .size = width * height * comp * sizeof(float),
+            .data = reinterpret_cast<void*>(pixels),
+        });
+
+        domeLightTexture = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage |
+                     vk::ImageUsageFlagBits::eTransferDst,
+            .initialLayout = vk::ImageLayout::eTransferDstOptimal,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+            .width = static_cast<uint32_t>(width),
+            .height = static_cast<uint32_t>(height),
+            .depth = 1,
+            .format = vk::Format::eR32G32B32Sfloat,
+        });
+
+        vk::ImageSubresourceLayers subresourceLayers;
+        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
+        subresourceLayers.setMipLevel(0);
+        subresourceLayers.setBaseArrayLayer(0);
+        subresourceLayers.setLayerCount(1);
+
+        vk::Extent3D extent;
+        extent.setWidth(static_cast<uint32_t>(width));
+        extent.setHeight(static_cast<uint32_t>(height));
+        extent.setDepth(1);
+
+        vk::BufferImageCopy region;
+        region.imageSubresource = subresourceLayers;
+        region.imageExtent = extent;
+
+        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
+            commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), domeLightTexture.getImage(),
+                                            vk::ImageLayout::eTransferDstOptimal, region);
+            Image::setImageLayout(commandBuffer, domeLightTexture.getImage(),
+                                  vk::ImageLayout::eReadOnlyOptimal);
+        });
+
+        stbi_image_free(pixels);
+    }
+
     void loadNodes(const Context& context, tinygltf::Model& gltfModel) {
         for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
             auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
@@ -387,6 +440,7 @@ public:
 
         scene.loadFromFile(context);
         scene.buildAccels(context);
+        scene.loadDomeLightTexture(context);
 
         baseImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
