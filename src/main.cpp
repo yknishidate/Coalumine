@@ -401,6 +401,7 @@ public:
                     {"baseImage", baseImage},
                     {"bloomImage", bloomImage},
                     {"finalImage", finalImage},
+                    {"domeLightTexture", scene.domeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });

@@ -32,6 +32,8 @@ layout(push_constant) uniform PushConstants {
 #endif
 
 #ifndef __cplusplus
+const float PI = 3.1415926535;
+
 struct HitPayload {
     vec3 radiance;
     int depth;

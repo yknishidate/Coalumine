@@ -2,9 +2,10 @@
 #extension GL_EXT_ray_tracing : enable
 #include "./share.h"
 
+layout(binding = 18) uniform sampler2D domeLightTexture;
+
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 
-const float PI = 3.1415926535;
 const vec2 invAtan = vec2(0.1591, 0.3183);
 
 vec2 sampleSphericalMap(vec3 v)
@@ -17,7 +18,7 @@ vec2 sampleSphericalMap(vec3 v)
 void main()
 {
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
-    vec2 value = mod(uv, vec2(0.1));
-    payload.radiance = vec3(value * 10.0, 0.0);
-    //payload.radiance = vec3(0.5);
+    //vec2 value = mod(uv, vec2(0.1));
+    //payload.radiance = vec3(value * 10.0, 0.0);
+    payload.radiance = texture(domeLightTexture, uv).rgb;
 }
