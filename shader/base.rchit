@@ -96,8 +96,9 @@ void main()
     //float brdf  = 1.0 / PI;
     //vec3 color = normal * 0.5 + 0.5;
     vec3 color = vec3(0.9);
+    float cosFactor = dot(normal, direction);
     //payload.radiance = payload.radiance * 0.5;
-    payload.radiance = color * payload.radiance;
+    payload.radiance = color * payload.radiance * cosFactor;
     //payload.radiance = vec3(texCoord, 0.0);
     //payload.radiance = vec3(attribs.xy, 1);
 }
