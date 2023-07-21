@@ -308,20 +308,19 @@ public:
           }) {}
 
     void createPipelines() {
-        std::vector<Shader> shaders(4);
+        bloomPass = BloomPass(context, width, height);
+        compositePass = CompositePass(context, baseImage, bloomPass.bloomImage, width, height);
+
+        std::vector<Shader> shaders(3);
         shaders[0] = context.createShader({
-            .code = compileShader("blur.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
-        shaders[1] = context.createShader({
             .code = compileShader("base.rgen", "main"),
             .stage = vk::ShaderStageFlagBits::eRaygenKHR,
         });
-        shaders[2] = context.createShader({
+        shaders[1] = context.createShader({
             .code = compileShader("base.rmiss", "main"),
             .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
-        shaders[3] = context.createShader({
+        shaders[2] = context.createShader({
             .code = compileShader("base.rchit", "main"),
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
@@ -336,27 +335,20 @@ public:
             .images =
                 {
                     {"baseImage", baseImage},
-                    {"bloomImage", bloomImage},
+                    {"bloomImage", bloomPass.bloomImage},
                     {"domeLightTexture", scene.domeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });
 
-        computePipelines["blur"] = context.createComputePipeline({
-            .computeShader = shaders[0],
-            .descSetLayout = descSet.getLayout(),
-            .pushSize = sizeof(PushConstants),
-        });
         rayTracingPipeline = context.createRayTracingPipeline({
-            .rgenShader = shaders[1],
-            .missShader = shaders[2],
-            .chitShader = shaders[3],
+            .rgenShader = shaders[0],
+            .missShader = shaders[1],
+            .chitShader = shaders[2],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = 31,
         });
-
-        compositePass = CompositePass(context, baseImage, bloomImage, width, height);
     }
 
     void onStart() override {
@@ -377,16 +369,6 @@ public:
         scene.loadDomeLightTexture(context);
 
         baseImage = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
-            .width = width,
-            .height = height,
-            .format = vk::Format::eR32G32B32A32Sfloat,
-        });
-
-        bloomImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
                      vk::ImageUsageFlagBits::eTransferSrc,
             .initialLayout = vk::ImageLayout::eGeneral,
@@ -417,7 +399,6 @@ public:
 
     void recreatePipelinesIfShadersWereUpdated() {
         bool shouldRecreate = false;
-        shouldRecreate |= shouldRecompile("blur.comp", "main");
         shouldRecreate |= shouldRecompile("base.rgen", "main");
         shouldRecreate |= shouldRecompile("base.rchit", "main");
         shouldRecreate |= shouldRecompile("base.rmiss", "main");
@@ -488,8 +469,8 @@ public:
                                    vk::AccessFlagBits::eShaderWrite,
                                    vk::AccessFlagBits::eShaderRead);
         commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                                   vk::PipelineStageFlagBits::eComputeShader, {}, bloomImage,
-                                   vk::AccessFlagBits::eShaderWrite,
+                                   vk::PipelineStageFlagBits::eComputeShader, {},
+                                   bloomPass.bloomImage, vk::AccessFlagBits::eShaderWrite,
                                    vk::AccessFlagBits::eShaderRead);
 
         //// Blur
@@ -549,14 +530,13 @@ public:
 
     CompositeInfo compositeInfo;
     CompositePass compositePass;
+    BloomInfo bloomInfo;
+    BloomPass bloomPass;
 
     Image baseImage;
-    Image volumeImage;
-    Image bloomImage;
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;
-    std::unordered_map<std::string, ComputePipeline> computePipelines;
     OrbitalCamera camera;
     PushConstants pushConstants;
     GPUTimer gpuTimer;

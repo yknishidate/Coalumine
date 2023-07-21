@@ -1,11 +1,15 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_debug_printf : enable
-#include "./share.h"
 #include "./random.glsl"
 
 layout(local_size_x = 8, local_size_y = 8) in;
-layout(binding = 2, rgba32f) uniform image2D bloomImage;
+layout(binding = 0, rgba32f) uniform image2D bloomImage;
+
+layout(push_constant) uniform BloomInfo {
+    int blurSize;
+    float bloomThreshold;
+};
 
 float kernel[5][5] = float[][](
     float[](0.003, 0.013, 0.022, 0.013, 0.003),
@@ -17,7 +21,7 @@ float kernel[5][5] = float[][](
 
 vec3 blur(ivec2 st)
 {
-    uvec2 s = pcg2d(ivec2(gl_GlobalInvocationID.xy));
+    uvec2 s = pcg2d(st);
     uint seed = s.x + s.y;
 
     vec3 bluredColor = vec3(0.0);
@@ -36,9 +40,7 @@ vec3 blur(ivec2 st)
 
 void main()
 {
-    vec2 resolution = vec2(gl_WorkGroupSize.xy * gl_NumWorkGroups.xy);
     ivec2 st = ivec2(gl_GlobalInvocationID.xy);
-
     vec3 bloomColor = blur(st);
     imageStore(bloomImage, st, vec4(bloomColor, 1.0));
 }

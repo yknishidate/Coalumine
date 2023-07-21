@@ -135,10 +135,66 @@ public:
 
     vk::Image getOutputImage() const { return finalImage.getImage(); }
 
-    std::string shaderFile = "composite.comp";
-    std::string entryPoint = "main";
     Shader shader;
     DescriptorSet descSet;
     ComputePipeline pipeline;
     Image finalImage;
+};
+
+struct BloomInfo {
+    int blurSize = 16;
+    float bloomThreshold = 0.5f;
+};
+
+class BloomPass {
+public:
+    BloomPass() = default;
+
+    BloomPass(const Context& context, uint32_t width, uint32_t height) {
+        bloomImage = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
+                     vk::ImageUsageFlagBits::eTransferSrc,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+            .width = width,
+            .height = height,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+        });
+
+        shader = context.createShader({
+            .code = compileShader("blur.comp", "main"),
+            .stage = vk::ShaderStageFlagBits::eCompute,
+        });
+
+        descSet = context.createDescriptorSet({
+            .shaders = shader,
+            .images =
+                {
+                    {"bloomImage", bloomImage},
+                },
+        });
+
+        pipeline = context.createComputePipeline({
+            .computeShader = shader,
+            .descSetLayout = descSet.getLayout(),
+            .pushSize = sizeof(BloomInfo),
+        });
+    }
+
+    void render(const CommandBuffer& commandBuffer,
+                uint32_t countX,
+                uint32_t countY,
+                BloomInfo info) {
+        commandBuffer.bindDescriptorSet(descSet, pipeline);
+        commandBuffer.bindPipeline(pipeline);
+        commandBuffer.pushConstants(pipeline, &info);
+        commandBuffer.dispatch(pipeline, countX, countY, 1);
+    }
+
+    vk::Image getOutputImage() const { return bloomImage.getImage(); }
+
+    Shader shader;
+    DescriptorSet descSet;
+    ComputePipeline pipeline;
+    Image bloomImage;
 };
