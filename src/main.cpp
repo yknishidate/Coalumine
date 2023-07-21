@@ -253,19 +253,31 @@ public:
                 }
 
                 spdlog::info("Mesh: vertex={}, index={}", vertices.size(), indices.size());
-                meshes.push_back(context.createMesh({
-                    .vertices = vertices,
-                    .indices = indices,
+                vertexBuffers.push_back(context.createDeviceBuffer({
+                    .usage = BufferUsage::Vertex,
+                    .size = sizeof(Vertex) * vertices.size(),
+                    .data = vertices.data(),
                 }));
+                indexBuffers.push_back(context.createDeviceBuffer({
+                    .usage = BufferUsage::Index,
+                    .size = sizeof(uint32_t) * indices.size(),
+                    .data = indices.data(),
+                }));
+                vertexCounts.push_back(vertices.size());
+                triangleCounts.push_back(indices.size() / 3);
             }
         }
     }
 
     void buildAccels(const Context& context) {
-        bottomAccels.resize(meshes.size());
-        for (int i = 0; i < meshes.size(); i++) {
+        bottomAccels.resize(vertexBuffers.size());
+        for (int i = 0; i < vertexBuffers.size(); i++) {
             bottomAccels[i] = context.createBottomAccel({
-                .mesh = &meshes[i],
+                .vertexBuffer = vertexBuffers[i],
+                .indexBuffer = indexBuffers[i],
+                .vertexStride = sizeof(Vertex),
+                .vertexCount = vertexCounts[i],
+                .triangleCount = triangleCounts[i],
             });
         }
 
@@ -276,12 +288,15 @@ public:
 
         topAccel = context.createTopAccel({
             .bottomAccels = buildAccels,
-            //.bottomAccels = {{&bottomAccels[1], glm::mat4{1.0}}},
         });
     }
 
     std::vector<Node> nodes;
-    std::vector<Mesh> meshes;
+    std::vector<DeviceBuffer> vertexBuffers;
+    std::vector<DeviceBuffer> indexBuffers;
+    std::vector<uint32_t> vertexCounts;
+    std::vector<uint32_t> triangleCounts;
+
     std::vector<BottomAccel> bottomAccels;
     TopAccel topAccel;
 };
@@ -324,8 +339,8 @@ public:
             .shaders = shaders,
             .buffers =
                 {
-                    {"VertexBuffers", scene.meshes[0].vertexBuffer},
-                    {"IndexBuffers", scene.meshes[0].indexBuffer},
+                    {"VertexBuffers", scene.vertexBuffers},
+                    {"IndexBuffers", scene.indexBuffers},
                 },
             .images =
                 {
