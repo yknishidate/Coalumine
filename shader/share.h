@@ -35,6 +35,7 @@ layout(push_constant) uniform PushConstants {
 struct HitPayload {
     vec3 radiance;
     int depth;
+    uint seed;
     // vec3 position;
     // vec3 normal;
     // vec3 emission;

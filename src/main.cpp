@@ -299,6 +299,7 @@ public:
 
     std::vector<BottomAccel> bottomAccels;
     TopAccel topAccel;
+    Image domeLightTexture;
 };
 
 class HelloApp : public App {
@@ -522,8 +523,6 @@ public:
     Image volumeImage;
     Image bloomImage;
     Image finalImage;
-
-    std::vector<Image> textures;
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;

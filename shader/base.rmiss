@@ -19,4 +19,5 @@ void main()
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
     vec2 value = mod(uv, vec2(0.1));
     payload.radiance = vec3(value * 10.0, 0.0);
+    //payload.radiance = vec3(0.5);
 }

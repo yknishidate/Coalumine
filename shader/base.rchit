@@ -2,6 +2,7 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 #include "./share.h"
+#include "./random.glsl"
 
 layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
 
@@ -38,6 +39,26 @@ Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
     return v;
 }
 
+vec3 sampleHemisphere(in vec3 normal, inout uint seed) {
+    float u = rand(seed);
+    float v = rand(seed);
+
+    float r = sqrt(1.0 - u * u);
+    float phi = 2.0 * 3.14159265 * v;
+    
+    vec3 localDir;
+    localDir.x = cos(phi) * r;
+    localDir.y = sin(phi) * r;
+    localDir.z = u;
+
+    vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+
+    vec3 sampledDir = localDir.x * tangent + localDir.y * bitangent + localDir.z * normal;
+    return normalize(sampledDir);
+}
+
 void main()
 {
     uint meshIndex = gl_InstanceID;
@@ -51,27 +72,32 @@ void main()
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
     
     payload.depth += 1;
+    if(payload.depth >= 31){
+        return;
+    }
 
     vec3 origin = gl_WorldRayOriginEXT.xyz;
-    vec3 direction = gl_WorldRayDirectionEXT.xyz;
-    direction = reflect(direction, normal);
+    vec3 direction = sampleHemisphere(normal, payload.seed);
 
-    //traceRayEXT(
-    //    topLevelAS,
-    //    gl_RayFlagsOpaqueEXT,
-    //    0xff, // cullMask
-    //    0,    // sbtRecordOffset
-    //    0,    // sbtRecordStride
-    //    0,    // missIndex
-    //    origin,
-    //    gl_RayTminEXT,
-    //    direction,
-    //    gl_RayTmaxEXT,
-    //    0     // payloadLocation
-    //);
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsOpaqueEXT,
+        0xff, // cullMask
+        0,    // sbtRecordOffset
+        0,    // sbtRecordStride
+        0,    // missIndex
+        origin,
+        gl_RayTminEXT,
+        direction,
+        gl_RayTmaxEXT,
+        0     // payloadLocation
+    );
 
+    //float brdf  = 1.0 / PI;
+    //vec3 color = normal * 0.5 + 0.5;
+    vec3 color = vec3(0.9);
     //payload.radiance = payload.radiance * 0.5;
-    payload.radiance = normal * 0.5 + 0.5;
+    payload.radiance = color * payload.radiance;
     //payload.radiance = vec3(texCoord, 0.0);
     //payload.radiance = vec3(attribs.xy, 1);
 }
