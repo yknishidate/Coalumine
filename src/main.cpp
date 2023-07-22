@@ -84,7 +84,7 @@ public:
         int comp;
         // std::string filepath = (getAssetDirectory() / "solitude_interior_4k.hdr").string();
         std::string filepath =
-            (getAssetDirectory() / "drakensberg_solitary_mountain_8k.hdr").string();
+            (getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
         float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &comp, 0);
         if (!pixels) {
             throw std::runtime_error("Failed to load image: " + filepath);
@@ -137,6 +137,19 @@ public:
         for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
             auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
             if (gltfNode.camera != -1) {
+                spdlog::warn("Multiple cameras");
+                if (!gltfNode.translation.empty()) {
+                    cameraTranslation = glm::vec3{gltfNode.translation[0],
+                                                  -gltfNode.translation[1],  // invert y
+                                                  gltfNode.translation[2]};
+                }
+                if (!gltfNode.rotation.empty()) {
+                    cameraRotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
+                                               static_cast<float>(gltfNode.rotation[0]),
+                                               static_cast<float>(gltfNode.rotation[1]),
+                                               static_cast<float>(gltfNode.rotation[2])};
+                }
+                cameraExists = true;
                 continue;
             }
             if (gltfNode.skin != -1) {
@@ -431,6 +444,10 @@ public:
     Address address;
     DeviceBuffer addressBuffer;
 
+    bool cameraExists = false;
+    glm::vec3 cameraTranslation;
+    glm::quat cameraRotation;
+
     // std::vector<glm::mat4> transformMatrices;
     // std::vector<glm::mat4> normalMatrices;
     // DeviceBuffer transformMatrixBuffer;
@@ -525,7 +542,16 @@ public:
 
         createPipelines();
 
-        camera = OrbitalCamera{this, width, height};
+        orbitalCamera = OrbitalCamera{this, width, height};
+        currentCamera = &orbitalCamera;
+        if (scene.cameraExists) {
+            fpsCamera = FPSCamera{this, width, height};
+            fpsCamera.position = scene.cameraTranslation;
+            glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
+            fpsCamera.pitch = glm::degrees(eulerAngles.x);
+            fpsCamera.yaw = glm::degrees(-eulerAngles.y);
+            currentCamera = &fpsCamera;
+        }
 
         gpuTimer = context.createGPUTimer({});
 
@@ -536,10 +562,10 @@ public:
     }
 
     void onUpdate() override {
-        camera.processInput();
+        currentCamera->processInput();
         pushConstants.frame++;
-        pushConstants.invView = camera.getInvView();
-        pushConstants.invProj = camera.getInvProj();
+        pushConstants.invView = currentCamera->getInvView();
+        pushConstants.invProj = currentCamera->getInvProj();
     }
 
     void recreatePipelinesIfShadersWereUpdated() {
@@ -672,7 +698,11 @@ public:
 
     DescriptorSet descSet;
     RayTracingPipeline rayTracingPipeline;
-    OrbitalCamera camera;
+
+    Camera* currentCamera = nullptr;
+    FPSCamera fpsCamera;
+    OrbitalCamera orbitalCamera;
+
     PushConstants pushConstants;
     GPUTimer gpuTimer;
 
