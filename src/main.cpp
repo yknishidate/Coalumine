@@ -79,61 +79,9 @@ public:
     }
 
     void loadDomeLightTexture(const Context& context) {
-        int width;
-        int height;
-        int comp;
-        // std::string filepath = (getAssetDirectory() / "solitude_interior_4k.hdr").string();
         std::string filepath =
             (getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
-        float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &comp, 0);
-        if (!pixels) {
-            throw std::runtime_error("Failed to load image: " + filepath);
-        }
-        spdlog::info("DomeLightTexture: w={}, h={}, c={}", width, height, comp);
-
-        domeLightTexture = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage |
-                     vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eTransferDstOptimal,
-            .aspect = vk::ImageAspectFlagBits::eColor,
-            .width = static_cast<uint32_t>(width),
-            .height = static_cast<uint32_t>(height),
-            .depth = 1,
-            .format = vk::Format::eR32G32B32Sfloat,
-        });
-
-        // Copy to image
-        Buffer stagingBuffer = context.createHostBuffer({
-            .usage = BufferUsage::Staging,
-            .size = width * height * comp * sizeof(float),
-            .data = reinterpret_cast<void*>(pixels),
-        });
-
-        vk::ImageSubresourceLayers subresourceLayers;
-        subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
-        subresourceLayers.setMipLevel(0);
-        subresourceLayers.setBaseArrayLayer(0);
-        subresourceLayers.setLayerCount(1);
-
-        vk::Extent3D extent;
-        extent.setWidth(static_cast<uint32_t>(width));
-        extent.setHeight(static_cast<uint32_t>(height));
-        extent.setDepth(1);
-
-        vk::BufferImageCopy region;
-        region.imageSubresource = subresourceLayers;
-        region.imageExtent = extent;
-
-        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
-            commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), domeLightTexture.getImage(),
-                                            vk::ImageLayout::eTransferDstOptimal, region);
-            Image::setImageLayout(commandBuffer, domeLightTexture.getImage(),
-                                  vk::ImageLayout::eTransferDstOptimal,
-                                  vk::ImageLayout::eTransferSrcOptimal,
-                                  vk::ImageAspectFlagBits::eColor, domeLightTexture.getMipLevels());
-        });
-
-        stbi_image_free(pixels);
+        domeLightTexture = Image::loadFromFileHDR(context, filepath);
     }
 
     void loadNodes(const Context& context, tinygltf::Model& gltfModel) {
