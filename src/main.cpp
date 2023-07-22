@@ -13,22 +13,38 @@ struct Address {
     vk::DeviceAddress materials;
 };
 
+struct KeyFrame {
+    float time;
+    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
+    glm::quat rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+    glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+};
+
 class Node {
 public:
     int meshIndex;
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
+    std::vector<KeyFrame> keyFrames;
 
-    glm::mat4 computeTransformMatrix() const {
-        glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
-        glm::mat4 R = glm::mat4_cast(rotation);
-        glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
+    glm::mat4 computeTransformMatrix(int frame) const {
+        if (keyFrames.empty()) {
+            glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
+            glm::mat4 R = glm::mat4_cast(rotation);
+            glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
+            return T * R * S;
+        }
+        // TODO: use default values
+        int index = frame % keyFrames.size();
+        glm::mat4 T = glm::translate(glm::mat4{1.0}, keyFrames[index].translation);
+        glm::mat4 R = glm::mat4_cast(keyFrames[index].rotation);
+        glm::mat4 S = glm::scale(glm::mat4{1.0}, keyFrames[index].scale);
         return T * R * S;
     }
 
-    glm::mat3 computeNormalMatrix() const {
-        return glm::transpose(glm::inverse(glm::mat3{computeTransformMatrix()}));
+    glm::mat3 computeNormalMatrix(int frame) const {
+        return glm::transpose(glm::inverse(glm::mat3{computeTransformMatrix(frame)}));
     }
 };
 
@@ -47,13 +63,6 @@ struct Material {
     // AlphaMode alphaMode{AlphaMode::Opaque};
     // float alphaCutoff{0.5f};
     // bool doubleSided{false};
-};
-
-struct KeyFrame {
-    float time;
-    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
-    glm::quat rotation = {1.0f, 0.0f, 0.0f, 0.0f};
-    glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 };
 
 class Scene {
@@ -373,7 +382,7 @@ public:
     }
 
     void loadAnimation(const Context& context, const tinygltf::Model& model) {
-        nodeKeyFrames.resize(model.nodes.size());
+        // nodeKeyFrames.resize(model.nodes.size());
 
         for (const auto& animation : model.animations) {
             for (const auto& channel : animation.channels) {
@@ -398,6 +407,7 @@ public:
                              .data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
                     const size_t outputCount = outputAccessor.count;
 
+                    // Clear default TRS
                     for (size_t i = 0; i < inputCount; i++) {
                         KeyFrame keyframe;
                         keyframe.time = inputData[i];
@@ -415,7 +425,7 @@ public:
                                                        outputData[i * 3 + 2]);
                         }
 
-                        nodeKeyFrames[channel.target_node].push_back(keyframe);
+                        nodes[channel.target_node].keyFrames.push_back(keyframe);
                     }
                 }
             }
@@ -436,7 +446,8 @@ public:
 
         std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
         for (auto& node : nodes) {
-            buildAccels.push_back({&bottomAccels[node.meshIndex], node.computeTransformMatrix()});
+            buildAccels.push_back(
+                {&bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0)});
         }
 
         topAccel = context.createTopAccel({
@@ -468,7 +479,7 @@ public:
     glm::quat cameraRotation;
     float cameraYFov;
 
-    std::vector<std::vector<KeyFrame>> nodeKeyFrames;
+    // std::vector<std::vector<KeyFrame>> nodeKeyFrames;
 
     // std::vector<glm::mat4> transformMatrices;
     // std::vector<glm::mat4> normalMatrices;
@@ -589,6 +600,9 @@ public:
         pushConstants.frame++;
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
+
+        spdlog::info("Transform: {}",
+                     glm::to_string(scene.nodes[0].computeTransformMatrix(pushConstants.frame)));
     }
 
     void recreatePipelinesIfShadersWereUpdated() {
