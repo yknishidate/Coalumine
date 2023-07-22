@@ -552,8 +552,8 @@ public:
             fpsCamera = FPSCamera{this, width, height};
             fpsCamera.position = scene.cameraTranslation;
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
-            fpsCamera.pitch = glm::degrees(eulerAngles.x);
-            fpsCamera.yaw = glm::degrees(-eulerAngles.y);
+            fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
+            fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
             fpsCamera.fovY = scene.cameraYFov;
             currentCamera = &fpsCamera;
         }
