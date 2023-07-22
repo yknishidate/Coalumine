@@ -1,19 +1,20 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_buffer_reference2 : require
+
 #include "./share.h"
 #include "./random.glsl"
 
-layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
 
-layout(binding = 16) buffer VertexBuffers{float vertices[];} vertexBuffers[];
-layout(binding = 17) buffer IndexBuffers{uint indices[];} indexBuffers[];
-layout(binding = 19) buffer TransformMatrixBuffer{mat4 transformMatrices[];};
-layout(binding = 20) buffer NormalMatrixBuffer{mat3 normalMatrices[];};
-
-layout(location = 0) rayPayloadInEXT HitPayload payload;
-
-hitAttributeEXT vec3 attribs;
+struct Address
+{
+    //uint64_t vertices;
+    //uint64_t indices;
+    uint64_t materials;
+};
 
 struct Vertex
 {
@@ -21,6 +22,35 @@ struct Vertex
     vec3 normal;
     vec2 texCoord;
 };
+
+struct Material {
+    int baseColorTextureIndex;
+    int metallicRoughnessTextureIndex;
+    int normalTextureIndex;
+    int occlusionTextureIndex;
+    int emissiveTextureIndex;
+
+    vec4 baseColorFactor;
+    float metallicFactor;
+    float roughnessFactor;
+    vec3 emissiveFactor;
+};
+
+layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
+
+layout(binding = 16) buffer VertexBuffers{float vertices[];} vertexBuffers[];
+layout(binding = 17) buffer IndexBuffers{uint indices[];} indexBuffers[];
+layout(binding = 19) buffer TransformMatrixBuffer{mat4 transformMatrices[];};
+layout(binding = 20) buffer NormalMatrixBuffer{mat3 normalMatrices[];};
+//layout(binding = 21) buffer MaterialBuffer{float materials[];};
+//layout(binding = 22) buffer MaterialIndexBuffer{int materialIndices[];};
+
+layout(buffer_reference, scalar) buffer Materials { Material materials[]; };
+layout(binding = 23) buffer AddressBuffer { Address addresses; };
+
+layout(location = 0) rayPayloadInEXT HitPayload payload;
+
+hitAttributeEXT vec3 attribs;
 
 Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
 {
@@ -124,10 +154,13 @@ void main()
     vec3 direction = sampleHemisphereCosine(normal, payload.seed);
     traceRay(origin, direction);
 
+    Materials _materials = Materials(addresses.materials);
+    Material material = _materials.materials[meshIndex];
+
     // Radiance (with Importance sampling)
     // Lo = brdf * Li * cos(theta) / pdf
     //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
     //    = color * Li
-    vec3 color = vec3(0.9);
+    vec3 color = material.baseColorFactor.rgb;
     payload.radiance = color * payload.radiance;
 }

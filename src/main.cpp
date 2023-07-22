@@ -7,6 +7,12 @@
 
 #include "render_pass.hpp"
 
+struct Address {
+    // vk::DeviceAddress vertices;
+    // vk::DeviceAddress indices;
+    vk::DeviceAddress materials;
+};
+
 class Node {
 public:
     int meshIndex;
@@ -26,6 +32,23 @@ public:
     }
 };
 
+struct Material {
+    // Textures
+    int baseColorTextureIndex{-1};
+    int metallicRoughnessTextureIndex{-1};
+    int normalTextureIndex{-1};
+    int occlusionTextureIndex{-1};
+    int emissiveTextureIndex{-1};
+
+    glm::vec4 baseColorFactor{1.0f};
+    float metallicFactor{1.0f};
+    float roughnessFactor{1.0f};
+    glm::vec3 emissiveFactor{0.0f};
+    // AlphaMode alphaMode{AlphaMode::Opaque};
+    // float alphaCutoff{0.5f};
+    // bool doubleSided{false};
+};
+
 class Scene {
 public:
     Scene() = default;
@@ -36,7 +59,7 @@ public:
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "glass_test_v3.gltf").string();
+        std::string filepath = (getAssetDirectory() / "glass_test_v4.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -52,6 +75,7 @@ public:
         spdlog::info("Meshes: {}", model.meshes.size());
         loadNodes(context, model);
         loadMeshes(context, model);
+        loadMaterials(context, model);
     }
 
     void loadDomeLightTexture(const Context& context) {
@@ -158,6 +182,9 @@ public:
         for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
             auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
             for (const auto& gltfPrimitive : gltfMesh.primitives) {
+                // WARN: Since different attributes may refer to the same data, creating a
+                // vertex/index buffer for each attribute will result in data duplication.
+
                 // Vertex attributes
                 auto& attributes = gltfPrimitive.attributes;
 
@@ -274,8 +301,93 @@ public:
                 }));
                 vertexCounts.push_back(vertices.size());
                 triangleCounts.push_back(indices.size() / 3);
+
+                materialIndices.push_back(gltfPrimitive.material);
             }
         }
+
+        materialIndexBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Index,
+            .size = sizeof(int) * materialIndices.size(),
+            .data = materialIndices.data(),
+        });
+    }
+
+    void loadMaterials(const Context& context, tinygltf::Model& gltfModel) {
+        for (auto& mat : gltfModel.materials) {
+            Material material;
+
+            // Base color
+            if (mat.values.contains("baseColorTexture")) {
+                material.baseColorTextureIndex = mat.values["baseColorTexture"].TextureIndex();
+            }
+            if (mat.values.contains("baseColorFactor")) {
+                material.baseColorFactor =
+                    glm::make_vec4(mat.values["baseColorFactor"].ColorFactor().data());
+            }
+
+            // Metallic / Roughness
+            if (mat.values.contains("metallicRoughnessTexture")) {
+                material.metallicRoughnessTextureIndex =
+                    mat.values["metallicRoughnessTexture"].TextureIndex();
+            }
+            if (mat.values.contains("roughnessFactor")) {
+                material.roughnessFactor =
+                    static_cast<float>(mat.values["roughnessFactor"].Factor());
+            }
+            if (mat.values.contains("metallicFactor")) {
+                material.metallicFactor = static_cast<float>(mat.values["metallicFactor"].Factor());
+            }
+
+            // Normal
+            if (mat.additionalValues.contains("normalTexture")) {
+                material.normalTextureIndex = mat.additionalValues["normalTexture"].TextureIndex();
+            }
+
+            // Emissive
+            if (mat.additionalValues.contains("emissiveTexture")) {
+                material.emissiveTextureIndex =
+                    mat.additionalValues["emissiveTexture"].TextureIndex();
+            }
+
+            // Occlusion
+            if (mat.additionalValues.contains("occlusionTexture")) {
+                material.occlusionTextureIndex =
+                    mat.additionalValues["occlusionTexture"].TextureIndex();
+            }
+
+            //// Alpha
+            // if (mat.additionalValues.find("alphaMode") != mat.additionalValues.end()) {
+            //     auto param = mat.additionalValues["alphaMode"];
+            //     if (param.string_value == "BLEND") {
+            //         material.alphaMode = AlphaMode::Blend;
+            //     }
+            //     if (param.string_value == "MASK") {
+            //         material.alphaMode = AlphaMode::Mask;
+            //     }
+            // }
+            // if (mat.additionalValues.find("alphaCutoff") != mat.additionalValues.end()) {
+            //     material.alphaCutoff =
+            //         static_cast<float>(mat.additionalValues["alphaCutoff"].Factor());
+            // }
+
+            materials.push_back(material);
+        }
+
+        // Material
+        materialBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = materials.size() * sizeof(Material),
+            .data = materials.data(),
+        });
+
+        // Address
+        address.materials = materialBuffer.getAddress();
+        addressBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = sizeof(Address),
+            .data = &address,
+        });
     }
 
     void buildAccels(const Context& context) {
@@ -309,6 +421,15 @@ public:
     std::vector<BottomAccel> bottomAccels;
     TopAccel topAccel;
     Image domeLightTexture;
+
+    std::vector<int> materialIndices;
+    DeviceBuffer materialIndexBuffer;
+
+    std::vector<Material> materials;
+    DeviceBuffer materialBuffer;
+
+    Address address;
+    DeviceBuffer addressBuffer;
 
     // std::vector<glm::mat4> transformMatrices;
     // std::vector<glm::mat4> normalMatrices;
@@ -351,6 +472,7 @@ public:
                 {
                     {"VertexBuffers", scene.vertexBuffers},
                     {"IndexBuffers", scene.indexBuffers},
+                    {"AddressBuffer", scene.addressBuffer},
                 },
             .images =
                 {
