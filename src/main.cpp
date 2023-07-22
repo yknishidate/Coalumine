@@ -59,7 +59,7 @@ public:
         std::string err;
         std::string warn;
 
-        std::string filepath = (getAssetDirectory() / "glass_test_v4.gltf").string();
+        std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -322,6 +322,9 @@ public:
             }
         }
 
+        if (materialIndices.empty()) {
+            materialIndices.push_back(-1);  // dummy data
+        }
         materialIndexBuffer = context.createDeviceBuffer({
             .usage = BufferUsage::Index,
             .size = sizeof(int) * materialIndices.size(),
@@ -391,6 +394,9 @@ public:
         }
 
         // Material
+        if (materials.empty()) {
+            materials.push_back({});  // dummy data
+        }
         materialBuffer = context.createDeviceBuffer({
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
