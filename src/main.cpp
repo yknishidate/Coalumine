@@ -149,6 +149,9 @@ public:
                                                static_cast<float>(gltfNode.rotation[1]),
                                                static_cast<float>(gltfNode.rotation[2])};
                 }
+
+                tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
+                cameraYFov = camera.perspective.yfov;
                 cameraExists = true;
                 continue;
             }
@@ -447,6 +450,7 @@ public:
     bool cameraExists = false;
     glm::vec3 cameraTranslation;
     glm::quat cameraRotation;
+    float cameraYFov;
 
     // std::vector<glm::mat4> transformMatrices;
     // std::vector<glm::mat4> normalMatrices;
@@ -550,6 +554,7 @@ public:
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
             fpsCamera.pitch = glm::degrees(eulerAngles.x);
             fpsCamera.yaw = glm::degrees(-eulerAngles.y);
+            fpsCamera.fovY = scene.cameraYFov;
             currentCamera = &fpsCamera;
         }
 
