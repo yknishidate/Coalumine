@@ -91,21 +91,22 @@ public:
         }
         spdlog::info("DomeLightTexture: w={}, h={}, c={}", width, height, comp);
 
-        Buffer stagingBuffer = context.createHostBuffer({
-            .usage = BufferUsage::Staging,
-            .size = width * height * comp * sizeof(float),
-            .data = reinterpret_cast<void*>(pixels),
-        });
-
         domeLightTexture = context.createImage({
             .usage = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage |
-                     vk::ImageUsageFlagBits::eTransferDst,
+                     vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc,
             .initialLayout = vk::ImageLayout::eTransferDstOptimal,
             .aspect = vk::ImageAspectFlagBits::eColor,
             .width = static_cast<uint32_t>(width),
             .height = static_cast<uint32_t>(height),
             .depth = 1,
             .format = vk::Format::eR32G32B32Sfloat,
+        });
+
+        // Copy to image
+        Buffer stagingBuffer = context.createHostBuffer({
+            .usage = BufferUsage::Staging,
+            .size = width * height * comp * sizeof(float),
+            .data = reinterpret_cast<void*>(pixels),
         });
 
         vk::ImageSubresourceLayers subresourceLayers;
@@ -127,7 +128,9 @@ public:
             commandBuffer.copyBufferToImage(stagingBuffer.getBuffer(), domeLightTexture.getImage(),
                                             vk::ImageLayout::eTransferDstOptimal, region);
             Image::setImageLayout(commandBuffer, domeLightTexture.getImage(),
-                                  vk::ImageLayout::eReadOnlyOptimal);
+                                  vk::ImageLayout::eTransferDstOptimal,
+                                  vk::ImageLayout::eTransferSrcOptimal,
+                                  vk::ImageAspectFlagBits::eColor, domeLightTexture.getMipLevels());
         });
 
         stbi_image_free(pixels);
@@ -677,7 +680,8 @@ public:
         auto* pixels = static_cast<uint8_t*>(imageSavingBuffer.map());
         context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
             Image::setImageLayout(commandBuffer, compositePass.getOutputImageRGBA(),
-                                  vk::ImageLayout::eTransferSrcOptimal);
+                                  vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
+                                  vk::ImageAspectFlagBits::eColor, 1);
 
             vk::BufferImageCopy copyInfo;
             copyInfo.setImageExtent({width, height, 1});
@@ -687,7 +691,8 @@ public:
                                             imageSavingBuffer.getBuffer(), copyInfo);
 
             Image::setImageLayout(commandBuffer, compositePass.getOutputImageRGBA(),
-                                  vk::ImageLayout::eGeneral);
+                                  vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
+                                  vk::ImageAspectFlagBits::eColor, 1);
         });
 
         std::string frame = std::to_string(pushConstants.frame);
