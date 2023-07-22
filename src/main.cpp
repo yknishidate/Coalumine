@@ -49,6 +49,13 @@ struct Material {
     // bool doubleSided{false};
 };
 
+struct KeyFrame {
+    float time;
+    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
+    glm::quat rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+    glm::vec3 scale = {1.0f, 1.0f, 1.0f};
+};
+
 class Scene {
 public:
     Scene() = default;
@@ -59,6 +66,7 @@ public:
         std::string err;
         std::string warn;
 
+        // std::string filepath = (getAssetDirectory() / "glass_test_v4.gltf").string();
         std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
@@ -76,11 +84,12 @@ public:
         loadNodes(context, model);
         loadMeshes(context, model);
         loadMaterials(context, model);
+        loadAnimation(context, model);
     }
 
     void loadDomeLightTexture(const Context& context) {
         std::string filepath =
-            (getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
+            (getAssetDirectory() / "drakensberg_solitary_mountain_256_30.hdr").string();
         domeLightTexture = Image::loadFromFileHDR(context, filepath);
     }
 
@@ -363,6 +372,56 @@ public:
         });
     }
 
+    void loadAnimation(const Context& context, const tinygltf::Model& model) {
+        nodeKeyFrames.resize(model.nodes.size());
+
+        for (const auto& animation : model.animations) {
+            for (const auto& channel : animation.channels) {
+                const auto& sampler = animation.samplers[channel.sampler];
+
+                if (channel.target_path == "translation" || channel.target_path == "rotation" ||
+                    channel.target_path == "scale") {
+                    const tinygltf::Accessor& inputAccessor = model.accessors[sampler.input];
+                    const tinygltf::BufferView& inputBufferView =
+                        model.bufferViews[inputAccessor.bufferView];
+                    const tinygltf::Buffer& inputBuffer = model.buffers[inputBufferView.buffer];
+                    const float* inputData = reinterpret_cast<const float*>(
+                        &inputBuffer.data[inputBufferView.byteOffset + inputAccessor.byteOffset]);
+                    const size_t inputCount = inputAccessor.count;
+
+                    const tinygltf::Accessor& outputAccessor = model.accessors[sampler.output];
+                    const tinygltf::BufferView& outputBufferView =
+                        model.bufferViews[outputAccessor.bufferView];
+                    const tinygltf::Buffer& outputBuffer = model.buffers[outputBufferView.buffer];
+                    const float* outputData = reinterpret_cast<const float*>(
+                        &outputBuffer
+                             .data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
+                    const size_t outputCount = outputAccessor.count;
+
+                    for (size_t i = 0; i < inputCount; i++) {
+                        KeyFrame keyframe;
+                        keyframe.time = inputData[i];
+
+                        if (channel.target_path == "translation") {
+                            keyframe.translation =
+                                glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
+                                          outputData[i * 3 + 2]);
+                        } else if (channel.target_path == "rotation") {
+                            keyframe.rotation =
+                                glm::quat(outputData[i * 4 + 3], outputData[i * 4 + 0],
+                                          outputData[i * 4 + 1], outputData[i * 4 + 2]);
+                        } else if (channel.target_path == "scale") {
+                            keyframe.scale = glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
+                                                       outputData[i * 3 + 2]);
+                        }
+
+                        nodeKeyFrames[channel.target_node].push_back(keyframe);
+                    }
+                }
+            }
+        }
+    }
+
     void buildAccels(const Context& context) {
         bottomAccels.resize(vertexBuffers.size());
         for (int i = 0; i < vertexBuffers.size(); i++) {
@@ -408,6 +467,8 @@ public:
     glm::vec3 cameraTranslation;
     glm::quat cameraRotation;
     float cameraYFov;
+
+    std::vector<std::vector<KeyFrame>> nodeKeyFrames;
 
     // std::vector<glm::mat4> transformMatrices;
     // std::vector<glm::mat4> normalMatrices;
