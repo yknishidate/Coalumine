@@ -59,7 +59,7 @@ public:
             .chitShader = shaders[2],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
-            .maxRayRecursionDepth = 31,
+            .maxRayRecursionDepth = maxRayRecursionDepth,
         });
     }
 
@@ -73,11 +73,9 @@ public:
         auto rtProps =
             context
                 .getPhysicalDeviceProperties2<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
+        maxRayRecursionDepth = rtProps.maxRayRecursionDepth;
         spdlog::info("RayTracingPipelineProperties::maxRayRecursionDepth: {}",
-                     rtProps.maxRayRecursionDepth);
-
-        // Output surface formats
-        listSurfaceFormats();
+                     maxRayRecursionDepth);
 
         scene.loadFromFile(context);
         scene.buildAccels(context);
@@ -245,6 +243,8 @@ public:
             stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
         });
     }
+
+    uint32_t maxRayRecursionDepth;
 
     Scene scene;
 
