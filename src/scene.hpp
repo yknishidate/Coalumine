@@ -458,6 +458,15 @@ public:
         });
     }
 
+    void updateTopAccel(vk::CommandBuffer commandBuffer, int frame) {
+        std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
+        for (auto& node : nodes) {
+            buildAccels.push_back(
+                {&bottomAccels[node.meshIndex], node.computeTransformMatrix(frame)});
+        }
+        topAccel.update(commandBuffer, buildAccels);
+    }
+
     std::vector<Node> nodes;
     std::vector<DeviceBuffer> vertexBuffers;
     std::vector<DeviceBuffer> indexBuffers;

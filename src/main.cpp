@@ -181,6 +181,9 @@ public:
 
         commandBuffer.beginTimestamp(gpuTimer);
 
+        // Update
+        scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
+
         // Ray tracing
         commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
         commandBuffer.bindPipeline(rayTracingPipeline);
