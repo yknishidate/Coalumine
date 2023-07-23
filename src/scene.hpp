@@ -25,7 +25,7 @@ struct KeyFrame {
 
 class Node {
 public:
-    int meshIndex;
+    int meshIndex = -1;
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
@@ -79,7 +79,8 @@ public:
         std::string warn;
 
         // std::string filepath = (getAssetDirectory() / "glass_test_v4.gltf").string();
-        std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
+        std::string filepath = (getAssetDirectory() / "animation_test.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -125,31 +126,40 @@ public:
                 tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
                 cameraYFov = camera.perspective.yfov;
                 cameraExists = true;
+                nodes.push_back(Node{});
                 continue;
             }
+
             if (gltfNode.skin != -1) {
+                nodes.push_back(Node{});
                 continue;
             }
 
-            Node node;
-            node.meshIndex = gltfNode.mesh;
-            if (!gltfNode.translation.empty()) {
-                node.translation = glm::vec3{gltfNode.translation[0],
-                                             -gltfNode.translation[1],  // invert y
-                                             gltfNode.translation[2]};
+            if (gltfNode.mesh != -1) {
+                Node node;
+                node.meshIndex = gltfNode.mesh;
+                if (!gltfNode.translation.empty()) {
+                    node.translation = glm::vec3{gltfNode.translation[0],
+                                                 -gltfNode.translation[1],  // invert y
+                                                 gltfNode.translation[2]};
+                }
+
+                if (!gltfNode.rotation.empty()) {
+                    node.rotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
+                                              static_cast<float>(gltfNode.rotation[0]),
+                                              static_cast<float>(gltfNode.rotation[1]),
+                                              static_cast<float>(gltfNode.rotation[2])};
+                }
+
+                if (!gltfNode.scale.empty()) {
+                    node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
+                }
+                nodes.push_back(node);
+                continue;
             }
 
-            if (!gltfNode.rotation.empty()) {
-                node.rotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
-                                          static_cast<float>(gltfNode.rotation[0]),
-                                          static_cast<float>(gltfNode.rotation[1]),
-                                          static_cast<float>(gltfNode.rotation[2])};
-            }
+            nodes.push_back(Node{});
 
-            if (!gltfNode.scale.empty()) {
-                node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
-            }
-            nodes.push_back(node);
             // transformMatrices.push_back(node.computeTransformMatrix());
             // normalMatrices.push_back(node.computeNormalMatrix());
         }
@@ -449,8 +459,10 @@ public:
 
         std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
         for (auto& node : nodes) {
-            buildAccels.push_back(
-                {&bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0)});
+            if (node.meshIndex != -1) {
+                buildAccels.push_back(
+                    {&bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0)});
+            }
         }
 
         topAccel = context.createTopAccel({
@@ -461,8 +473,10 @@ public:
     void updateTopAccel(vk::CommandBuffer commandBuffer, int frame) {
         std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
         for (auto& node : nodes) {
-            buildAccels.push_back(
-                {&bottomAccels[node.meshIndex], node.computeTransformMatrix(frame)});
+            if (node.meshIndex != -1) {
+                buildAccels.push_back(
+                    {&bottomAccels[node.meshIndex], node.computeTransformMatrix(frame)});
+            }
         }
         topAccel.update(commandBuffer, buildAccels);
     }

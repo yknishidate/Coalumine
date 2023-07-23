@@ -4,6 +4,7 @@
 
 #define NOMINMAX
 #define TINYGLTF_IMPLEMENTATION
+#include "common.hpp"
 #include "render_pass.hpp"
 #include "scene.hpp"
 
