@@ -21,7 +21,7 @@ void main()
     uvec2 s = pcg2d(gl_LaunchIDEXT.xy);
     payload.seed = s.x + s.y;
 
-    uint sampleCount = 64;
+    uint sampleCount = 128;
     vec3 radiance = vec3(0.0);
     for(int i = 0; i < sampleCount; i++){
         payload.radiance = vec3(0.0);

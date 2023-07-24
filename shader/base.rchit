@@ -220,6 +220,9 @@ void main()
     // Get material
     Materials _materials = Materials(addresses.materials);
     Material material = _materials.materials[meshIndex];
+    vec3 baseColor = material.baseColorFactor.rgb;
+    float metallic = material.metallicFactor;
+    float roughness = material.roughnessFactor;
 
     payload.depth += 1;
     if(payload.depth >= 8){
@@ -229,14 +232,11 @@ void main()
     // Importance sampling
     vec3 origin = pos;
     //vec3 direction = sampleHemisphereCosine(normal, payload.seed);
-    //vec3 direction = sampleHemisphereUniform(normal, payload.seed);
-
-    vec3 direction = sampleHemisphereUniformLocal(payload.seed);
-    vec3 globalDirection = localToGlobal(direction, normal);
-    traceRay(origin, globalDirection);
+    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
+    traceRay(origin, direction);
 
     vec3 V = normalize(gl_WorldRayOriginEXT - pos);
-    vec3 L = normalize(globalDirection);
+    vec3 L = normalize(direction);
     vec3 H = normalize(L + V);
     float NdotL = max(dot(normal, L), 0.0);
     float NdotV = max(dot(normal, V), 0.0);
@@ -244,11 +244,8 @@ void main()
     float VdotH = max(dot(V, H), 0.0);
 
     // Compute the GGX BRDF
-    //vec3 F0 = vec3(0.04); // F0 for dielectric materials
-    vec3 F0 = vec3(0.9); // F0 for dielectric materials
-    //float roughness = material.roughnessFactor;
-    float roughness = 1.0;
-    F0 = mix(F0, material.baseColorFactor.rgb, material.metallicFactor);
+    const vec3 dielectricF0 = vec3(0.04);
+    vec3 F0 = mix(dielectricF0, baseColor, metallic);
     vec3 F = fresnelSchlick(VdotH, F0);
     float D = ggxDistribution(NdotH, roughness);
     float G = ggxGeometry(NdotV, NdotL, roughness);
@@ -257,21 +254,19 @@ void main()
     float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
     vec3 specular = numerator / denominator;
 
-    float metallic = material.metallicFactor;
-    metallic = 1.0;
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - material.metallicFactor;
+    kD *= 1.0 - metallic;
 
     vec3 irradiance = payload.radiance;
-    vec3 radiance = (kD * material.baseColorFactor.rgb / PI + specular) * irradiance * NdotL;
+    vec3 diffuse = kD * baseColor / PI; // TODO: change baseColor to diffuseColor?
+    float pdf = 1.0 / (2.0 * PI);
+    vec3 radiance = (diffuse + specular) * irradiance * NdotL / pdf;
     payload.radiance = radiance;
 
-    // Radiance (with Importance sampling)
+    // Radiance (with Diffuse Importance sampling)
     // Lo = brdf * Li * cos(theta) / pdf
     //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
     //    = color * Li
-    //vec3 diffuseColor = material.baseColorFactor.rgb;
-    //vec3 diffuseRadiance = diffuseColor * payload.radiance;
-    //payload.radiance = diffuseRadiance;
+    //payload.radiance = baseColor * payload.radiance;
 }
