@@ -1,6 +1,6 @@
-#pragma once
 
 #ifdef __cplusplus
+#pragma once
 struct PushConstants {
     // Camera
     glm::mat4 invView;

@@ -100,8 +100,14 @@ public:
             fpsCamera = FPSCamera{this, width, height};
             fpsCamera.position = scene.cameraTranslation;
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
-            fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
-            fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
+            spdlog::info("glTF Camera: pitch={}, yaw={}", glm::degrees(eulerAngles.x),
+                         glm::degrees(eulerAngles.y));
+            fpsCamera.pitch = -glm::degrees(eulerAngles.x);
+            if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
+                fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
+            }
+            fpsCamera.yaw = glm::mod(glm::degrees(eulerAngles.y), 360.0f);
+            // fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
             fpsCamera.fovY = scene.cameraYFov;
             currentCamera = &fpsCamera;
         }
@@ -119,9 +125,6 @@ public:
         pushConstants.frame++;
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
-
-        spdlog::info("Transform: {}",
-                     glm::to_string(scene.nodes[0].computeTransformMatrix(pushConstants.frame)));
     }
 
     void recreatePipelinesIfShadersWereUpdated() {

@@ -71,12 +71,13 @@ Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
     return v;
 }
 
+// Global space
 vec3 sampleHemisphereUniform(in vec3 normal, inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
 
     float r = sqrt(1.0 - u * u);
-    float phi = 2.0 * 3.14159265 * v;
+    float phi = 2.0 * PI * v;
     
     vec3 localDir;
     localDir.x = cos(phi) * r;
@@ -91,6 +92,32 @@ vec3 sampleHemisphereUniform(in vec3 normal, inout uint seed) {
     return normalize(sampledDir);
 }
 
+// Tangent space (Z-up)
+vec3 sampleHemisphereUniformLocal(inout uint seed) {
+    float u = rand(seed);
+    float v = rand(seed);
+
+    float r = sqrt(1.0 - u * u);
+    float phi = 2.0 * PI * v;
+    
+    vec3 localDir;
+    localDir.x = cos(phi) * r;
+    localDir.y = sin(phi) * r;
+    localDir.z = u;
+
+    return localDir;
+}
+
+vec3 localToGlobal(in vec3 localDir, in vec3 normal) {
+    vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+
+    vec3 sampledDir = localDir.x * tangent + localDir.y * bitangent + localDir.z * normal;
+    return normalize(sampledDir);
+}
+
+// Global space
 vec3 sampleHemisphereCosine(in vec3 normal, inout uint seed) {
     float u = rand(seed);  // Get a random number between 0 and 1
     float v = rand(seed);
@@ -114,7 +141,6 @@ vec3 sampleHemisphereCosine(in vec3 normal, inout uint seed) {
     return normalize(sampledDirection);
 }
 
-
 void traceRay(vec3 origin, vec3 direction)
 {
     traceRayEXT(
@@ -132,6 +158,53 @@ void traceRay(vec3 origin, vec3 direction)
     );
 }
 
+float cosTheta(vec3 w) {
+    return w.z;
+}
+
+float cos2Theta(vec3 w) {
+    return w.z * w.z;
+}
+
+float absCosTheta(vec3 w) {
+    return abs(w.z);
+}
+
+float sin2Theta(vec3 w) {
+    return max(0.0, 1.0 - cos2Theta(w));
+}
+
+float sinTheta(vec3 w) {
+    return sqrt(sin2Theta(w));
+}
+
+float tanTheta(vec3 w) {
+    return sinTheta(w) / cosTheta(w);
+}
+
+float tan2Theta(vec3 w) {
+    return sin2Theta(w) / cos2Theta(w);
+}
+
+float ggxDistribution(float NdotH, float roughness) {
+    float alpha = roughness * roughness;
+    float alpha2 = alpha * alpha;
+    float d = (NdotH * alpha2 - NdotH) * NdotH + 1.0;
+    return alpha2 / (PI * d * d);
+}
+
+float ggxGeometry(float NdotV, float NdotL, float roughness) {
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    float gv = NdotV / (NdotV * (1.0 - k) + k);
+    float gl = NdotL / (NdotL * (1.0 - k) + k);
+    return gv * gl;
+}
+
+vec3 fresnelSchlick(float VdotH, vec3 F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
+}
+
 void main()
 {
     uint meshIndex = gl_InstanceID;
@@ -141,9 +214,13 @@ void main()
     
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
     vec3 pos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-    vec3 normal = v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z;
+    vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
     
+    // Get material
+    Materials _materials = Materials(addresses.materials);
+    Material material = _materials.materials[meshIndex];
+
     payload.depth += 1;
     if(payload.depth >= 8){
         return;
@@ -151,16 +228,50 @@ void main()
 
     // Importance sampling
     vec3 origin = pos;
-    vec3 direction = sampleHemisphereCosine(normal, payload.seed);
-    traceRay(origin, direction);
+    //vec3 direction = sampleHemisphereCosine(normal, payload.seed);
+    //vec3 direction = sampleHemisphereUniform(normal, payload.seed);
 
-    Materials _materials = Materials(addresses.materials);
-    Material material = _materials.materials[meshIndex];
+    vec3 direction = sampleHemisphereUniformLocal(payload.seed);
+    vec3 globalDirection = localToGlobal(direction, normal);
+    traceRay(origin, globalDirection);
+
+    vec3 V = normalize(gl_WorldRayOriginEXT - pos);
+    vec3 L = normalize(globalDirection);
+    vec3 H = normalize(L + V);
+    float NdotL = max(dot(normal, L), 0.0);
+    float NdotV = max(dot(normal, V), 0.0);
+    float NdotH = max(dot(normal, H), 0.0);
+    float VdotH = max(dot(V, H), 0.0);
+
+    // Compute the GGX BRDF
+    //vec3 F0 = vec3(0.04); // F0 for dielectric materials
+    vec3 F0 = vec3(0.9); // F0 for dielectric materials
+    //float roughness = material.roughnessFactor;
+    float roughness = 1.0;
+    F0 = mix(F0, material.baseColorFactor.rgb, material.metallicFactor);
+    vec3 F = fresnelSchlick(VdotH, F0);
+    float D = ggxDistribution(NdotH, roughness);
+    float G = ggxGeometry(NdotV, NdotL, roughness);
+
+    vec3 numerator = D * G * F;
+    float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
+    vec3 specular = numerator / denominator;
+
+    float metallic = material.metallicFactor;
+    metallic = 1.0;
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - material.metallicFactor;
+
+    vec3 irradiance = payload.radiance;
+    vec3 radiance = (kD * material.baseColorFactor.rgb / PI + specular) * irradiance * NdotL;
+    payload.radiance = radiance;
 
     // Radiance (with Importance sampling)
     // Lo = brdf * Li * cos(theta) / pdf
     //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
     //    = color * Li
-    vec3 color = material.baseColorFactor.rgb;
-    payload.radiance = color * payload.radiance;
+    //vec3 diffuseColor = material.baseColorFactor.rgb;
+    //vec3 diffuseRadiance = diffuseColor * payload.radiance;
+    //payload.radiance = diffuseRadiance;
 }
