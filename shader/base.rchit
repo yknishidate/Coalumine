@@ -213,7 +213,7 @@ vec3 fresnelSchlick(float VdotH, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
-vec3 sampleGGX(float roughness, uint seed) {
+vec3 sampleGGX(float roughness, inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
     float alpha = roughness * roughness;
@@ -283,8 +283,16 @@ void main()
         float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
         vec3 specular = numerator / denominator;
 
+        vec3 kS = F;
+        vec3 kD = vec3(1.0) - kS;
+        //kD *= 1.0 - metallic;
+
+        vec3 irradiance = payload.radiance;
+        //vec3 diffuse = kD * baseColor / PI;
+        vec3 diffuse = baseColor / PI;
+
         float pdf = D * NdotH / (4.0 * VdotH);
-        vec3 radiance = specular * payload.radiance * NdotL / pdf;
+        vec3 radiance = (specular + diffuse) * payload.radiance * NdotL / pdf;
         payload.radiance = radiance;
     }else{
         // Diffuse IS
