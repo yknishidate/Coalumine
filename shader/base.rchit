@@ -242,12 +242,21 @@ void main()
     float roughness = material.roughnessFactor;
 
     payload.depth += 1;
-    if(payload.depth >= 8){
+    if(payload.depth >= 4){
         return;
     }
 
     vec3 origin = pos;
     if(metallic > 0.0){
+        if(roughness == 0.0){
+            vec3 worldDirection = reflect(gl_WorldRayDirectionEXT, normal);
+            traceRay(origin, worldDirection);
+            vec3 specular = vec3(1.0);
+            float pdf = 1.0;
+            vec3 radiance = specular * payload.radiance * max(dot(normal, worldDirection), 0.0) / pdf;
+            payload.radiance = radiance;
+            return;
+        }
         vec3 wm = sampleGGX(roughness, payload.seed);
         vec3 wo = worldToLocal(gl_WorldRayDirectionEXT, normal);
         vec3 localDirection = reflect(wo, wm);
