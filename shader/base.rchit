@@ -218,8 +218,8 @@ vec3 sampleGGX(float roughness, uint seed) {
     float v = rand(seed);
     float alpha = roughness * roughness;
     float theta = atan(alpha * sqrt(v) / sqrt(max(1.0 - v, 0.0)));
-    float phi = 2.0f * PI * u;
-    return vec3(cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
+    float phi = 2.0 * PI * u;
+    return vec3(sin(phi) * sin(theta), cos(phi) * sin(theta), cos(theta));
 }
 
 void main()
@@ -246,11 +246,11 @@ void main()
         return;
     }
 
-    // Importance sampling
     vec3 origin = pos;
-
     if(metallic > 0.0){
-        vec3 localDirection = sampleHemisphereUniformLocal(payload.seed);
+        vec3 wm = sampleGGX(roughness, payload.seed);
+        vec3 wo = worldToLocal(gl_WorldRayDirectionEXT, normal);
+        vec3 localDirection = reflect(wo, wm);
         vec3 worldDirection = localToWorld(localDirection, normal);
 
         traceRay(origin, worldDirection);
@@ -274,8 +274,7 @@ void main()
         float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
         vec3 specular = numerator / denominator;
 
-        float pdf = 1.0 / (2.0 * PI);
-
+        float pdf = D * NdotH / (4.0 * VdotH);
         vec3 radiance = specular * payload.radiance * NdotL / pdf;
         payload.radiance = radiance;
     }else{
