@@ -104,7 +104,7 @@ public:
 
     void loadDomeLightTexture(const Context& context) {
         std::string filepath =
-            (getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
+            (getAssetDirectory() / "drakensberg_solitary_mountain_256_30.hdr").string();
         domeLightTexture = Image::loadFromFileHDR(context, filepath);
     }
 
