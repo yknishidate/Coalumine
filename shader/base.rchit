@@ -251,9 +251,8 @@ void main()
         if(roughness == 0.0){
             vec3 worldDirection = reflect(gl_WorldRayDirectionEXT, normal);
             traceRay(origin, worldDirection);
-            vec3 specular = vec3(1.0);
             float pdf = 1.0;
-            vec3 radiance = specular * payload.radiance * max(dot(normal, worldDirection), 0.0) / pdf;
+            vec3 radiance = baseColor * payload.radiance / pdf;
             payload.radiance = radiance;
             return;
         }
@@ -283,16 +282,8 @@ void main()
         float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
         vec3 specular = numerator / denominator;
 
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        //kD *= 1.0 - metallic;
-
-        vec3 irradiance = payload.radiance;
-        //vec3 diffuse = kD * baseColor / PI;
-        vec3 diffuse = baseColor / PI;
-
         float pdf = D * NdotH / (4.0 * VdotH);
-        vec3 radiance = (specular + diffuse) * payload.radiance * NdotL / pdf;
+        vec3 radiance = specular * payload.radiance * NdotL / pdf;
         payload.radiance = radiance;
     }else{
         // Diffuse IS
