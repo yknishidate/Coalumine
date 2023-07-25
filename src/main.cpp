@@ -20,9 +20,6 @@ public:
           }) {}
 
     void createPipelines() {
-        bloomPass = BloomPass(context, width, height);
-        compositePass = CompositePass(context, baseImage, bloomPass.bloomImage, width, height);
-
         std::vector<Shader> shaders(3);
         shaders[0] = context.createShader({
             .code = compileShader("base.rgen", "main"),
@@ -36,6 +33,9 @@ public:
             .code = compileShader("base.rchit", "main"),
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
+
+        bloomPass = BloomPass(context, width, height);
+        compositePass = CompositePass(context, baseImage, bloomPass.bloomImage, width, height);
 
         descSet = context.createDescriptorSet({
             .shaders = shaders,
