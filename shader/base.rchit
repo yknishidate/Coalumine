@@ -257,21 +257,18 @@ void main()
             return;
         }
         
+        // Sample direction
         vec3 wo = worldToLocal(-gl_WorldRayDirectionEXT, normal);
-        vec3 wm = sampleGGX(roughness, payload.seed);
-        vec3 wi = reflect(-wo, wm);
+        vec3 wh = sampleGGX(roughness, payload.seed);
+        vec3 wi = reflect(-wo, wh);
 
         traceRay(origin, localToWorld(wi, normal));
 
-        vec3 V = wo;
-        vec3 L = wi;
-        vec3 H = wm;
-        float NdotL = max(cosTheta(L), 0.0);
-        float NdotV = max(cosTheta(V), 0.0);
-        float NdotH = max(cosTheta(H), 0.0);
-        float VdotH = max(dot(V, H), 0.0);
-
         // Compute the GGX BRDF
+        float NdotL = max(cosTheta(wi), 0.0);
+        float NdotV = max(cosTheta(wo), 0.0);
+        float NdotH = max(cosTheta(wh), 0.0);
+        float VdotH = max(dot(wo, wh), 0.0);
         const vec3 dielectricF0 = vec3(0.04);
         vec3 F0 = mix(dielectricF0, baseColor, metallic);
         vec3 F = fresnelSchlick(VdotH, F0);
@@ -279,7 +276,7 @@ void main()
         float G = ggxGeometry(NdotV, NdotL, roughness);
 
         vec3 numerator = D * G * F;
-        float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
+        float denominator = max(4 * max(NdotL, 0.0) * max(NdotV, 0.0), 0.001); // prevent division by zero
         vec3 specular = numerator / denominator;
 
         float pdf = D * NdotH / (4.0 * VdotH);
