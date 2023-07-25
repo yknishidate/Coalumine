@@ -205,6 +205,15 @@ vec3 fresnelSchlick(float VdotH, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
+vec3 sampleGGX(float roughness, uint seed) {
+    float u = rand(seed);
+    float v = rand(seed);
+    float alpha = roughness * roughness;
+    float theta = atan(alpha * sqrt(v) / sqrt(max(1.0 - v, 0.0)));
+    float phi = 2.0f * PI * u;
+    return vec3(cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
+}
+
 void main()
 {
     uint meshIndex = gl_InstanceID;
@@ -231,42 +240,44 @@ void main()
 
     // Importance sampling
     vec3 origin = pos;
-    //vec3 direction = sampleHemisphereCosine(normal, payload.seed);
-    vec3 direction = sampleHemisphereUniform(normal, payload.seed);
-    traceRay(origin, direction);
 
-    vec3 V = normalize(gl_WorldRayOriginEXT - pos);
-    vec3 L = normalize(direction);
-    vec3 H = normalize(L + V);
-    float NdotL = max(dot(normal, L), 0.0);
-    float NdotV = max(dot(normal, V), 0.0);
-    float NdotH = max(dot(normal, H), 0.0);
-    float VdotH = max(dot(V, H), 0.0);
+    if(metallic > 0.0){
+        vec3 direction = sampleHemisphereUniform(normal, payload.seed);
 
-    // Compute the GGX BRDF
-    const vec3 dielectricF0 = vec3(0.04);
-    vec3 F0 = mix(dielectricF0, baseColor, metallic);
-    vec3 F = fresnelSchlick(VdotH, F0);
-    float D = ggxDistribution(NdotH, roughness);
-    float G = ggxGeometry(NdotV, NdotL, roughness);
+        traceRay(origin, direction);
 
-    vec3 numerator = D * G * F;
-    float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
-    vec3 specular = numerator / denominator;
+        vec3 V = -gl_WorldRayDirectionEXT;
+        vec3 L = direction;
+        vec3 H = normalize(L + V);
+        float NdotL = max(dot(normal, L), 0.0);
+        float NdotV = max(dot(normal, V), 0.0);
+        float NdotH = max(dot(normal, H), 0.0);
+        float VdotH = max(dot(V, H), 0.0);
 
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
+        // Compute the GGX BRDF
+        const vec3 dielectricF0 = vec3(0.04);
+        vec3 F0 = mix(dielectricF0, baseColor, metallic);
+        vec3 F = fresnelSchlick(VdotH, F0);
+        float D = ggxDistribution(NdotH, roughness);
+        float G = ggxGeometry(NdotV, NdotL, roughness);
 
-    vec3 irradiance = payload.radiance;
-    vec3 diffuse = kD * baseColor / PI; // TODO: change baseColor to diffuseColor?
-    float pdf = 1.0 / (2.0 * PI);
-    vec3 radiance = (diffuse + specular) * irradiance * NdotL / pdf;
-    payload.radiance = radiance;
+        vec3 numerator = D * G * F;
+        float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
+        vec3 specular = numerator / denominator;
 
-    // Radiance (with Diffuse Importance sampling)
-    // Lo = brdf * Li * cos(theta) / pdf
-    //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
-    //    = color * Li
-    //payload.radiance = baseColor * payload.radiance;
+        float pdf = 1.0 / (2.0 * PI);
+
+        vec3 radiance = specular * payload.radiance * NdotL / pdf;
+        payload.radiance = radiance;
+    }else{
+        // Diffuse IS
+        vec3 direction = sampleHemisphereCosine(normal, payload.seed);
+        traceRay(origin, direction);
+        
+        // Radiance (with Diffuse Importance sampling)
+        // Lo = brdf * Li * cos(theta) / pdf
+        //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
+        //    = color * Li
+        payload.radiance = baseColor * payload.radiance;
+    }
 }

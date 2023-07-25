@@ -102,6 +102,8 @@ public:
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
             spdlog::info("glTF Camera: pitch={}, yaw={}", glm::degrees(eulerAngles.x),
                          glm::degrees(eulerAngles.y));
+
+            // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
             fpsCamera.pitch = -glm::degrees(eulerAngles.x);
             if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
                 fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
