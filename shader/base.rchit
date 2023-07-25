@@ -117,6 +117,19 @@ vec3 localToGlobal(in vec3 localDir, in vec3 normal) {
     return normalize(sampledDir);
 }
 
+vec3 globalToLocal(in vec3 globalDir, in vec3 normal) {
+    vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+
+    vec3 localDir;
+    localDir.x = dot(globalDir, tangent);
+    localDir.y = dot(globalDir, bitangent);
+    localDir.z = dot(globalDir, normal);
+
+    return localDir;
+}
+
 // Global space
 vec3 sampleHemisphereCosine(in vec3 normal, inout uint seed) {
     float u = rand(seed);  // Get a random number between 0 and 1
