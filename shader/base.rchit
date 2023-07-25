@@ -52,8 +52,7 @@ layout(location = 0) rayPayloadInEXT HitPayload payload;
 
 hitAttributeEXT vec3 attribs;
 
-Vertex unpackVertex(uint meshIndex,  uint vertexIndex)
-{
+Vertex unpackVertex(uint meshIndex,  uint vertexIndex) {
     uint stride = 8;
     uint offset = vertexIndex * stride;
     Vertex v;
@@ -108,25 +107,22 @@ vec3 sampleHemisphereUniformLocal(inout uint seed) {
     return localDir;
 }
 
-vec3 localToGlobal(in vec3 localDir, in vec3 normal) {
+vec3 localToWorld(in vec3 localDir, in vec3 normal) {
     vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
     vec3 tangent = normalize(cross(up, normal));
     vec3 bitangent = cross(normal, tangent);
-
-    vec3 sampledDir = localDir.x * tangent + localDir.y * bitangent + localDir.z * normal;
-    return normalize(sampledDir);
+    return normalize(localDir.x * tangent + localDir.y * bitangent + localDir.z * normal);
 }
 
-vec3 globalToLocal(in vec3 globalDir, in vec3 normal) {
+vec3 worldToLocal(in vec3 worldDir, in vec3 normal) {
     vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
     vec3 tangent = normalize(cross(up, normal));
     vec3 bitangent = cross(normal, tangent);
 
     vec3 localDir;
-    localDir.x = dot(globalDir, tangent);
-    localDir.y = dot(globalDir, bitangent);
-    localDir.z = dot(globalDir, normal);
-
+    localDir.x = dot(worldDir, tangent);
+    localDir.y = dot(worldDir, bitangent);
+    localDir.z = dot(worldDir, normal);
     return localDir;
 }
 
@@ -154,8 +150,7 @@ vec3 sampleHemisphereCosine(in vec3 normal, inout uint seed) {
     return normalize(sampledDirection);
 }
 
-void traceRay(vec3 origin, vec3 direction)
-{
+void traceRay(vec3 origin, vec3 direction) {
     traceRayEXT(
         topLevelAS,
         gl_RayFlagsOpaqueEXT,
@@ -255,12 +250,13 @@ void main()
     vec3 origin = pos;
 
     if(metallic > 0.0){
-        vec3 direction = sampleHemisphereUniform(normal, payload.seed);
+        vec3 localDirection = sampleHemisphereUniformLocal(payload.seed);
+        vec3 worldDirection = localToWorld(localDirection, normal);
 
-        traceRay(origin, direction);
+        traceRay(origin, worldDirection);
 
         vec3 V = -gl_WorldRayDirectionEXT;
-        vec3 L = direction;
+        vec3 L = worldDirection;
         vec3 H = normalize(L + V);
         float NdotL = max(dot(normal, L), 0.0);
         float NdotV = max(dot(normal, V), 0.0);
