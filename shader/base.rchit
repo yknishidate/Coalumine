@@ -258,18 +258,14 @@ void main()
         }
         
         vec3 wo = worldToLocal(-gl_WorldRayDirectionEXT, normal);
-        
-        //vec3 wm = sampleGGX(roughness, payload.seed);
-        //vec3 localDirection = reflect(wo, wm);
-        //vec3 worldDirection = localToWorld(localDirection, normal);
-
-        vec3 wi = sampleHemisphereUniformLocal(payload.seed);
+        vec3 wm = sampleGGX(roughness, payload.seed);
+        vec3 wi = reflect(-wo, wm);
 
         traceRay(origin, localToWorld(wi, normal));
 
         vec3 V = wo;
         vec3 L = wi;
-        vec3 H = normalize(L + V);
+        vec3 H = wm;
         float NdotL = max(cosTheta(L), 0.0);
         float NdotV = max(cosTheta(V), 0.0);
         float NdotH = max(cosTheta(H), 0.0);
@@ -286,8 +282,7 @@ void main()
         float denominator = 4 * max(NdotL, 0.0) * max(NdotV, 0.0) + 0.001; // prevent division by zero
         vec3 specular = numerator / denominator;
 
-        //float pdf = D * NdotH / (4.0 * VdotH);
-        float pdf = 1.0 / (2.0 * PI);
+        float pdf = D * NdotH / (4.0 * VdotH);
         vec3 radiance = specular * payload.radiance * NdotL / pdf;
         payload.radiance = radiance;
     }else{

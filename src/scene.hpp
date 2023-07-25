@@ -82,7 +82,8 @@ public:
         // std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
         // std::string filepath = (getAssetDirectory() / "animation_test.gltf").string();
         // std::string filepath = (getAssetDirectory() / "material_test.gltf").string();
-        std::string filepath = (getAssetDirectory() / "metal_test.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "metal_test.gltf").string();
+        std::string filepath = (getAssetDirectory() / "metal_test_v2.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -105,6 +106,7 @@ public:
     void loadDomeLightTexture(const Context& context) {
         std::string filepath =
             (getAssetDirectory() / "drakensberg_solitary_mountain_256_30.hdr").string();
+        //(getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
         domeLightTexture = Image::loadFromFileHDR(context, filepath);
     }
 
