@@ -256,16 +256,18 @@ void main()
             payload.radiance = radiance;
             return;
         }
+        
+        vec3 wo = worldToLocal(-gl_WorldRayDirectionEXT, normal);
+        
         //vec3 wm = sampleGGX(roughness, payload.seed);
-        //vec3 wo = worldToLocal(gl_WorldRayDirectionEXT, normal);
         //vec3 localDirection = reflect(wo, wm);
         //vec3 worldDirection = localToWorld(localDirection, normal);
-        vec3 wo = worldToLocal(gl_WorldRayDirectionEXT, normal);
+
         vec3 wi = sampleHemisphereUniformLocal(payload.seed);
 
         traceRay(origin, localToWorld(wi, normal));
 
-        vec3 V = -wo;
+        vec3 V = wo;
         vec3 L = wi;
         vec3 H = normalize(L + V);
         float NdotL = max(cosTheta(L), 0.0);
