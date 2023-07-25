@@ -81,7 +81,8 @@ public:
         // std::string filepath = (getAssetDirectory() / "glass_test_v4.gltf").string();
         // std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
         // std::string filepath = (getAssetDirectory() / "animation_test.gltf").string();
-        std::string filepath = (getAssetDirectory() / "material_test.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "material_test.gltf").string();
+        std::string filepath = (getAssetDirectory() / "metal_test.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
