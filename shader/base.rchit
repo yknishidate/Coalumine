@@ -304,22 +304,19 @@ void main()
             // total reflection
             traceRay(origin, reflectDirection);
             float pdf = 1.0;
-            vec3 radiance = baseColor * payload.radiance / pdf;
-            payload.radiance = radiance;
-            //payload.radiance = vec3(1, 0, 0);
+            payload.radiance = baseColor * payload.radiance / pdf;
             return;
         }
         
-        float prob = 0.5 * Fr + 0.25;
-        if(rand(payload.seed) < prob){
+        if(rand(payload.seed) < Fr){
             // reflection
             traceRay(origin, reflectDirection);
-            float pdf = prob;
-            payload.radiance = baseColor * payload.radiance * Fr / pdf;
+            // NOTE: Fr / pdf = Fr / Fr = 1.0
+            payload.radiance = baseColor * payload.radiance;
         }else{
             // refraction
             traceRay(origin, refractDirection);
-            float pdf = 1.0 - prob;
+            float pdf = 1.0 - Fr;
             payload.radiance = baseColor * payload.radiance * Ft / pdf;
         }
     }else{
