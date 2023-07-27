@@ -213,6 +213,10 @@ vec3 fresnelSchlick(float VdotH, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
 
+float fresnelSchlick(float VdotH, float F0) {
+    return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
+}
+
 vec3 sampleGGX(float roughness, inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
@@ -286,20 +290,38 @@ void main()
     }else if(transmission > 0.0){
         float ior = 1.51;
         bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
-        float eta = into ? 1.0 / ior : ior / 1.0;
+        float n1 = into ? 1.0 : ior;
+        float n2 = into ? ior : 1.0;
+        float eta = n1 / n2;
         vec3 orientedNormal = into ? normal : -normal;
-        vec3 worldDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
-        if(worldDirection == vec3(0.0)){
+        float cosTheta1 = dot(-gl_WorldRayDirectionEXT, orientedNormal);
+        float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
+        float Fr = fresnelSchlick(cosTheta1, F0);
+        float Ft = (1.0 - Fr) * (eta * eta);
+        vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
+        vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
+        if(refractDirection == vec3(0.0)){
             // total reflection
-            worldDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
-            traceRay(origin, worldDirection);
+            traceRay(origin, reflectDirection);
+            float pdf = 1.0;
+            vec3 radiance = baseColor * payload.radiance / pdf;
+            payload.radiance = radiance;
+            //payload.radiance = vec3(1, 0, 0);
+            return;
+        }
+        
+        float prob = 0.5 * Fr + 0.25;
+        if(rand(payload.seed) < prob){
+            // reflection
+            traceRay(origin, reflectDirection);
+            float pdf = prob;
+            payload.radiance = baseColor * payload.radiance * Fr / pdf;
         }else{
             // refraction
-            traceRay(origin, worldDirection);
+            traceRay(origin, refractDirection);
+            float pdf = 1.0 - prob;
+            payload.radiance = baseColor * payload.radiance * Ft / pdf;
         }
-        float pdf = 1.0;
-        vec3 radiance = baseColor * payload.radiance / pdf;
-        payload.radiance = radiance;
     }else{
         // Diffuse IS
         vec3 direction = sampleHemisphereCosine(normal, payload.seed);
