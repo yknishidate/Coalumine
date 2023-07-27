@@ -238,11 +238,12 @@ void main()
     Materials _materials = Materials(addresses.materials);
     Material material = _materials.materials[meshIndex];
     vec3 baseColor = material.baseColorFactor.rgb;
+    float transmission = 1.0 - material.baseColorFactor.a;
     float metallic = material.metallicFactor;
     float roughness = material.roughnessFactor;
 
     payload.depth += 1;
-    if(payload.depth >= 4){
+    if(payload.depth >= 8){
         return;
     }
 
@@ -281,6 +282,23 @@ void main()
 
         float pdf = D * NdotH / (4.0 * VdotH);
         vec3 radiance = specular * payload.radiance * NdotL / pdf;
+        payload.radiance = radiance;
+    }else if(transmission > 0.0){
+        float ior = 1.51;
+        bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
+        float eta = into ? 1.0 / ior : ior / 1.0;
+        vec3 orientedNormal = into ? normal : -normal;
+        vec3 worldDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
+        if(worldDirection == vec3(0.0)){
+            // total reflection
+            worldDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
+            traceRay(origin, worldDirection);
+        }else{
+            // refraction
+            traceRay(origin, worldDirection);
+        }
+        float pdf = 1.0;
+        vec3 radiance = baseColor * payload.radiance / pdf;
         payload.radiance = radiance;
     }else{
         // Diffuse IS
