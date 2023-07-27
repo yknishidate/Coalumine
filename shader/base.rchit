@@ -4,10 +4,10 @@
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_debug_printf : enable
 
 #include "./share.h"
 #include "./random.glsl"
-
 
 struct Address
 {
@@ -159,9 +159,9 @@ void traceRay(vec3 origin, vec3 direction) {
         0,    // sbtRecordStride
         0,    // missIndex
         origin,
-        gl_RayTminEXT,
+        0.0001,
         direction,
-        gl_RayTmaxEXT,
+        1000.0,
         0     // payloadLocation
     );
 }
@@ -237,7 +237,7 @@ void main()
     vec3 pos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
-    
+
     // Get material
     Materials _materials = Materials(addresses.materials);
     Material material = _materials.materials[meshIndex];
@@ -307,7 +307,7 @@ void main()
             payload.radiance = baseColor * payload.radiance / pdf;
             return;
         }
-        
+
         if(rand(payload.seed) < Fr){
             // reflection
             traceRay(origin, reflectDirection);
