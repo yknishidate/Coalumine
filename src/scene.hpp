@@ -82,8 +82,9 @@ public:
         // std::string filepath = (getAssetDirectory() / "animated_cube_test.gltf").string();
         // std::string filepath = (getAssetDirectory() / "animation_test.gltf").string();
         // std::string filepath = (getAssetDirectory() / "material_test.gltf").string();
+        std::string filepath = (getAssetDirectory() / "material_test_emissive.gltf").string();
         // std::string filepath = (getAssetDirectory() / "glass_shpere.gltf").string();
-        std::string filepath = (getAssetDirectory() / "glass_sphere_low.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "glass_sphere_low.gltf").string();
         //  std::string filepath = (getAssetDirectory() / "metal_test.gltf").string();
         //  std::string filepath = (getAssetDirectory() / "metal_test_v2.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
@@ -352,6 +353,9 @@ public:
             }
 
             // Emissive
+            material.emissiveFactor[0] = mat.emissiveFactor[0];
+            material.emissiveFactor[1] = mat.emissiveFactor[1];
+            material.emissiveFactor[2] = mat.emissiveFactor[2];
             if (mat.additionalValues.contains("emissiveTexture")) {
                 material.emissiveTextureIndex =
                     mat.additionalValues["emissiveTexture"].TextureIndex();

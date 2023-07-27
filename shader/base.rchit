@@ -245,9 +245,11 @@ void main()
     float transmission = 1.0 - material.baseColorFactor.a;
     float metallic = material.metallicFactor;
     float roughness = material.roughnessFactor;
+    vec3 emissive = material.emissiveFactor.rgb;
 
     payload.depth += 1;
     if(payload.depth >= 8){
+        payload.radiance = emissive;
         return;
     }
 
@@ -258,7 +260,7 @@ void main()
             traceRay(origin, worldDirection);
             float pdf = 1.0;
             vec3 radiance = baseColor * payload.radiance / pdf;
-            payload.radiance = radiance;
+            payload.radiance = emissive + radiance;
             return;
         }
         
@@ -286,7 +288,7 @@ void main()
 
         float pdf = D * NdotH / (4.0 * VdotH);
         vec3 radiance = specular * payload.radiance * NdotL / pdf;
-        payload.radiance = radiance;
+        payload.radiance = emissive + radiance;
     }else if(transmission > 0.0){
         float ior = 1.51;
         bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
@@ -304,7 +306,7 @@ void main()
             // total reflection
             traceRay(origin, reflectDirection);
             float pdf = 1.0;
-            payload.radiance = baseColor * payload.radiance / pdf;
+            payload.radiance = emissive + baseColor * payload.radiance / pdf;
             return;
         }
 
@@ -312,12 +314,12 @@ void main()
             // reflection
             traceRay(origin, reflectDirection);
             // NOTE: Fr / pdf = Fr / Fr = 1.0
-            payload.radiance = baseColor * payload.radiance;
+            payload.radiance = emissive + baseColor * payload.radiance;
         }else{
             // refraction
             traceRay(origin, refractDirection);
             float pdf = 1.0 - Fr;
-            payload.radiance = baseColor * payload.radiance * Ft / pdf;
+            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
         }
     }else{
         // Diffuse IS
@@ -328,6 +330,6 @@ void main()
         // Lo = brdf * Li * cos(theta) / pdf
         //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
         //    = color * Li
-        payload.radiance = baseColor * payload.radiance;
+        payload.radiance = emissive + baseColor * payload.radiance;
     }
 }
