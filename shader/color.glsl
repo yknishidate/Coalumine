@@ -89,6 +89,8 @@ vec3 toneMappingACESFilmic(vec3 color, float exposure) {
 
     color = ACESOutputMat * color;
 
+    color = saturate(color, 1.3);
+
     // Clamp to [0, 1]
     return clamp(color, 0.0, 1.0);
 }
