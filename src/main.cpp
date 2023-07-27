@@ -50,6 +50,7 @@ public:
                     {"baseImage", baseImage},
                     {"bloomImage", bloomPass.bloomImage},
                     {"domeLightTexture", scene.domeLightTexture},
+                    {"lowDomeLightTexture", scene.lowDomeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });
@@ -148,6 +149,7 @@ public:
         static bool enableBloom = false;
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
+        ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
 
         // Bloom
         ImGui::Checkbox("Enable bloom", &enableBloom);

@@ -42,8 +42,6 @@ layout(binding = 16) buffer VertexBuffers{float vertices[];} vertexBuffers[];
 layout(binding = 17) buffer IndexBuffers{uint indices[];} indexBuffers[];
 layout(binding = 19) buffer TransformMatrixBuffer{mat4 transformMatrices[];};
 layout(binding = 20) buffer NormalMatrixBuffer{mat3 normalMatrices[];};
-//layout(binding = 21) buffer MaterialBuffer{float materials[];};
-//layout(binding = 22) buffer MaterialIndexBuffer{int materialIndices[];};
 
 layout(buffer_reference, scalar) buffer Materials { Material materials[]; };
 layout(binding = 23) buffer AddressBuffer { Address addresses; };
@@ -276,6 +274,7 @@ void main()
         float NdotV = max(cosTheta(wo), 0.0);
         float NdotH = max(cosTheta(wh), 0.0);
         float VdotH = max(dot(wo, wh), 0.0);
+
         const vec3 dielectricF0 = vec3(0.04);
         vec3 F0 = mix(dielectricF0, baseColor, metallic);
         vec3 F = fresnelSchlick(VdotH, F0);

@@ -3,6 +3,7 @@
 #include "./share.h"
 
 layout(binding = 18) uniform sampler2D domeLightTexture;
+layout(binding = 21) uniform sampler2D lowDomeLightTexture;
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 
@@ -18,5 +19,7 @@ vec2 sampleSphericalMap(vec3 v)
 void main()
 {
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
-    payload.radiance = texture(domeLightTexture, uv).rgb;
+    //payload.radiance = texture(domeLightTexture, uv).rgb;
+    payload.radiance = texture(lowDomeLightTexture, uv).rgb;
+    //payload.radiance = vec3(139, 213, 229) / 255.0;
 }
