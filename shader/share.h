@@ -8,7 +8,9 @@ struct PushConstants {
 
     int frame = 0;
     int sampleCount = 10;
-    float bloomThreshold = 0.5;
+    float bloomThreshold = 0.5f;
+    float domeLightTheta = 0.0f;
+    float domeLightPhi = 0.0f;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -18,6 +20,8 @@ layout(push_constant) uniform PushConstants {
     int frame;
     int sampleCount;
     float bloomThreshold;
+    float domeLightTheta;
+    float domeLightPhi;
 };
 #endif
 

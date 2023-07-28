@@ -150,6 +150,8 @@ public:
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
+        ImGui::SliderFloat("Dome light theta", &pushConstants.domeLightTheta, 0.0, 360.0);
+        ImGui::SliderFloat("Dome light phi", &pushConstants.domeLightPhi, 0.0, 360.0);
 
         // Bloom
         ImGui::Checkbox("Enable bloom", &enableBloom);

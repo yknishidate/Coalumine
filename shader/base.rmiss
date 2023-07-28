@@ -43,7 +43,8 @@ vec3 rotateDirection(vec3 v, float theta, float phi) {
 
 void main()
 {
-    vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
+    vec3 v = rotateDirection(gl_WorldRayDirectionEXT.xyz, domeLightTheta, domeLightPhi);
+    vec2 uv = sampleSphericalMap(v);
     //payload.radiance = texture(domeLightTexture, uv).rgb;
     //payload.radiance = texture(lowDomeLightTexture, uv).rgb;
     //payload.radiance = vec3(139, 213, 229) / 255.0;
