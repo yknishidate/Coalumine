@@ -48,10 +48,25 @@ void main()
     //payload.radiance = texture(domeLightTexture, uv).rgb;
     //payload.radiance = texture(lowDomeLightTexture, uv).rgb;
     //payload.radiance = vec3(139, 213, 229) / 255.0;
+
+    // template0
+    //payload.radiance = colorRamp5(uv.x,
+    //    vec3(225, 245, 253) / 255.0,
+    //    vec3(  1, 115, 233) / 255.0,
+    //    vec3(  2,  37, 131) / 255.0,
+    //    vec3(  0,   3,  49) / 255.0,
+    //    vec3(  0,   0,   3) / 255.0);
+
+    // template1
     payload.radiance = colorRamp5(uv.x,
         vec3(225, 245, 253) / 255.0,
         vec3(  0,   3,  49) / 255.0,
         vec3(  2,  37, 131) / 255.0,
         vec3(  1, 115, 233) / 255.0,
         vec3(  0,   0,   3) / 255.0);
+
+    // black-white
+    //payload.radiance = colorRamp2(uv.x,
+    //    vec3(0.0, 0.0, 0.0),
+    //    vec3(1.0, 1.0, 1.0));
 }

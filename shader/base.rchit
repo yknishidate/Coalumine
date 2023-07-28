@@ -8,6 +8,7 @@
 
 #include "./share.h"
 #include "./random.glsl"
+#include "./color.glsl"
 
 struct Address
 {
@@ -238,7 +239,7 @@ void main()
 
     // Get material
     Materials _materials = Materials(addresses.materials);
-    Material material = _materials.materials[meshIndex];
+    Material material = _materials.materials[meshIndex]; // TODO: fix material index
     vec3 baseColor = material.baseColorFactor.rgb;
     float transmission = 1.0 - material.baseColorFactor.a;
     float metallic = material.metallicFactor;
@@ -289,12 +290,51 @@ void main()
         vec3 radiance = specular * payload.radiance * NdotL / pdf;
         payload.radiance = emissive + radiance;
     }else if(transmission > 0.0){
+        if(roughness == 0.0){
+            float ior = 1.51;
+            bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
+            float n1 = into ? 1.0 : ior;
+            float n2 = into ? ior : 1.0;
+            float eta = n1 / n2;
+            vec3 orientedNormal = into ? normal : -normal;
+            float cosTheta1 = dot(-gl_WorldRayDirectionEXT, orientedNormal);
+            float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
+            float Fr = fresnelSchlick(cosTheta1, F0);
+            float Ft = (1.0 - Fr) * (eta * eta);
+            vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
+            vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
+            if(refractDirection == vec3(0.0)){
+                // total reflection
+                traceRay(origin, reflectDirection);
+                float pdf = 1.0;
+                payload.radiance = emissive + baseColor * payload.radiance / pdf;
+                return;
+            }
+
+            if(rand(payload.seed) < Fr){
+                // reflection
+                traceRay(origin, reflectDirection);
+                // NOTE: Fr / pdf = Fr / Fr = 1.0
+                payload.radiance = emissive + baseColor * payload.radiance;
+            }else{
+                // refraction
+                traceRay(origin, refractDirection);
+                float pdf = 1.0 - Fr;
+                payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
+            }
+            return;
+        }
         float ior = 1.51;
         bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
         float n1 = into ? 1.0 : ior;
         float n2 = into ? ior : 1.0;
         float eta = n1 / n2;
-        vec3 orientedNormal = into ? normal : -normal;
+
+        roughness = 0.1;
+        vec3 wh = sampleGGX(roughness, payload.seed);
+
+        vec3 orientedNormal = into ? localToWorld(wh, normal) : -localToWorld(wh, normal);
+
         float cosTheta1 = dot(-gl_WorldRayDirectionEXT, orientedNormal);
         float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
         float Fr = fresnelSchlick(cosTheta1, F0);
@@ -320,6 +360,7 @@ void main()
             float pdf = 1.0 - Fr;
             payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
         }
+
     }else{
         // Diffuse IS
         vec3 direction = sampleHemisphereCosine(normal, payload.seed);
