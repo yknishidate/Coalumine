@@ -48,6 +48,7 @@ layout(buffer_reference, scalar) buffer Materials { Material materials[]; };
 layout(binding = 23) buffer AddressBuffer { Address addresses; };
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
+layout(location = 1) rayPayloadEXT bool shadowed;
 
 hitAttributeEXT vec3 attribs;
 

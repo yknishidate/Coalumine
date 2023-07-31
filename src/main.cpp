@@ -56,9 +56,9 @@ public:
         });
 
         rayTracingPipeline = context.createRayTracingPipeline({
-            .rgenShader = shaders[0],
-            .missShader = shaders[1],
-            .chitShader = shaders[2],
+            .rgenShaders = shaders[0],
+            .missShaders = shaders[1],
+            .chitShaders = shaders[2],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = maxRayRecursionDepth,
