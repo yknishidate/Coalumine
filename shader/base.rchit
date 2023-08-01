@@ -107,6 +107,21 @@ vec3 sampleHemisphereUniformLocal(inout uint seed) {
     return localDir;
 }
 
+vec3 sampleSphereUniformLocal(inout uint seed) {
+    float u = rand(seed);
+    float v = rand(seed);
+
+    float theta = 2.0 * PI * u; // •ûˆÊŠp
+    float phi = acos(2.0 * v - 1.0); // ˆÜ“xŠp
+
+    vec3 localDir;
+    localDir.x = sin(phi) * cos(theta);
+    localDir.y = sin(phi) * sin(theta);
+    localDir.z = cos(phi);
+
+    return localDir;
+}
+
 vec3 localToWorld(in vec3 localDir, in vec3 normal) {
     vec3 up = abs(normal.z) < 0.999 ? vec3(0,0,1) : vec3(1,0,0);
     vec3 tangent = normalize(cross(up, normal));
@@ -159,10 +174,26 @@ void traceRay(vec3 origin, vec3 direction) {
         0,    // sbtRecordStride
         0,    // missIndex
         origin,
-        0.0001,
+        0.001,
         direction,
         1000.0,
         0     // payloadLocation
+    );
+}
+
+void traceShadowRay(vec3 origin, vec3 direction, float tmin){
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT,
+        0xff, // cullMask
+        0,    // sbtRecordOffset
+        0,    // sbtRecordStride
+        1,    // missIndex
+        origin,
+        tmin,
+        direction,
+        1000.0,
+        1     // payloadLocation
     );
 }
 
@@ -240,7 +271,7 @@ void main()
 
     // Get material
     Materials _materials = Materials(addresses.materials);
-    Material material = _materials.materials[meshIndex]; // TODO: fix material index
+    Material material = _materials.materials[0]; // TODO: fix material index
     vec3 baseColor = material.baseColorFactor.rgb;
     float transmission = 1.0 - material.baseColorFactor.a;
     float metallic = material.metallicFactor;
@@ -363,6 +394,15 @@ void main()
         }
 
     }else{
+        // Shadow ray
+        shadowed = true;
+        vec3 inifiniteLightTerm = vec3(0.0);
+        traceShadowRay(origin, infiniteLightDirection.xyz, 0.1);
+        if(!shadowed){
+            float cosTheta = max(dot(normal, infiniteLightDirection.xyz), 0.0);
+            inifiniteLightTerm = baseColor * infiniteLightIntensity.rgb * cosTheta;
+        }
+
         // Diffuse IS
         vec3 direction = sampleHemisphereCosine(normal, payload.seed);
         traceRay(origin, direction);
@@ -371,6 +411,7 @@ void main()
         // Lo = brdf * Li * cos(theta) / pdf
         //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
         //    = color * Li
-        payload.radiance = emissive + baseColor * payload.radiance;
+        payload.radiance = emissive + (baseColor * payload.radiance + inifiniteLightTerm);
+        //payload.radiance = emissive + (baseColor * payload.radiance);
     }
 }

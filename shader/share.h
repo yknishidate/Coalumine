@@ -10,11 +10,14 @@ struct PushConstants {
     int sampleCount = 10;
     float bloomThreshold = 0.5f;
     float domeLightTheta = 0.0f;
+
     float domeLightPhi = 300.0f;
 
     // NEE & Infinite light
     int enableNEE = 1;
-    glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{1.0, -1.0, 1.0}), 1.0};
+    int _dummy[2];
+
+    glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{-1.0, -1.0, 0.5}), 1.0};
     glm::vec4 infiniteLightIntensity = glm::vec4{1.0};
 };
 #else
@@ -30,6 +33,7 @@ layout(push_constant) uniform PushConstants {
 
     // NEE & Infinite light
     int enableNEE;
+    int _dummy[2];
     vec4 infiniteLightDirection;
     vec4 infiniteLightIntensity;
 };

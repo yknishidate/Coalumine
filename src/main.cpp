@@ -20,7 +20,7 @@ public:
           }) {}
 
     void createPipelines() {
-        std::vector<Shader> shaders(3);
+        std::vector<Shader> shaders(4);
         shaders[0] = context.createShader({
             .code = compileShader("base.rgen", "main"),
             .stage = vk::ShaderStageFlagBits::eRaygenKHR,
@@ -30,6 +30,10 @@ public:
             .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
         shaders[2] = context.createShader({
+            .code = compileShader("shadow.rmiss", "main"),
+            .stage = vk::ShaderStageFlagBits::eMissKHR,
+        });
+        shaders[3] = context.createShader({
             .code = compileShader("base.rchit", "main"),
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
@@ -57,8 +61,8 @@ public:
 
         rayTracingPipeline = context.createRayTracingPipeline({
             .rgenShaders = shaders[0],
-            .missShaders = shaders[1],
-            .chitShaders = shaders[2],
+            .missShaders = {shaders, 1, 2},
+            .chitShaders = shaders[3],
             .descSetLayout = descSet.getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = maxRayRecursionDepth,
