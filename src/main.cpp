@@ -256,9 +256,11 @@ public:
 
         std::string frame = std::to_string(pushConstants.frame);
         std::string zeros = std::string(std::max(0, 3 - (int)frame.size()), '0');
-        std::string img = zeros + frame + ".png";
+        std::string img = zeros + frame + ".jpg";
         writeTask = std::async(std::launch::async, [=]() {
-            stbi_write_png(img.c_str(), width, height, 4, pixels, width * 4);
+            CPUTimer timer;
+            stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
+            spdlog::info("Saved: {} ms", timer.elapsedInMilli());
         });
     }
 
