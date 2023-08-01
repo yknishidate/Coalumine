@@ -6,10 +6,6 @@
 #include "./random.glsl"
 #include "./color.glsl"
 
-layout(binding = 0, rgba32f) uniform image2D baseImage;
-layout(binding = 1, rgba32f) uniform image2D bloomImage;
-layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
-
 layout(location = 0) rayPayloadEXT HitPayload payload;
 
 void main()

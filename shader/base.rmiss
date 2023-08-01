@@ -3,9 +3,6 @@
 #include "./share.h"
 #include "./color.glsl"
 
-layout(binding = 18) uniform sampler2D domeLightTexture;
-layout(binding = 21) uniform sampler2D lowDomeLightTexture;
-
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 
 const vec2 invAtan = vec2(0.1591, 0.3183);

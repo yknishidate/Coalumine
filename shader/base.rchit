@@ -1,51 +1,10 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_debug_printf : enable
 
 #include "./share.h"
 #include "./random.glsl"
 #include "./color.glsl"
-
-struct Address
-{
-    //uint64_t vertices;
-    //uint64_t indices;
-    uint64_t materials;
-};
-
-struct Vertex
-{
-    vec3 pos;
-    vec3 normal;
-    vec2 texCoord;
-};
-
-struct Material {
-    int baseColorTextureIndex;
-    int metallicRoughnessTextureIndex;
-    int normalTextureIndex;
-    int occlusionTextureIndex;
-    int emissiveTextureIndex;
-
-    vec4 baseColorFactor;
-    float metallicFactor;
-    float roughnessFactor;
-    vec3 emissiveFactor;
-};
-
-layout(binding = 8) uniform accelerationStructureEXT topLevelAS;
-
-layout(binding = 16) buffer VertexBuffers{float vertices[];} vertexBuffers[];
-layout(binding = 17) buffer IndexBuffers{uint indices[];} indexBuffers[];
-layout(binding = 19) buffer TransformMatrixBuffer{mat4 transformMatrices[];};
-layout(binding = 20) buffer NormalMatrixBuffer{mat3 normalMatrices[];};
-
-layout(buffer_reference, scalar) buffer Materials { Material materials[]; };
-layout(binding = 23) buffer AddressBuffer { Address addresses; };
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 layout(location = 1) rayPayloadEXT bool shadowed;
@@ -270,8 +229,9 @@ void main()
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
     // Get material
+    int materialIndex = materialIndices[meshIndex];
     Materials _materials = Materials(addresses.materials);
-    Material material = _materials.materials[0]; // TODO: fix material index
+    Material material = _materials.materials[materialIndex];
     vec3 baseColor = material.baseColorFactor.rgb;
     float transmission = 1.0 - material.baseColorFactor.a;
     float metallic = material.metallicFactor;

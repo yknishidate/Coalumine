@@ -48,6 +48,7 @@ public:
                     {"VertexBuffers", scene.vertexBuffers},
                     {"IndexBuffers", scene.indexBuffers},
                     {"AddressBuffer", scene.addressBuffer},
+                    {"MaterialIndexBuffer", scene.materialIndexBuffer},
                 },
             .images =
                 {
