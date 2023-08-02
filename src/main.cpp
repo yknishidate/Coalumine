@@ -185,6 +185,9 @@ public:
             ImGui::SliderFloat("Gamma", &compositeInfo.gamma, 0.0, 5.0);
         }
 
+        static bool playAnimation = true;
+        ImGui::Checkbox("Play animation", &playAnimation);
+
         // Show GPU time
         if (pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
@@ -201,7 +204,9 @@ public:
         commandBuffer.beginTimestamp(gpuTimer);
 
         // Update
-        scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
+        if (playAnimation) {
+            scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
+        }
 
         // Ray tracing
         commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
