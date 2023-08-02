@@ -456,7 +456,7 @@ public:
 
                         if (channel.target_path == "translation") {
                             keyFrames[i].translation =
-                                glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
+                                glm::vec3(outputData[i * 3 + 0], -outputData[i * 3 + 1],
                                           outputData[i * 3 + 2]);
                         } else if (channel.target_path == "rotation") {
                             keyFrames[i].rotation =
