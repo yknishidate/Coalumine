@@ -114,7 +114,7 @@ public:
                 normalMatrices.push_back(node.computeNormalMatrix(0));
             }
         }
-        normalMatrixBuffer = context.createDeviceBuffer({
+        normalMatrixBuffer = context.createHostBuffer({
             .usage = BufferUsage::Storage,
             .size = sizeof(glm::mat4) * normalMatrices.size(),
             .data = normalMatrices.data(),
@@ -504,9 +504,11 @@ public:
             if (node.meshIndex != -1) {
                 buildAccels.push_back(
                     {&bottomAccels[node.meshIndex], node.computeTransformMatrix(frame)});
+                normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
             }
         }
         topAccel.update(commandBuffer, buildAccels);
+        normalMatrixBuffer.copy(normalMatrices.data());
     }
 
     std::vector<Node> nodes;
@@ -534,8 +536,6 @@ public:
     glm::quat cameraRotation;
     float cameraYFov;
 
-    // std::vector<glm::mat4> transformMatrices;
-    // DeviceBuffer transformMatrixBuffer;
     std::vector<glm::mat4> normalMatrices;
-    DeviceBuffer normalMatrixBuffer;
+    HostBuffer normalMatrixBuffer;
 };
