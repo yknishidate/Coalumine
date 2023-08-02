@@ -87,7 +87,8 @@ public:
         //  std::string filepath = (getAssetDirectory() / "glass_sphere_low.gltf").string();
         //   std::string filepath = (getAssetDirectory() / "metal_test.gltf").string();
         //   std::string filepath = (getAssetDirectory() / "metal_test_v2.gltf").string();
-        std::string filepath = (getAssetDirectory() / "diffuse_base.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "diffuse_base.gltf").string();
+        std::string filepath = (getAssetDirectory() / "clean_scene_v2.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -408,8 +409,6 @@ public:
     }
 
     void loadAnimation(const Context& context, const tinygltf::Model& model) {
-        // nodeKeyFrames.resize(model.nodes.size());
-
         for (const auto& animation : model.animations) {
             for (const auto& channel : animation.channels) {
                 const auto& sampler = animation.samplers[channel.sampler];
@@ -431,27 +430,30 @@ public:
                     const float* outputData = reinterpret_cast<const float*>(
                         &outputBuffer
                              .data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
-                    const size_t outputCount = outputAccessor.count;
+
+                    auto& keyFrames = nodes[channel.target_node].keyFrames;
+                    if (keyFrames.empty()) {
+                        keyFrames.resize(inputCount);
+                    }
 
                     // Clear default TRS
                     for (size_t i = 0; i < inputCount; i++) {
-                        KeyFrame keyframe;
-                        keyframe.time = inputData[i];
+                        // KeyFrame keyframe;
+                        keyFrames[i].time = inputData[i];
 
                         if (channel.target_path == "translation") {
-                            keyframe.translation =
+                            keyFrames[i].translation =
                                 glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
                                           outputData[i * 3 + 2]);
                         } else if (channel.target_path == "rotation") {
-                            keyframe.rotation =
+                            keyFrames[i].rotation =
                                 glm::quat(outputData[i * 4 + 3], outputData[i * 4 + 0],
                                           outputData[i * 4 + 1], outputData[i * 4 + 2]);
                         } else if (channel.target_path == "scale") {
-                            keyframe.scale = glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
-                                                       outputData[i * 3 + 2]);
+                            keyFrames[i].scale =
+                                glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
+                                          outputData[i * 3 + 2]);
                         }
-
-                        nodes[channel.target_node].keyFrames.push_back(keyframe);
                     }
                 }
             }

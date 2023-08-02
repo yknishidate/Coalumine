@@ -101,7 +101,10 @@ public:
         createPipelines();
 
         orbitalCamera = OrbitalCamera{this, width, height};
+        orbitalCamera.phi = 25.0f;
+        orbitalCamera.theta = 30.0f;
         currentCamera = &orbitalCamera;
+
         if (scene.cameraExists) {
             fpsCamera = FPSCamera{this, width, height};
             fpsCamera.position = scene.cameraTranslation;
