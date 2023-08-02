@@ -49,6 +49,7 @@ public:
                     {"IndexBuffers", scene.indexBuffers},
                     {"AddressBuffer", scene.addressBuffer},
                     {"MaterialIndexBuffer", scene.materialIndexBuffer},
+                    {"NormalMatrixBuffer", scene.normalMatrixBuffer},
                 },
             .images =
                 {

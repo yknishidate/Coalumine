@@ -33,10 +33,7 @@ public:
 
     glm::mat4 computeTransformMatrix(int frame) const {
         if (keyFrames.empty()) {
-            glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
-            glm::mat4 R = glm::mat4_cast(rotation);
-            glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
-            return T * R * S;
+            return glm::mat4{1.0};
         }
         // TODO: use default values
         int index = frame % keyFrames.size();
@@ -46,8 +43,13 @@ public:
         return T * R * S;
     }
 
-    glm::mat3 computeNormalMatrix(int frame) const {
-        return glm::transpose(glm::inverse(glm::mat3{computeTransformMatrix(frame)}));
+    glm::mat4 computeNormalMatrix(int frame) const {
+        if (keyFrames.empty()) {
+            return glm::mat4{1.0};
+        }
+
+        int index = frame % keyFrames.size();
+        return glm::mat4_cast(keyFrames[index].rotation);
     }
 };
 
@@ -106,6 +108,17 @@ public:
         loadMeshes(context, model);
         loadMaterials(context, model);
         loadAnimation(context, model);
+
+        for (auto& node : nodes) {
+            if (node.meshIndex != -1) {
+                normalMatrices.push_back(node.computeNormalMatrix(0));
+            }
+        }
+        normalMatrixBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = sizeof(glm::mat4) * normalMatrices.size(),
+            .data = normalMatrices.data(),
+        });
     }
 
     void loadDomeLightTexture(const Context& context) {
@@ -521,10 +534,8 @@ public:
     glm::quat cameraRotation;
     float cameraYFov;
 
-    // std::vector<std::vector<KeyFrame>> nodeKeyFrames;
-
     // std::vector<glm::mat4> transformMatrices;
-    // std::vector<glm::mat4> normalMatrices;
     // DeviceBuffer transformMatrixBuffer;
-    // DeviceBuffer normalMatrixBuffer;
+    std::vector<glm::mat4> normalMatrices;
+    DeviceBuffer normalMatrixBuffer;
 };

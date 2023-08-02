@@ -228,6 +228,9 @@ void main()
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
+    mat3 normalMatrix = mat3(normalMatrices[meshIndex]);
+    normal = normalMatrix * normal;
+
     // Get material
     vec3 baseColor = vec3(1.0);
     float transmission = 0.0;

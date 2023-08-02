@@ -109,7 +109,7 @@ layout(binding = 22) buffer TransformMatrixBuffer {
 };
 
 layout(binding = 23) buffer NormalMatrixBuffer {
-    mat3 normalMatrices[];
+    mat4 normalMatrices[];
 };
 
 layout(binding = 24) buffer AddressBuffer {
