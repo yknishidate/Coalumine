@@ -70,8 +70,8 @@ vec3 sampleSphereUniformLocal(inout uint seed) {
     float u = rand(seed);
     float v = rand(seed);
 
-    float theta = 2.0 * PI * u; // •ûˆÊŠp
-    float phi = acos(2.0 * v - 1.0); // ˆÜ“xŠp
+    float theta = 2.0 * PI * u;
+    float phi = acos(2.0 * v - 1.0);
 
     vec3 localDir;
     localDir.x = sin(phi) * cos(theta);
@@ -229,14 +229,22 @@ void main()
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
     // Get material
+    vec3 baseColor = vec3(1.0);
+    float transmission = 0.0;
+    float metallic = 0.0;
+    float roughness = 0.0;
+    vec3 emissive = vec3(0.0);
+
     int materialIndex = materialIndices[meshIndex];
-    Materials _materials = Materials(addresses.materials);
-    Material material = _materials.materials[materialIndex];
-    vec3 baseColor = material.baseColorFactor.rgb;
-    float transmission = 1.0 - material.baseColorFactor.a;
-    float metallic = material.metallicFactor;
-    float roughness = material.roughnessFactor;
-    vec3 emissive = material.emissiveFactor.rgb;
+    if(materialIndex != -1){
+        Materials _materials = Materials(addresses.materials);
+        Material material = _materials.materials[materialIndex];
+        baseColor = material.baseColorFactor.rgb;
+        transmission = 1.0 - material.baseColorFactor.a;
+        metallic = material.metallicFactor;
+        roughness = material.roughnessFactor;
+        emissive = material.emissiveFactor.rgb;
+    }
 
     payload.depth += 1;
     if(payload.depth >= 8){
@@ -368,9 +376,9 @@ void main()
         traceRay(origin, direction);
         
         // Radiance (with Diffuse Importance sampling)
-        // Lo = brdf * Li * cos(theta) / pdf
-        //    = (color / PI) * Li * cos(theta) / (cos(theta) / PI)
-        //    = color * Li
+        // Lo = Le + brdf * Li * cos(theta) / pdf
+        //    = Le + (color / PI) * Li * cos(theta) / (cos(theta) / PI)
+        //    = Le + color * Li
         payload.radiance = emissive + (baseColor * payload.radiance + inifiniteLightTerm);
         //payload.radiance = emissive + (baseColor * payload.radiance);
     }
