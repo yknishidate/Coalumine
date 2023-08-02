@@ -11,7 +11,7 @@ struct PushConstants {
     float bloomThreshold = 0.5f;
     float domeLightTheta = 0.0f;
 
-    float domeLightPhi = 300.0f;
+    float domeLightPhi = 32.0f;
 
     // NEE & Infinite light
     int enableNEE = 1;

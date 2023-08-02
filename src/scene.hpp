@@ -62,8 +62,8 @@ struct Material {
     int emissiveTextureIndex{-1};
 
     glm::vec4 baseColorFactor{1.0f};
-    float metallicFactor{1.0f};
-    float roughnessFactor{1.0f};
+    float metallicFactor{0.0f};
+    float roughnessFactor{0.0f};
     glm::vec3 emissiveFactor{0.0f};
     // AlphaMode alphaMode{AlphaMode::Opaque};
     // float alphaCutoff{0.5f};
@@ -327,15 +327,6 @@ public:
                 materialIndices.push_back(gltfPrimitive.material);
             }
         }
-
-        if (materialIndices.empty()) {
-            materialIndices.push_back(-1);  // dummy data
-        }
-        materialIndexBuffer = context.createDeviceBuffer({
-            .usage = BufferUsage::Index,
-            .size = sizeof(int) * materialIndices.size(),
-            .data = materialIndices.data(),
-        });
     }
 
     void loadMaterials(const Context& context, tinygltf::Model& gltfModel) {
@@ -410,14 +401,6 @@ public:
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
             .data = materials.data(),
-        });
-
-        // Address
-        address.materials = materialBuffer.getAddress();
-        addressBuffer = context.createDeviceBuffer({
-            .usage = BufferUsage::Storage,
-            .size = sizeof(Address),
-            .data = &address,
         });
     }
 
@@ -509,6 +492,36 @@ public:
         }
         topAccel.update(commandBuffer, buildAccels);
         normalMatrixBuffer.copy(normalMatrices.data());
+    }
+
+    int addMaterial(const Context& context, const Material& material) {
+        materials.push_back(material);
+        materialBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = materials.size() * sizeof(Material),
+            .data = materials.data(),
+        });
+        return materials.size() - 1;
+    }
+
+    void initMaterialIndexBuffer(const Context& context) {
+        if (materialIndices.empty()) {
+            materialIndices.push_back(-1);  // dummy data
+        }
+        materialIndexBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Index,
+            .size = sizeof(int) * materialIndices.size(),
+            .data = materialIndices.data(),
+        });
+    }
+
+    void initAddressBuffer(const Context& context) {
+        address.materials = materialBuffer.getAddress();
+        addressBuffer = context.createDeviceBuffer({
+            .usage = BufferUsage::Storage,
+            .size = sizeof(Address),
+            .data = &address,
+        });
     }
 
     std::vector<Node> nodes;

@@ -1,4 +1,6 @@
 ﻿#include <future>
+#include <random>
+
 #include "../shader/share.h"
 #include "App.hpp"
 
@@ -88,6 +90,42 @@ public:
         scene.loadFromFile(context);
         scene.buildAccels(context);
         scene.loadDomeLightTexture(context);
+
+        // Add materials
+        Material diffuseMaterial;
+        diffuseMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
+        Material glassMaterial;
+        glassMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 0.0};
+        glassMaterial.roughnessFactor = 0.3;
+        Material metalMaterial;
+        metalMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
+        metalMaterial.metallicFactor = 1.0;
+        metalMaterial.roughnessFactor = 0.3;
+        int diffuseMaterialIndex = scene.addMaterial(context, diffuseMaterial);
+        int glassMaterialIndex = scene.addMaterial(context, glassMaterial);
+        int metalMaterialIndex = scene.addMaterial(context, metalMaterial);
+
+        // Set materials
+        std::random_device seed_gen;
+        std::mt19937 engine(seed_gen());
+        std::uniform_real_distribution<float> dist1(0.0f, 1.0f);
+        for (auto& materialIndex : scene.materialIndices) {
+            if (materialIndex == -1) {
+                double randVal = dist1(engine);
+                if (randVal < 0.33) {
+                    materialIndex = diffuseMaterialIndex;
+                }
+                else if (randVal < 0.66) {
+                    materialIndex = metalMaterialIndex;
+                }
+                else {
+                    materialIndex = glassMaterialIndex;
+                }
+            }
+        }
+
+        scene.initMaterialIndexBuffer(context);
+        scene.initAddressBuffer(context);
 
         baseImage = context.createImage({
             .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |

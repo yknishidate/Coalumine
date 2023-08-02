@@ -44,7 +44,6 @@ void main()
     vec2 uv = sampleSphericalMap(v);
     //payload.radiance = texture(domeLightTexture, uv).rgb;
     //payload.radiance = texture(lowDomeLightTexture, uv).rgb;
-    //payload.radiance = vec3(139, 213, 229) / 255.0;
 
     // template0
     //payload.radiance = colorRamp5(uv.x,
