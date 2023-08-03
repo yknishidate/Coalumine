@@ -106,19 +106,16 @@ public:
         int metalMaterialIndex = scene.addMaterial(context, metalMaterial);
 
         // Set materials
-        std::random_device seed_gen;
-        std::mt19937 engine(seed_gen());
+        std::mt19937 rng(12345);
         std::uniform_real_distribution<float> dist1(0.0f, 1.0f);
         for (auto& materialIndex : scene.materialIndices) {
             if (materialIndex == -1) {
-                double randVal = dist1(engine);
+                double randVal = dist1(rng);
                 if (randVal < 0.33) {
                     materialIndex = diffuseMaterialIndex;
-                }
-                else if (randVal < 0.66) {
+                } else if (randVal < 0.66) {
                     materialIndex = metalMaterialIndex;
-                }
-                else {
+                } else {
                     materialIndex = glassMaterialIndex;
                 }
             }
