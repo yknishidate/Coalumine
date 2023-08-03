@@ -280,14 +280,6 @@ public:
         context.initDevice(deviceExtensions, deviceFeatures, featuresChain.pFirst, true);
         commandBuffers = context.allocateCommandBuffers(imageCount);
 
-        // Create sync objects
-        // imageAcquiredSemaphore = context.getDevice().createSemaphoreUnique({});
-        // fences.resize(imageCount);
-        // for (uint32_t i = 0; i < imageCount; i++) {
-        //    fences[i] = context.getDevice().createFenceUnique(
-        //        vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled));
-        //}
-
         writeTasks.resize(imageCount);
         imageSavingBuffers.resize(imageCount);
         for (int i = 0; i < imageCount; i++) {
@@ -302,22 +294,14 @@ public:
 
     void run() {
         uint32_t totalFrames = 150;
+        renderer->pushConstants.sampleCount = 128;
         for (uint32_t i = 0; i < totalFrames; i++) {
-            renderer->update();
-            // Wait fence
-            // CPUTimer timer;
-            // vk::Result waitResult =
-            //    context.getDevice().waitForFences(*fences[imageIndex], VK_TRUE, UINT64_MAX);
-            // if (waitResult != vk::Result::eSuccess) {
-            //    throw std::runtime_error("Failed to wait for fence");
-            //}
-            // context.getDevice().resetFences(*fences[imageIndex]);
-            // spdlog::info("Wait fences: {} ms", timer.elapsedInMilli());
+            // Wait image saving
+            if (writeTasks[imageIndex].valid()) {
+                writeTasks[imageIndex].get();
+            }
 
-            // Save
-            // if (i >= 1) {
-            //    // saveImage((imageIndex - 1) % imageCount);
-            //}
+            renderer->update();
 
             // Begin command buffer
             commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo().setFlags(
@@ -330,47 +314,38 @@ public:
             int blurIteration = 32;
             renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
 
-            // commandBuffer.imageBarrier(
-            //     vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eTransfer,
-            //     {}, renderer.compositePass.finalImageRGBA, vk::AccessFlagBits::eShaderWrite,
-            //     vk::AccessFlagBits::eTransferRead);
+            commandBuffer.imageBarrier(
+                vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eTransfer, {},
+                renderer->compositePass.finalImageRGBA, vk::AccessFlagBits::eShaderWrite,
+                vk::AccessFlagBits::eTransferRead);
 
-            //// Copy to buffer
-            // vk::Image outputImage = renderer.compositePass.getOutputImageRGBA();
-            // Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-            //                       vk::ImageLayout::eGeneral,
-            //                       vk::ImageLayout::eTransferSrcOptimal,
-            //                       vk::ImageAspectFlagBits::eColor, 1);
+            // Copy to buffer
+            vk::Image outputImage = renderer->compositePass.getOutputImageRGBA();
+            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
+                                  vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
+                                  vk::ImageAspectFlagBits::eColor, 1);
 
-            // vk::BufferImageCopy copyInfo;
-            // copyInfo.setImageExtent({width, height, 1});
-            // copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
-            // commandBuffer.commandBuffer.copyImageToBuffer(
-            //     outputImage, vk::ImageLayout::eTransferSrcOptimal,
-            //     imageSavingBuffers[imageIndex].getBuffer(), copyInfo);
+            vk::BufferImageCopy copyInfo;
+            copyInfo.setImageExtent({width, height, 1});
+            copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
+            commandBuffer.commandBuffer.copyImageToBuffer(
+                outputImage, vk::ImageLayout::eTransferSrcOptimal,
+                imageSavingBuffers[imageIndex].getBuffer(), copyInfo);
 
-            // Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-            //                       vk::ImageLayout::eTransferSrcOptimal,
-            //                       vk::ImageLayout::eGeneral, vk::ImageAspectFlagBits::eColor, 1);
+            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
+                                  vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
+                                  vk::ImageAspectFlagBits::eColor, 1);
 
             // End command buffer
             commandBuffers[imageIndex]->end();
 
             // Submit
-            // vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eAllCommands;
             vk::SubmitInfo submitInfo;
-            // submitInfo.setWaitDstStageMask(waitStage);
-            // submitInfo.setWaitSemaphores(*imageAcquiredSemaphore);
             submitInfo.setCommandBuffers(*commandBuffers[imageIndex]);
-            // context.getQueue().submit(submitInfo, *fences[imageIndex]);
             context.getQueue().submit(submitInfo);
-            spdlog::info("Submitted");
-
-            CPUTimer timer;
             context.getQueue().waitIdle();
-            spdlog::info("Wait queue: {} ms", timer.elapsedInMilli());
 
-            // saveImage(imageIndex);
+            saveImage(imageIndex);
 
             imageIndex = (imageIndex + 1) % imageCount;
         }
@@ -378,11 +353,12 @@ public:
     }
 
     void saveImage(uint32_t index) {
-        // If a previous write task was launched, wait for it to complete
         if (writeTasks[index].valid()) {
             CPUTimer timer;
             writeTasks[index].get();
             spdlog::info("Wait tasks: {} ms", timer.elapsedInMilli());
+        } else {
+            spdlog::info("Already finished");
         }
 
         // TODO: move to draw command
@@ -392,9 +368,7 @@ public:
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
         writeTasks[index] = std::async(std::launch::async, [=]() {
-            CPUTimer timer;
             stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
-            spdlog::info("Saved: {} ms", timer.elapsedInMilli());
         });
     }
 
@@ -513,10 +487,13 @@ public:
 
 int main() {
     try {
-        // DebugRenderer debugRenderer{};
-        // debugRenderer.run();
-        HeadlessRenderer headlessRenderer{true, 1920, 1080};
-        headlessRenderer.run();
+        DebugRenderer debugRenderer{};
+        debugRenderer.run();
+
+        // CPUTimer timer;
+        // HeadlessRenderer headlessRenderer{true, 1920, 1080};
+        // headlessRenderer.run();
+        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
