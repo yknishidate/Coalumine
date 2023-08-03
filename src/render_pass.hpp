@@ -112,7 +112,7 @@ public:
         });
 
         shader = context.createShader({
-            .code = compileShader("composite.comp", "main"),
+            .code = readShader("composite.comp", "main"),
             .stage = vk::ShaderStageFlagBits::eCompute,
         });
 
@@ -174,7 +174,7 @@ public:
         });
 
         shader = context.createShader({
-            .code = compileShader("blur.comp", "main"),
+            .code = readShader("blur.comp", "main"),
             .stage = vk::ShaderStageFlagBits::eCompute,
         });
 

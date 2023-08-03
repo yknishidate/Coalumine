@@ -96,22 +96,21 @@ public:
     }
 
     void createPipelines(const Context& context) {
-        // TODO: remove compilation
         std::vector<Shader> shaders(4);
         shaders[0] = context.createShader({
-            .code = compileShader("base.rgen", "main"),
+            .code = readShader("base.rgen", "main"),
             .stage = vk::ShaderStageFlagBits::eRaygenKHR,
         });
         shaders[1] = context.createShader({
-            .code = compileShader("base.rmiss", "main"),
+            .code = readShader("base.rmiss", "main"),
             .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
         shaders[2] = context.createShader({
-            .code = compileShader("shadow.rmiss", "main"),
+            .code = readShader("shadow.rmiss", "main"),
             .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
         shaders[3] = context.createShader({
-            .code = compileShader("base.rchit", "main"),
+            .code = readShader("base.rchit", "main"),
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
 
