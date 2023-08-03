@@ -250,7 +250,7 @@ void main()
     }
 
     payload.depth += 1;
-    if(payload.depth >= 8){
+    if(payload.depth >= 12){
         payload.radiance = emissive;
         return;
     }
