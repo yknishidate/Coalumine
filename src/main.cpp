@@ -442,8 +442,22 @@ public:
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
         ImGui::SliderInt("Sample count", &renderer.pushConstants.sampleCount, 1, 512);
+
+        // Dome light
         ImGui::SliderFloat("Dome light theta", &renderer.pushConstants.domeLightTheta, 0.0, 360.0);
         ImGui::SliderFloat("Dome light phi", &renderer.pushConstants.domeLightPhi, 0.0, 360.0);
+
+        // Infinite light
+        static glm::vec4 defaultInfiniteLightDirection =
+            renderer.pushConstants.infiniteLightDirection;
+        ImGui::SliderFloat4(
+            "Infinite light direction",
+            reinterpret_cast<float*>(&renderer.pushConstants.infiniteLightDirection), -1.0, 1.0);
+        ImGui::SliderFloat("Infinite light intensity",
+                           &renderer.pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
+        if (ImGui::Button("Reset infinite light")) {
+            renderer.pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
+        }
 
         // Bloom
         ImGui::Checkbox("Enable bloom", &enableBloom);
@@ -501,7 +515,7 @@ int main() {
         debugRenderer.run();
 
         // CPUTimer timer;
-        // HeadlessRenderer headlessRenderer{true, 1920, 1080};
+        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
         // headlessRenderer.run();
         // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {

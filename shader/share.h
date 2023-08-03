@@ -17,8 +17,8 @@ struct PushConstants {
     int enableNEE = 1;
     int _dummy[2];
 
-    glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{-1.0, -1.0, 0.5}), 1.0};
-    glm::vec4 infiniteLightIntensity = glm::vec4{1.0};
+    glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{-1.0, -1.0, 0.3}), 1.0};
+    float infiniteLightIntensity = 0.8;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -35,7 +35,7 @@ layout(push_constant) uniform PushConstants {
     int enableNEE;
     int _dummy[2];
     vec4 infiniteLightDirection;
-    vec4 infiniteLightIntensity;
+    float infiniteLightIntensity;
 };
 #endif
 
