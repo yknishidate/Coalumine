@@ -292,9 +292,9 @@ private:
     std::vector<vk::UniqueImage> images{};
 };
 
-class HelloApp : public App {
+class DebugRenderer : public App {
 public:
-    HelloApp()
+    DebugRenderer()
         : App({
               .width = 1920,
               .height = 1080,
@@ -436,7 +436,7 @@ public:
 
 int main() {
     try {
-        HelloApp app{};
+        DebugRenderer app{};
         app.run();
     } catch (const std::exception& e) {
         spdlog::error(e.what());
