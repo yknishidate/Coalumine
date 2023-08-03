@@ -148,6 +148,7 @@ public:
     }
 
     void update() {
+        RV_ASSERT(currentCamera, "currentCamera is nullptr");
         currentCamera->processInput();
         pushConstants.frame++;
         pushConstants.invView = currentCamera->getInvView();
@@ -214,7 +215,7 @@ public:
 class HeadlessRenderer {
 public:
     HeadlessRenderer(bool enableValidation, uint32_t width, uint32_t height)
-        : width{width}, height{height}, renderer{context, width, height, nullptr} {
+        : width{width}, height{height} {
         spdlog::set_pattern("[%^%l%$] %v");
 
         std::vector<const char*> instanceExtensions;
@@ -231,7 +232,6 @@ public:
         context.initPhysicalDevice();
 
         std::vector deviceExtensions{
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
             VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -280,17 +280,45 @@ public:
         context.initDevice(deviceExtensions, deviceFeatures, featuresChain.pFirst, true);
         commandBuffers = context.allocateCommandBuffers(imageCount);
 
+        // Create sync objects
+        // imageAcquiredSemaphore = context.getDevice().createSemaphoreUnique({});
+        // fences.resize(imageCount);
+        // for (uint32_t i = 0; i < imageCount; i++) {
+        //    fences[i] = context.getDevice().createFenceUnique(
+        //        vk::FenceCreateInfo().setFlags(vk::FenceCreateFlagBits::eSignaled));
+        //}
+
+        writeTasks.resize(imageCount);
+        imageSavingBuffers.resize(imageCount);
         for (int i = 0; i < imageCount; i++) {
             imageSavingBuffers[i] = context.createHostBuffer({
                 .usage = BufferUsage::Staging,
                 .size = width * height * 4 * sizeof(uint8_t),
             });
         }
+
+        renderer = std::make_unique<Renderer>(context, width, height, nullptr);
     }
 
     void run() {
         uint32_t totalFrames = 150;
         for (uint32_t i = 0; i < totalFrames; i++) {
+            renderer->update();
+            // Wait fence
+            // CPUTimer timer;
+            // vk::Result waitResult =
+            //    context.getDevice().waitForFences(*fences[imageIndex], VK_TRUE, UINT64_MAX);
+            // if (waitResult != vk::Result::eSuccess) {
+            //    throw std::runtime_error("Failed to wait for fence");
+            //}
+            // context.getDevice().resetFences(*fences[imageIndex]);
+            // spdlog::info("Wait fences: {} ms", timer.elapsedInMilli());
+
+            // Save
+            // if (i >= 1) {
+            //    // saveImage((imageIndex - 1) % imageCount);
+            //}
+
             // Begin command buffer
             commandBuffers[imageIndex]->begin(vk::CommandBufferBeginInfo().setFlags(
                 vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
@@ -300,61 +328,70 @@ public:
             bool playAnimation = true;
             bool enableBloom = false;
             int blurIteration = 32;
-            renderer.render(commandBuffer, playAnimation, enableBloom, blurIteration);
+            renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
 
-            commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                                       vk::PipelineStageFlagBits::eComputeShader, {},
-                                       renderer.compositePass.finalImageRGBA,
-                                       vk::AccessFlagBits::eShaderWrite,
-                                       vk::AccessFlagBits::eTransferRead);
+            // commandBuffer.imageBarrier(
+            //     vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eTransfer,
+            //     {}, renderer.compositePass.finalImageRGBA, vk::AccessFlagBits::eShaderWrite,
+            //     vk::AccessFlagBits::eTransferRead);
 
-            // Copy to buffer
-            vk::Image outputImage = renderer.compositePass.getOutputImageRGBA();
-            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-                                  vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
-                                  vk::ImageAspectFlagBits::eColor, 1);
+            //// Copy to buffer
+            // vk::Image outputImage = renderer.compositePass.getOutputImageRGBA();
+            // Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
+            //                       vk::ImageLayout::eGeneral,
+            //                       vk::ImageLayout::eTransferSrcOptimal,
+            //                       vk::ImageAspectFlagBits::eColor, 1);
 
-            vk::BufferImageCopy copyInfo;
-            copyInfo.setImageExtent({width, height, 1});
-            copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
-            commandBuffer.commandBuffer.copyImageToBuffer(
-                outputImage, vk::ImageLayout::eTransferSrcOptimal,
-                imageSavingBuffers[imageIndex].getBuffer(), copyInfo);
+            // vk::BufferImageCopy copyInfo;
+            // copyInfo.setImageExtent({width, height, 1});
+            // copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
+            // commandBuffer.commandBuffer.copyImageToBuffer(
+            //     outputImage, vk::ImageLayout::eTransferSrcOptimal,
+            //     imageSavingBuffers[imageIndex].getBuffer(), copyInfo);
 
-            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-                                  vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
-                                  vk::ImageAspectFlagBits::eColor, 1);
+            // Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
+            //                       vk::ImageLayout::eTransferSrcOptimal,
+            //                       vk::ImageLayout::eGeneral, vk::ImageAspectFlagBits::eColor, 1);
 
             // End command buffer
             commandBuffers[imageIndex]->end();
 
             // Submit
-            vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eAllCommands;
+            // vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eAllCommands;
             vk::SubmitInfo submitInfo;
-            submitInfo.setWaitDstStageMask(waitStage);
+            // submitInfo.setWaitDstStageMask(waitStage);
+            // submitInfo.setWaitSemaphores(*imageAcquiredSemaphore);
             submitInfo.setCommandBuffers(*commandBuffers[imageIndex]);
-            context.getQueue().submit(submitInfo, *fences[imageIndex]);
+            // context.getQueue().submit(submitInfo, *fences[imageIndex]);
+            context.getQueue().submit(submitInfo);
+            spdlog::info("Submitted");
+
+            CPUTimer timer;
+            context.getQueue().waitIdle();
+            spdlog::info("Wait queue: {} ms", timer.elapsedInMilli());
+
+            // saveImage(imageIndex);
 
             imageIndex = (imageIndex + 1) % imageCount;
         }
         context.getDevice().waitIdle();
     }
 
-    void saveImage() {
+    void saveImage(uint32_t index) {
         // If a previous write task was launched, wait for it to complete
-        if (writeTasks[imageIndex].valid()) {
+        if (writeTasks[index].valid()) {
             CPUTimer timer;
-            writeTasks[imageIndex].get();
-            spdlog::info("Waited: {} ms", timer.elapsedInMilli());
+            writeTasks[index].get();
+            spdlog::info("Wait tasks: {} ms", timer.elapsedInMilli());
         }
 
         // TODO: move to draw command
-        auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[imageIndex].map());
+        auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[index].map());
 
-        std::string frame = std::to_string(renderer.pushConstants.frame);
+        std::string frame = std::to_string(renderer->pushConstants.frame);
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
-        writeTasks[imageIndex] = std::async(std::launch::async, [=]() {
+        writeTasks[index] = std::async(std::launch::async, [=]() {
             CPUTimer timer;
             stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
             spdlog::info("Saved: {} ms", timer.elapsedInMilli());
@@ -363,14 +400,15 @@ public:
 
 private:
     Context context;
-    Renderer renderer;
+    std::unique_ptr<Renderer> renderer;
 
     uint32_t width;
     uint32_t height;
     uint32_t imageCount = 3;
     uint32_t imageIndex = 0;
     std::vector<vk::UniqueCommandBuffer> commandBuffers{};
-    std::vector<vk::UniqueFence> fences{};
+    // vk::UniqueSemaphore imageAcquiredSemaphore;
+    // std::vector<vk::UniqueFence> fences{};
     std::vector<vk::UniqueImage> images{};
 
     std::vector<HostBuffer> imageSavingBuffers;
@@ -475,8 +513,10 @@ public:
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        // DebugRenderer debugRenderer{};
+        // debugRenderer.run();
+        HeadlessRenderer headlessRenderer{true, 1920, 1080};
+        headlessRenderer.run();
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
