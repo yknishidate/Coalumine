@@ -407,6 +407,7 @@ public:
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
         fs::create_directory(getSpvDirectory());
 
+        recreatePipelinesIfShadersWereUpdated();
         gpuTimer = context.createGPUTimer({});
     }
 
@@ -414,9 +415,18 @@ public:
 
     void recreatePipelinesIfShadersWereUpdated() {
         bool shouldRecreate = false;
-        shouldRecreate |= shouldRecompile("base.rgen", "main");
-        shouldRecreate |= shouldRecompile("base.rchit", "main");
-        shouldRecreate |= shouldRecompile("base.rmiss", "main");
+        if (shouldRecompile("base.rgen", "main")) {
+            compileShader("base.rgen", "main");
+            shouldRecreate = true;
+        }
+        if (shouldRecompile("base.rchit", "main")) {
+            compileShader("base.rchit", "main");
+            shouldRecreate = true;
+        }
+        if (shouldRecompile("base.rmiss", "main")) {
+            compileShader("base.rmiss", "main");
+            shouldRecreate = true;
+        }
         if (shouldRecreate) {
             try {
                 renderer.createPipelines(context);
