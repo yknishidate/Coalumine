@@ -122,19 +122,23 @@ public:
     }
 
     void loadDomeLightTexture(const Context& context) {
-        std::string filepath =
-            (getAssetDirectory() / "drakensberg_solitary_mountain_1k.hdr").string();
-        domeLightTexture = Image::loadFromFileHDR(context, filepath);
-
-        filepath = (getAssetDirectory() / "drakensberg_solitary_mountain_1k_40.hdr").string();
-        lowDomeLightTexture = Image::loadFromFileHDR(context, filepath);
+        // Dummy textures
+        domeLightTexture = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eSampled,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+        });
+        lowDomeLightTexture = context.createImage({
+            .usage = vk::ImageUsageFlagBits::eSampled,
+            .initialLayout = vk::ImageLayout::eGeneral,
+            .aspect = vk::ImageAspectFlagBits::eColor,
+        });
     }
 
     void loadNodes(const Context& context, tinygltf::Model& gltfModel) {
         for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
             auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
             if (gltfNode.camera != -1) {
-                spdlog::warn("Multiple cameras");
                 if (!gltfNode.translation.empty()) {
                     cameraTranslation = glm::vec3{gltfNode.translation[0],
                                                   -gltfNode.translation[1],  // invert y
@@ -310,7 +314,6 @@ public:
                     }
                 }
 
-                spdlog::info("Mesh: vertex={}, index={}", vertices.size(), indices.size());
                 vertexBuffers.push_back(context.createDeviceBuffer({
                     .usage = BufferUsage::Vertex,
                     .size = sizeof(Vertex) * vertices.size(),

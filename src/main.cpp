@@ -19,8 +19,7 @@ public:
             context
                 .getPhysicalDeviceProperties2<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
         maxRayRecursionDepth = rtProps.maxRayRecursionDepth;
-        spdlog::info("RayTracingPipelineProperties::maxRayRecursionDepth: {}",
-                     maxRayRecursionDepth);
+        spdlog::info("MaxRayRecursionDepth: {}", maxRayRecursionDepth);
 
         scene.loadFromFile(context);
         scene.buildAccels(context);
@@ -80,8 +79,6 @@ public:
             fpsCamera = FPSCamera{app, width, height};
             fpsCamera.position = scene.cameraTranslation;
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
-            spdlog::info("glTF Camera: pitch={}, yaw={}", glm::degrees(eulerAngles.x),
-                         glm::degrees(eulerAngles.y));
 
             // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
             fpsCamera.pitch = -glm::degrees(eulerAngles.x);
@@ -216,7 +213,7 @@ class HeadlessRenderer {
 public:
     HeadlessRenderer(bool enableValidation, uint32_t width, uint32_t height)
         : width{width}, height{height} {
-        spdlog::set_pattern("[%^%l%$] %v");
+        // spdlog::set_pattern("[%^%l%$] %v");
 
         std::vector<const char*> instanceExtensions;
         if (enableValidation) {
@@ -293,7 +290,6 @@ public:
     }
 
     void run() {
-        uint32_t totalFrames = 150;
         renderer->pushConstants.sampleCount = 128;
         for (uint32_t i = 0; i < totalFrames; i++) {
             // Wait image saving
@@ -350,6 +346,11 @@ public:
             imageIndex = (imageIndex + 1) % imageCount;
         }
         context.getDevice().waitIdle();
+        for (auto& writeTask : writeTasks) {
+            if (writeTask.valid()) {
+                writeTask.get();
+            }
+        }
     }
 
     void saveImage(uint32_t index) {
@@ -359,6 +360,7 @@ public:
         std::string img = zeros + frame + ".jpg";
         writeTasks[index] = std::async(std::launch::async, [=]() {
             stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
+            spdlog::info("Saved: {}/{}", frame, totalFrames);
         });
     }
 
@@ -368,6 +370,7 @@ private:
 
     uint32_t width;
     uint32_t height;
+    uint32_t totalFrames = 150;
     uint32_t imageCount = 3;
     uint32_t imageIndex = 0;
     std::vector<vk::UniqueCommandBuffer> commandBuffers{};
@@ -522,13 +525,13 @@ public:
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        // DebugRenderer debugRenderer{};
+        // debugRenderer.run();
 
-        // CPUTimer timer;
-        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        // headlessRenderer.run();
-        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        CPUTimer timer;
+        HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        headlessRenderer.run();
+        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
