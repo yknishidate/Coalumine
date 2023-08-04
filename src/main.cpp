@@ -353,17 +353,7 @@ public:
     }
 
     void saveImage(uint32_t index) {
-        if (writeTasks[index].valid()) {
-            CPUTimer timer;
-            writeTasks[index].get();
-            spdlog::info("Wait tasks: {} ms", timer.elapsedInMilli());
-        } else {
-            spdlog::info("Already finished");
-        }
-
-        // TODO: move to draw command
         auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[index].map());
-
         std::string frame = std::to_string(renderer->pushConstants.frame);
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
@@ -511,13 +501,13 @@ public:
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        // DebugRenderer debugRenderer{};
+        // debugRenderer.run();
 
-        // CPUTimer timer;
-        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        // headlessRenderer.run();
-        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        CPUTimer timer;
+        HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        headlessRenderer.run();
+        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
