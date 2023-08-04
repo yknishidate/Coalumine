@@ -388,22 +388,39 @@ public:
               .title = "rtcamp9",
               .enableValidation = true,
               .enableRayTracing = true,
-          }),
-          renderer(context, width, height, this) {}
-
-    void onStart() override {
+          }) {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
         spdlog::info("SPIR-V directory: {}", getSpvDirectory().string());
         fs::create_directory(getSpvDirectory());
 
-        recreatePipelinesIfShadersWereUpdated();
-        gpuTimer = context.createGPUTimer({});
+        if (shouldRecompile("base.rgen", "main")) {
+            compileShader("base.rgen", "main");
+        }
+        if (shouldRecompile("base.rchit", "main")) {
+            compileShader("base.rchit", "main");
+        }
+        if (shouldRecompile("base.rmiss", "main")) {
+            compileShader("base.rmiss", "main");
+        }
+        if (shouldRecompile("shadow.rmiss", "main")) {
+            compileShader("shadow.rmiss", "main");
+        }
+        if (shouldRecompile("blur.comp", "main")) {
+            compileShader("blur.comp", "main");
+        }
+        if (shouldRecompile("composite.comp", "main")) {
+            compileShader("composite.comp", "main");
+        }
+
+        renderer = std::make_unique<Renderer>(context, width, height, this);
     }
 
-    void onUpdate() override { renderer.update(); }
+    void onStart() override { gpuTimer = context.createGPUTimer({}); }
 
-    void recreatePipelinesIfShadersWereUpdated() {
+    void onUpdate() override { renderer->update(); }
+
+    void recreatePipelinesIfShadersWereUpdated() const {
         bool shouldRecreate = false;
         if (shouldRecompile("base.rgen", "main")) {
             compileShader("base.rgen", "main");
@@ -417,9 +434,13 @@ public:
             compileShader("base.rmiss", "main");
             shouldRecreate = true;
         }
+        if (shouldRecompile("shadow.rmiss", "main")) {
+            compileShader("shadow.rmiss", "main");
+            shouldRecreate = true;
+        }
         if (shouldRecreate) {
             try {
-                renderer.createPipelines(context);
+                renderer->createPipelines(context);
             } catch (const std::exception& e) {
                 spdlog::error(e.what());
             }
@@ -431,54 +452,54 @@ public:
         static bool enableBloom = false;
         static int blurIteration = 32;
         ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
-        ImGui::SliderInt("Sample count", &renderer.pushConstants.sampleCount, 1, 512);
+        ImGui::SliderInt("Sample count", &renderer->pushConstants.sampleCount, 1, 512);
 
         // Dome light
-        ImGui::SliderFloat("Dome light theta", &renderer.pushConstants.domeLightTheta, 0.0, 360.0);
-        ImGui::SliderFloat("Dome light phi", &renderer.pushConstants.domeLightPhi, 0.0, 360.0);
+        ImGui::SliderFloat("Dome light theta", &renderer->pushConstants.domeLightTheta, 0.0, 360.0);
+        ImGui::SliderFloat("Dome light phi", &renderer->pushConstants.domeLightPhi, 0.0, 360.0);
 
         // Infinite light
         static glm::vec4 defaultInfiniteLightDirection =
-            renderer.pushConstants.infiniteLightDirection;
+            renderer->pushConstants.infiniteLightDirection;
         ImGui::SliderFloat4(
             "Infinite light direction",
-            reinterpret_cast<float*>(&renderer.pushConstants.infiniteLightDirection), -1.0, 1.0);
+            reinterpret_cast<float*>(&renderer->pushConstants.infiniteLightDirection), -1.0, 1.0);
         ImGui::SliderFloat("Infinite light intensity",
-                           &renderer.pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
+                           &renderer->pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
         if (ImGui::Button("Reset infinite light")) {
-            renderer.pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
+            renderer->pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
         }
 
         // Bloom
         ImGui::Checkbox("Enable bloom", &enableBloom);
         if (enableBloom) {
-            ImGui::SliderFloat("Bloom intensity", &renderer.compositeInfo.bloomIntensity, 0.0,
+            ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity, 0.0,
                                10.0);
-            ImGui::SliderFloat("Bloom threshold", &renderer.pushConstants.bloomThreshold, 0.0,
+            ImGui::SliderFloat("Bloom threshold", &renderer->pushConstants.bloomThreshold, 0.0,
                                10.0);
             ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-            ImGui::SliderInt("Blur size", &renderer.bloomInfo.blurSize, 0, 64);
+            ImGui::SliderInt("Blur size", &renderer->bloomInfo.blurSize, 0, 64);
         }
 
         // Tone mapping
         ImGui::Checkbox("Enable tone mapping",
-                        reinterpret_cast<bool*>(&renderer.compositeInfo.enableToneMapping));
-        if (renderer.compositeInfo.enableToneMapping) {
-            ImGui::SliderFloat("Exposure", &renderer.compositeInfo.exposure, 0.0, 5.0);
+                        reinterpret_cast<bool*>(&renderer->compositeInfo.enableToneMapping));
+        if (renderer->compositeInfo.enableToneMapping) {
+            ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0, 5.0);
         }
 
         // Gamma correction
         ImGui::Checkbox("Enable gamma correction",
-                        reinterpret_cast<bool*>(&renderer.compositeInfo.enableGammaCorrection));
-        if (renderer.compositeInfo.enableGammaCorrection) {
-            ImGui::SliderFloat("Gamma", &renderer.compositeInfo.gamma, 0.0, 5.0);
+                        reinterpret_cast<bool*>(&renderer->compositeInfo.enableGammaCorrection));
+        if (renderer->compositeInfo.enableGammaCorrection) {
+            ImGui::SliderFloat("Gamma", &renderer->compositeInfo.gamma, 0.0, 5.0);
         }
 
         static bool playAnimation = true;
         ImGui::Checkbox("Play animation", &playAnimation);
 
         // Show GPU time
-        if (renderer.pushConstants.frame > 1) {
+        if (renderer->pushConstants.frame > 1) {
             ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
         }
 
@@ -486,28 +507,28 @@ public:
         recreatePipelinesIfShadersWereUpdated();
 
         commandBuffer.beginTimestamp(gpuTimer);
-        renderer.render(commandBuffer, playAnimation, enableBloom, blurIteration);
+        renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
         commandBuffer.endTimestamp(gpuTimer);
 
         // Copy to swapchain image
-        commandBuffer.copyImage(renderer.compositePass.getOutputImageBGRA(), getCurrentColorImage(),
-                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR, width,
-                                height);
+        commandBuffer.copyImage(renderer->compositePass.getOutputImageBGRA(),
+                                getCurrentColorImage(), vk::ImageLayout::eGeneral,
+                                vk::ImageLayout::ePresentSrcKHR, width, height);
     }
 
-    Renderer renderer;
+    std::unique_ptr<Renderer> renderer;
     GPUTimer gpuTimer;
 };
 
 int main() {
     try {
-        // DebugRenderer debugRenderer{};
-        // debugRenderer.run();
+        DebugRenderer debugRenderer{};
+        debugRenderer.run();
 
-        CPUTimer timer;
-        HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        headlessRenderer.run();
-        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        // CPUTimer timer;
+        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        // headlessRenderer.run();
+        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
