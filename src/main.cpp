@@ -213,7 +213,7 @@ class HeadlessRenderer {
 public:
     HeadlessRenderer(bool enableValidation, uint32_t width, uint32_t height)
         : width{width}, height{height} {
-        // spdlog::set_pattern("[%^%l%$] %v");
+        spdlog::set_pattern("[%^%l%$] %v");
 
         std::vector<const char*> instanceExtensions;
         if (enableValidation) {
@@ -290,7 +290,7 @@ public:
     }
 
     void run() {
-        renderer->pushConstants.sampleCount = 128;
+        renderer->pushConstants.sampleCount = 100;
         for (uint32_t i = 0; i < totalFrames; i++) {
             // Wait image saving
             if (writeTasks[imageIndex].valid()) {

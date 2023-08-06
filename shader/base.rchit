@@ -344,11 +344,13 @@ void main()
         float Ft = (1.0 - Fr) * (eta * eta);
         vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
         vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
+
+        float intensity = 1.2;
         if(refractDirection == vec3(0.0)){
             // total reflection
             traceRay(origin, reflectDirection);
             float pdf = 1.0;
-            payload.radiance = emissive + baseColor * payload.radiance / pdf;
+            payload.radiance = emissive + baseColor * payload.radiance / pdf * intensity;
             return;
         }
 
@@ -356,14 +358,13 @@ void main()
             // reflection
             traceRay(origin, reflectDirection);
             // NOTE: Fr / pdf = Fr / Fr = 1.0
-            payload.radiance = emissive + baseColor * payload.radiance;
+            payload.radiance = emissive + baseColor * payload.radiance * intensity;
         }else{
             // refraction
             traceRay(origin, refractDirection);
             float pdf = 1.0 - Fr;
-            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
+            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf * intensity;
         }
-
     }else{
         // Shadow ray
         shadowed = true;
