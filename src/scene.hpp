@@ -23,9 +23,16 @@ struct KeyFrame {
     glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 };
 
+enum {
+    MATERIAL_TYPE_DIFFUSE = 0,
+    MATERIAL_TYPE_METAL = 1,
+    MATERIAL_TYPE_GLASS = 2,
+};
+
 class Node {
 public:
     int meshIndex = -1;
+    uint32_t materialType = MATERIAL_TYPE_DIFFUSE;
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
@@ -466,8 +473,8 @@ public:
         std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
-                accelInstances.push_back(
-                    {bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0), 0});
+                accelInstances.push_back({bottomAccels[node.meshIndex],
+                                          node.computeTransformMatrix(0.0), node.materialType});
             }
         }
         topAccel = context.createTopAccel({.accelInstances = accelInstances});
@@ -478,8 +485,8 @@ public:
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
                 normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
-                accelInstances.push_back(
-                    {bottomAccels[node.meshIndex], node.computeTransformMatrix(frame), 0});
+                accelInstances.push_back({bottomAccels[node.meshIndex],
+                                          node.computeTransformMatrix(frame), node.materialType});
             }
         }
         topAccel.update(commandBuffer, accelInstances);
