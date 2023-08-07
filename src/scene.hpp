@@ -463,29 +463,26 @@ public:
             });
         }
 
-        std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
+        std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
-                buildAccels.push_back(
-                    {&bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0)});
+                accelInstances.push_back(
+                    {bottomAccels[node.meshIndex], node.computeTransformMatrix(0.0), 0});
             }
         }
-
-        topAccel = context.createTopAccel({
-            .bottomAccels = buildAccels,
-        });
+        topAccel = context.createTopAccel({.accelInstances = accelInstances});
     }
 
     void updateTopAccel(vk::CommandBuffer commandBuffer, int frame) {
-        std::vector<std::pair<const BottomAccel*, glm::mat4>> buildAccels;
+        std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
-                buildAccels.push_back(
-                    {&bottomAccels[node.meshIndex], node.computeTransformMatrix(frame)});
                 normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
+                accelInstances.push_back(
+                    {bottomAccels[node.meshIndex], node.computeTransformMatrix(frame), 0});
             }
         }
-        topAccel.update(commandBuffer, buildAccels);
+        topAccel.update(commandBuffer, accelInstances);
         normalMatrixBuffer.copy(normalMatrices.data());
     }
 
