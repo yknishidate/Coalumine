@@ -7,6 +7,8 @@
 #undef far
 #undef RGB
 
+using namespace rv;
+
 namespace fs = std::filesystem;
 inline fs::path getExecutableDirectory() {
     TCHAR filepath[1024];

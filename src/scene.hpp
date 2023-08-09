@@ -10,6 +10,8 @@
 
 #include <tiny_gltf.h>
 
+using namespace rv;
+
 struct Address {
     // vk::DeviceAddress vertices;
     // vk::DeviceAddress indices;
