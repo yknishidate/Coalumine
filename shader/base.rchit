@@ -345,7 +345,7 @@ void main()
         vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
         vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
 
-        float intensity = 1.2;
+        float intensity = 1.1;
         if(refractDirection == vec3(0.0)){
             // total reflection
             traceRay(origin, reflectDirection);

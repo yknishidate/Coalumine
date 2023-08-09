@@ -30,11 +30,11 @@ public:
         diffuseMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
         Material glassMaterial;
         glassMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 0.0};
-        glassMaterial.roughnessFactor = 0.3;
+        glassMaterial.roughnessFactor = 0.2;
         Material metalMaterial;
         metalMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
         metalMaterial.metallicFactor = 1.0;
-        metalMaterial.roughnessFactor = 0.3;
+        metalMaterial.roughnessFactor = 0.2;
         int diffuseMaterialIndex = scene.addMaterial(context, diffuseMaterial);
         int glassMaterialIndex = scene.addMaterial(context, glassMaterial);
         int metalMaterialIndex = scene.addMaterial(context, metalMaterial);
@@ -290,7 +290,7 @@ public:
     }
 
     void run() {
-        renderer->pushConstants.sampleCount = 100;
+        renderer->pushConstants.sampleCount = 128;
         for (uint32_t i = 0; i < totalFrames; i++) {
             // Wait image saving
             if (writeTasks[imageIndex].valid()) {
