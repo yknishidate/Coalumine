@@ -5,8 +5,8 @@
 #undef far
 #undef RGB
 
-#include "Graphics/Buffer.hpp"
-#include "Graphics/Context.hpp"
+#include <reactive/Graphics/Buffer.hpp>
+#include <reactive/Graphics/Context.hpp>
 
 #include <tiny_gltf.h>
 
