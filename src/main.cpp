@@ -389,8 +389,8 @@ public:
               .width = 1920,
               .height = 1080,
               .title = "rtcamp9",
-              .enableValidation = true,
-              .enableRayTracing = true,
+              .layers = Layer::Validation,
+              .extensions = Extension::RayTracing,
           }) {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
