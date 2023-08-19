@@ -60,8 +60,7 @@ public:
 
         baseImage = context.createImage({
             .usage = ImageUsage::Storage,
-            .width = width,
-            .height = height,
+            .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
             .layout = vk::ImageLayout::eGeneral,
         });

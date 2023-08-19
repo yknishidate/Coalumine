@@ -96,15 +96,13 @@ public:
                   uint32_t height) {
         finalImageRGBA = context.createImage({
             .usage = rv::ImageUsage::Storage,
-            .width = width,
-            .height = height,
+            .extent = {width, height, 1},
             .format = vk::Format::eR8G8B8A8Unorm,
             .layout = vk::ImageLayout::eGeneral,
         });
         finalImageBGRA = context.createImage({
             .usage = rv::ImageUsage::Storage,
-            .width = width,
-            .height = height,
+            .extent = {width, height, 1},
             .format = vk::Format::eB8G8R8A8Unorm,
             .layout = vk::ImageLayout::eGeneral,
         });
@@ -163,8 +161,7 @@ public:
     BloomPass(const Context& context, uint32_t width, uint32_t height) {
         bloomImage = context.createImage({
             .usage = rv::ImageUsage::Storage,
-            .width = width,
-            .height = height,
+            .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
             .layout = vk::ImageLayout::eGeneral,
         });
