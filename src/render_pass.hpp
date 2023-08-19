@@ -111,7 +111,7 @@ public:
 
         shader = context.createShader({
             .code = readShader("composite.comp", "main"),
-            .stage = rv::ShaderStage::Compute,
+            .stage = vk::ShaderStageFlagBits::eCompute,
         });
 
         descSet = context.createDescriptorSet({
@@ -171,7 +171,7 @@ public:
 
         shader = context.createShader({
             .code = readShader("blur.comp", "main"),
-            .stage = rv::ShaderStage::Compute,
+            .stage = vk::ShaderStageFlagBits::eCompute,
         });
 
         descSet = context.createDescriptorSet({

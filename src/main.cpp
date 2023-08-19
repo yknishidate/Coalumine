@@ -94,19 +94,19 @@ public:
         std::vector<ShaderHandle> shaders(4);
         shaders[0] = context.createShader({
             .code = readShader("base.rgen", "main"),
-            .stage = rv::ShaderStage::Raygen,
+            .stage = vk::ShaderStageFlagBits::eRaygenKHR,
         });
         shaders[1] = context.createShader({
             .code = readShader("base.rmiss", "main"),
-            .stage = rv::ShaderStage::Miss,
+            .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
         shaders[2] = context.createShader({
             .code = readShader("shadow.rmiss", "main"),
-            .stage = rv::ShaderStage::Miss,
+            .stage = vk::ShaderStageFlagBits::eMissKHR,
         });
         shaders[3] = context.createShader({
             .code = readShader("base.rchit", "main"),
-            .stage = rv::ShaderStage::ClosestHit,
+            .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
 
         bloomPass = BloomPass(context, width, height);
