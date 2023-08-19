@@ -59,13 +59,11 @@ public:
         scene.initAddressBuffer(context);
 
         baseImage = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = vk::Format::eR32G32B32A32Sfloat,
+            .format = rv::Format::RGBA32Sfloat,
+            .layout = rv::ImageLayout::General,
         });
 
         createPipelines(context);
@@ -93,22 +91,22 @@ public:
     }
 
     void createPipelines(const Context& context) {
-        std::vector<Shader> shaders(4);
+        std::vector<ShaderHandle> shaders(4);
         shaders[0] = context.createShader({
             .code = readShader("base.rgen", "main"),
-            .stage = vk::ShaderStageFlagBits::eRaygenKHR,
+            .stage = rv::ShaderStage::Raygen,
         });
         shaders[1] = context.createShader({
             .code = readShader("base.rmiss", "main"),
-            .stage = vk::ShaderStageFlagBits::eMissKHR,
+            .stage = rv::ShaderStage::Miss,
         });
         shaders[2] = context.createShader({
             .code = readShader("shadow.rmiss", "main"),
-            .stage = vk::ShaderStageFlagBits::eMissKHR,
+            .stage = rv::ShaderStage::Miss,
         });
         shaders[3] = context.createShader({
             .code = readShader("base.rchit", "main"),
-            .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
+            .stage = rv::ShaderStage::ClosestHit,
         });
 
         bloomPass = BloomPass(context, width, height);
@@ -138,7 +136,7 @@ public:
             .rgenShaders = shaders[0],
             .missShaders = {shaders, 1, 2},
             .chitShaders = shaders[3],
-            .descSetLayout = descSet.getLayout(),
+            .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = maxRayRecursionDepth,
         });
@@ -197,10 +195,10 @@ public:
     BloomInfo bloomInfo;
     BloomPass bloomPass;
 
-    Image baseImage;
+    ImageHandle baseImage;
 
-    DescriptorSet descSet;
-    RayTracingPipeline rayTracingPipeline;
+    DescriptorSetHandle descSet;
+    RayTracingPipelineHandle rayTracingPipeline;
 
     Camera* currentCamera = nullptr;
     FPSCamera fpsCamera;
@@ -280,8 +278,9 @@ public:
         writeTasks.resize(imageCount);
         imageSavingBuffers.resize(imageCount);
         for (int i = 0; i < imageCount; i++) {
-            imageSavingBuffers[i] = context.createHostBuffer({
+            imageSavingBuffers[i] = context.createBuffer({
                 .usage = BufferUsage::Staging,
+                .memory = MemoryUsage::Host,
                 .size = width * height * 4 * sizeof(uint8_t),
             });
         }
@@ -317,20 +316,20 @@ public:
 
             // Copy to buffer
             vk::Image outputImage = renderer->compositePass.getOutputImageRGBA();
-            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-                                  vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
-                                  vk::ImageAspectFlagBits::eColor, 1);
+            Image::transitionLayout(commandBuffer.commandBuffer, outputImage,
+                                    vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
+                                    vk::ImageAspectFlagBits::eColor, 1);
 
             vk::BufferImageCopy copyInfo;
             copyInfo.setImageExtent({width, height, 1});
             copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
             commandBuffer.commandBuffer.copyImageToBuffer(
                 outputImage, vk::ImageLayout::eTransferSrcOptimal,
-                imageSavingBuffers[imageIndex].getBuffer(), copyInfo);
+                imageSavingBuffers[imageIndex]->getBuffer(), copyInfo);
 
-            Image::setImageLayout(commandBuffer.commandBuffer, outputImage,
-                                  vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
-                                  vk::ImageAspectFlagBits::eColor, 1);
+            Image::transitionLayout(commandBuffer.commandBuffer, outputImage,
+                                    vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
+                                    vk::ImageAspectFlagBits::eColor, 1);
 
             // End command buffer
             commandBuffers[imageIndex]->end();
@@ -354,7 +353,7 @@ public:
     }
 
     void saveImage(uint32_t index) {
-        auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[index].map());
+        auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[index]->map());
         std::string frame = std::to_string(renderer->pushConstants.frame);
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
@@ -378,7 +377,7 @@ private:
     // std::vector<vk::UniqueFence> fences{};
     std::vector<vk::UniqueImage> images{};
 
-    std::vector<HostBuffer> imageSavingBuffers;
+    std::vector<BufferHandle> imageSavingBuffers;
     std::vector<std::future<void>> writeTasks;
 };
 
@@ -503,7 +502,7 @@ public:
 
         // Show GPU time
         if (renderer->pushConstants.frame > 1) {
-            ImGui::Text("GPU time: %f ms", gpuTimer.elapsedInMilli());
+            ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
         }
 
         // Check shader files
@@ -514,24 +513,24 @@ public:
         commandBuffer.endTimestamp(gpuTimer);
 
         // Copy to swapchain image
-        commandBuffer.copyImage(renderer->compositePass.getOutputImageBGRA(),
-                                getCurrentColorImage(), vk::ImageLayout::eGeneral,
-                                vk::ImageLayout::ePresentSrcKHR, width, height);
+        commandBuffer.copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
+                                rv::ImageLayout::General, rv::ImageLayout::PresentSrc, width,
+                                height);
     }
 
     std::unique_ptr<Renderer> renderer;
-    GPUTimer gpuTimer;
+    GPUTimerHandle gpuTimer;
 };
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        // DebugRenderer debugRenderer{};
+        // debugRenderer.run();
 
-        // CPUTimer timer;
-        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        // headlessRenderer.run();
-        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        CPUTimer timer;
+        HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        headlessRenderer.run();
+        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }

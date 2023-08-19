@@ -115,8 +115,9 @@ public:
                 normalMatrices.push_back(node.computeNormalMatrix(0));
             }
         }
-        normalMatrixBuffer = context.createHostBuffer({
+        normalMatrixBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
+            .memory = MemoryUsage::DeviceHost,
             .size = sizeof(glm::mat4) * normalMatrices.size(),
             .data = normalMatrices.data(),
         });
@@ -125,14 +126,14 @@ public:
     void loadDomeLightTexture(const Context& context) {
         // Dummy textures
         domeLightTexture = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eSampled,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = rv::ImageUsage::Sampled,
+            .format = rv::Format::RGBA32Sfloat,
+            .layout = rv::ImageLayout::General,
         });
         lowDomeLightTexture = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eSampled,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = rv::ImageUsage::Sampled,
+            .format = rv::Format::RGBA32Sfloat,
+            .layout = rv::ImageLayout::General,
         });
     }
 
@@ -193,12 +194,12 @@ public:
             // normalMatrices.push_back(node.computeNormalMatrix());
         }
 
-        // transformMatrixBuffer = context.createDeviceBuffer({
+        // transformMatrixBuffer = context.createBuffer({
         //     .usage = BufferUsage::Storage,
         //     .size = transformMatrices.size() * sizeof(glm::mat4),
         //     .data = transformMatrices.data(),
         // });
-        // normalMatrixBuffer = context.createDeviceBuffer({
+        // normalMatrixBuffer = context.createBuffer({
         //     .usage = BufferUsage::Storage,
         //     .size = normalMatrices.size() * sizeof(glm::mat3),
         //     .data = normalMatrices.data(),
@@ -315,12 +316,12 @@ public:
                     }
                 }
 
-                vertexBuffers.push_back(context.createDeviceBuffer({
+                vertexBuffers.push_back(context.createBuffer({
                     .usage = BufferUsage::Vertex,
                     .size = sizeof(Vertex) * vertices.size(),
                     .data = vertices.data(),
                 }));
-                indexBuffers.push_back(context.createDeviceBuffer({
+                indexBuffers.push_back(context.createBuffer({
                     .usage = BufferUsage::Index,
                     .size = sizeof(uint32_t) * indices.size(),
                     .data = indices.data(),
@@ -401,7 +402,7 @@ public:
         if (materials.empty()) {
             materials.push_back({});  // dummy data
         }
-        materialBuffer = context.createDeviceBuffer({
+        materialBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
             .data = materials.data(),
@@ -491,13 +492,13 @@ public:
                                           node.computeTransformMatrix(frame), node.materialType});
             }
         }
-        topAccel.update(commandBuffer, accelInstances);
-        normalMatrixBuffer.copy(normalMatrices.data());
+        topAccel->update(commandBuffer, accelInstances);
+        normalMatrixBuffer->copy(normalMatrices.data());
     }
 
     int addMaterial(const Context& context, const Material& material) {
         materials.push_back(material);
-        materialBuffer = context.createDeviceBuffer({
+        materialBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
             .data = materials.data(),
@@ -509,7 +510,7 @@ public:
         if (materialIndices.empty()) {
             materialIndices.push_back(-1);  // dummy data
         }
-        materialIndexBuffer = context.createDeviceBuffer({
+        materialIndexBuffer = context.createBuffer({
             .usage = BufferUsage::Index,
             .size = sizeof(int) * materialIndices.size(),
             .data = materialIndices.data(),
@@ -517,8 +518,8 @@ public:
     }
 
     void initAddressBuffer(const Context& context) {
-        address.materials = materialBuffer.getAddress();
-        addressBuffer = context.createDeviceBuffer({
+        address.materials = materialBuffer->getAddress();
+        addressBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
             .size = sizeof(Address),
             .data = &address,
@@ -526,24 +527,24 @@ public:
     }
 
     std::vector<Node> nodes;
-    std::vector<DeviceBuffer> vertexBuffers;
-    std::vector<DeviceBuffer> indexBuffers;
+    std::vector<BufferHandle> vertexBuffers;
+    std::vector<BufferHandle> indexBuffers;
     std::vector<uint32_t> vertexCounts;
     std::vector<uint32_t> triangleCounts;
 
-    std::vector<BottomAccel> bottomAccels;
-    TopAccel topAccel;
-    Image domeLightTexture;
-    Image lowDomeLightTexture;
+    std::vector<BottomAccelHandle> bottomAccels;
+    TopAccelHandle topAccel;
+    ImageHandle domeLightTexture;
+    ImageHandle lowDomeLightTexture;
 
     std::vector<int> materialIndices;
-    DeviceBuffer materialIndexBuffer;
+    BufferHandle materialIndexBuffer;
 
     std::vector<Material> materials;
-    DeviceBuffer materialBuffer;
+    BufferHandle materialBuffer;
 
     Address address;
-    DeviceBuffer addressBuffer;
+    BufferHandle addressBuffer;
 
     bool cameraExists = false;
     glm::vec3 cameraTranslation;
@@ -551,5 +552,5 @@ public:
     float cameraYFov;
 
     std::vector<glm::mat4> normalMatrices;
-    HostBuffer normalMatrixBuffer;
+    BufferHandle normalMatrixBuffer;
 };

@@ -90,32 +90,28 @@ public:
     CompositePass() = default;
 
     CompositePass(const Context& context,
-                  const Image& baseImage,
-                  const Image& bloomImage,
+                  ImageHandle baseImage,
+                  ImageHandle bloomImage,
                   uint32_t width,
                   uint32_t height) {
         finalImageRGBA = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = vk::Format::eR8G8B8A8Unorm,
+            .format = rv::Format::RGBA8Unorm,
+            .layout = rv::ImageLayout::General,
         });
         finalImageBGRA = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = vk::Format::eB8G8R8A8Unorm,
+            .format = rv::Format::BGRA8Unorm,
+            .layout = rv::ImageLayout::General,
         });
 
         shader = context.createShader({
             .code = readShader("composite.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
+            .stage = rv::ShaderStage::Compute,
         });
 
         descSet = context.createDescriptorSet({
@@ -131,7 +127,7 @@ public:
 
         pipeline = context.createComputePipeline({
             .computeShader = shader,
-            .descSetLayout = descSet.getLayout(),
+            .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(CompositeInfo),
         });
     }
@@ -146,14 +142,14 @@ public:
         commandBuffer.dispatch(pipeline, countX, countY, 1);
     }
 
-    vk::Image getOutputImageRGBA() const { return finalImageRGBA.getImage(); }
-    vk::Image getOutputImageBGRA() const { return finalImageBGRA.getImage(); }
+    vk::Image getOutputImageRGBA() const { return finalImageRGBA->getImage(); }
+    vk::Image getOutputImageBGRA() const { return finalImageBGRA->getImage(); }
 
-    Shader shader;
-    DescriptorSet descSet;
-    ComputePipeline pipeline;
-    Image finalImageRGBA;
-    Image finalImageBGRA;
+    ShaderHandle shader;
+    DescriptorSetHandle descSet;
+    ComputePipelineHandle pipeline;
+    ImageHandle finalImageRGBA;
+    ImageHandle finalImageBGRA;
 };
 
 struct BloomInfo {
@@ -166,18 +162,16 @@ public:
 
     BloomPass(const Context& context, uint32_t width, uint32_t height) {
         bloomImage = context.createImage({
-            .usage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst |
-                     vk::ImageUsageFlagBits::eTransferSrc,
-            .initialLayout = vk::ImageLayout::eGeneral,
-            .aspect = vk::ImageAspectFlagBits::eColor,
+            .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = vk::Format::eR32G32B32A32Sfloat,
+            .format = rv::Format::RGBA32Sfloat,
+            .layout = rv::ImageLayout::General,
         });
 
         shader = context.createShader({
             .code = readShader("blur.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
+            .stage = rv::ShaderStage::Compute,
         });
 
         descSet = context.createDescriptorSet({
@@ -190,7 +184,7 @@ public:
 
         pipeline = context.createComputePipeline({
             .computeShader = shader,
-            .descSetLayout = descSet.getLayout(),
+            .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(BloomInfo),
         });
     }
@@ -208,10 +202,10 @@ public:
             {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
     }
 
-    vk::Image getOutputImage() const { return bloomImage.getImage(); }
+    vk::Image getOutputImage() const { return bloomImage->getImage(); }
 
-    Shader shader;
-    DescriptorSet descSet;
-    ComputePipeline pipeline;
-    Image bloomImage;
+    ShaderHandle shader;
+    DescriptorSetHandle descSet;
+    ComputePipelineHandle pipeline;
+    ImageHandle bloomImage;
 };
