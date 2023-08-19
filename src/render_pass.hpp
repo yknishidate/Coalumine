@@ -98,15 +98,15 @@ public:
             .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = rv::Format::RGBA8Unorm,
-            .layout = rv::ImageLayout::General,
+            .format = vk::Format::eR8G8B8A8Unorm,
+            .layout = vk::ImageLayout::eGeneral,
         });
         finalImageBGRA = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = rv::Format::BGRA8Unorm,
-            .layout = rv::ImageLayout::General,
+            .format = vk::Format::eB8G8R8A8Unorm,
+            .layout = vk::ImageLayout::eGeneral,
         });
 
         shader = context.createShader({
@@ -165,8 +165,8 @@ public:
             .usage = rv::ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = rv::Format::RGBA32Sfloat,
-            .layout = rv::ImageLayout::General,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eGeneral,
         });
 
         shader = context.createShader({

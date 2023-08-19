@@ -127,13 +127,13 @@ public:
         // Dummy textures
         domeLightTexture = context.createImage({
             .usage = ImageUsage::Sampled,
-            .format = Format::RGBA32Sfloat,
-            .layout = ImageLayout::General,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eGeneral,
         });
         lowDomeLightTexture = context.createImage({
             .usage = ImageUsage::Sampled,
-            .format = Format::RGBA32Sfloat,
-            .layout = ImageLayout::General,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eGeneral,
         });
     }
 

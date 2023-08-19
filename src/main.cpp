@@ -62,8 +62,8 @@ public:
             .usage = ImageUsage::Storage,
             .width = width,
             .height = height,
-            .format = rv::Format::RGBA32Sfloat,
-            .layout = rv::ImageLayout::General,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eGeneral,
         });
 
         createPipelines(context);
@@ -316,9 +316,9 @@ public:
 
             // Copy to buffer
             ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
-            commandBuffer.transitionLayout(outputImage, rv::ImageLayout::TransferSrc);
+            commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
             commandBuffer.copyImageToBuffer(outputImage, imageSavingBuffers[imageIndex]);
-            commandBuffer.transitionLayout(outputImage, rv::ImageLayout::General);
+            commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eGeneral);
 
             // End command buffer
             commandBuffers[imageIndex]->end();
@@ -503,7 +503,7 @@ public:
 
         // Copy to swapchain image
         commandBuffer.copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
-                                rv::ImageLayout::General, rv::ImageLayout::PresentSrc);
+                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
     }
 
     std::unique_ptr<Renderer> renderer;
