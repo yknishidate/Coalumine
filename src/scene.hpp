@@ -126,14 +126,14 @@ public:
     void loadDomeLightTexture(const Context& context) {
         // Dummy textures
         domeLightTexture = context.createImage({
-            .usage = rv::ImageUsage::Sampled,
-            .format = rv::Format::RGBA32Sfloat,
-            .layout = rv::ImageLayout::General,
+            .usage = ImageUsage::Sampled,
+            .format = Format::RGBA32Sfloat,
+            .layout = ImageLayout::General,
         });
         lowDomeLightTexture = context.createImage({
-            .usage = rv::ImageUsage::Sampled,
-            .format = rv::Format::RGBA32Sfloat,
-            .layout = rv::ImageLayout::General,
+            .usage = ImageUsage::Sampled,
+            .format = Format::RGBA32Sfloat,
+            .layout = ImageLayout::General,
         });
     }
 
@@ -476,8 +476,11 @@ public:
         std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
-                accelInstances.push_back({bottomAccels[node.meshIndex],
-                                          node.computeTransformMatrix(0.0), node.materialType});
+                accelInstances.push_back({
+                    .bottomAccel = bottomAccels[node.meshIndex],
+                    .transform = node.computeTransformMatrix(0.0),
+                    .sbtOffset = node.materialType,
+                });
             }
         }
         topAccel = context.createTopAccel({.accelInstances = accelInstances});
@@ -488,8 +491,11 @@ public:
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
                 normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
-                accelInstances.push_back({bottomAccels[node.meshIndex],
-                                          node.computeTransformMatrix(frame), node.materialType});
+                accelInstances.push_back({
+                    .bottomAccel = bottomAccels[node.meshIndex],
+                    .transform = node.computeTransformMatrix(frame),
+                    .sbtOffset = node.materialType,
+                });
             }
         }
         topAccel->update(commandBuffer, accelInstances);

@@ -315,21 +315,10 @@ public:
                 vk::AccessFlagBits::eTransferRead);
 
             // Copy to buffer
-            vk::Image outputImage = renderer->compositePass.getOutputImageRGBA();
-            Image::transitionLayout(commandBuffer.commandBuffer, outputImage,
-                                    vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal,
-                                    vk::ImageAspectFlagBits::eColor, 1);
-
-            vk::BufferImageCopy copyInfo;
-            copyInfo.setImageExtent({width, height, 1});
-            copyInfo.setImageSubresource({vk::ImageAspectFlagBits::eColor, 0, 0, 1});
-            commandBuffer.commandBuffer.copyImageToBuffer(
-                outputImage, vk::ImageLayout::eTransferSrcOptimal,
-                imageSavingBuffers[imageIndex]->getBuffer(), copyInfo);
-
-            Image::transitionLayout(commandBuffer.commandBuffer, outputImage,
-                                    vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eGeneral,
-                                    vk::ImageAspectFlagBits::eColor, 1);
+            ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+            commandBuffer.transitionLayout(outputImage, rv::ImageLayout::TransferSrc);
+            commandBuffer.copyImageToBuffer(outputImage, imageSavingBuffers[imageIndex]);
+            commandBuffer.transitionLayout(outputImage, rv::ImageLayout::General);
 
             // End command buffer
             commandBuffers[imageIndex]->end();
@@ -514,8 +503,7 @@ public:
 
         // Copy to swapchain image
         commandBuffer.copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
-                                rv::ImageLayout::General, rv::ImageLayout::PresentSrc, width,
-                                height);
+                                rv::ImageLayout::General, rv::ImageLayout::PresentSrc);
     }
 
     std::unique_ptr<Renderer> renderer;
