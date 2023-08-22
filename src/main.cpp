@@ -63,6 +63,7 @@ public:
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
             .layout = vk::ImageLayout::eGeneral,
+            .debugName = "baseImage",
         });
 
         createPipelines(context);
@@ -281,6 +282,7 @@ public:
                 .usage = BufferUsage::Staging,
                 .memory = MemoryUsage::Host,
                 .size = width * height * 4 * sizeof(uint8_t),
+                .debugName = "imageSavingBuffer",
             });
         }
 
@@ -361,8 +363,6 @@ private:
     uint32_t imageCount = 3;
     uint32_t imageIndex = 0;
     std::vector<vk::UniqueCommandBuffer> commandBuffers{};
-    // vk::UniqueSemaphore imageAcquiredSemaphore;
-    // std::vector<vk::UniqueFence> fences{};
     std::vector<vk::UniqueImage> images{};
 
     std::vector<BufferHandle> imageSavingBuffers;
@@ -511,13 +511,13 @@ public:
 
 int main() {
     try {
-        // DebugRenderer debugRenderer{};
-        // debugRenderer.run();
+        DebugRenderer debugRenderer{};
+        debugRenderer.run();
 
-        CPUTimer timer;
-        HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        headlessRenderer.run();
-        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        // CPUTimer timer;
+        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        // headlessRenderer.run();
+        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }

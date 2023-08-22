@@ -120,6 +120,7 @@ public:
             .memory = MemoryUsage::DeviceHost,
             .size = sizeof(glm::mat4) * normalMatrices.size(),
             .data = normalMatrices.data(),
+            .debugName = "normalMatrixBuffer",
         });
     }
 
@@ -320,11 +321,13 @@ public:
                     .usage = BufferUsage::Vertex,
                     .size = sizeof(Vertex) * vertices.size(),
                     .data = vertices.data(),
+                    .debugName = std::format("vertexBuffers[{}]", vertexBuffers.size()).c_str(),
                 }));
                 indexBuffers.push_back(context.createBuffer({
                     .usage = BufferUsage::Index,
                     .size = sizeof(uint32_t) * indices.size(),
                     .data = indices.data(),
+                    .debugName = std::format("indexBuffers[{}]", indexBuffers.size()).c_str(),
                 }));
                 vertexCounts.push_back(vertices.size());
                 triangleCounts.push_back(indices.size() / 3);
@@ -508,6 +511,7 @@ public:
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
             .data = materials.data(),
+            .debugName = "materialBuffer",
         });
         return materials.size() - 1;
     }
@@ -520,6 +524,7 @@ public:
             .usage = BufferUsage::Index,
             .size = sizeof(int) * materialIndices.size(),
             .data = materialIndices.data(),
+            .debugName = "materialIndexBuffer",
         });
     }
 
@@ -529,6 +534,7 @@ public:
             .usage = BufferUsage::Storage,
             .size = sizeof(Address),
             .data = &address,
+            .debugName = "addressBuffer",
         });
     }
 
