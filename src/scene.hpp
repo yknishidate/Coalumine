@@ -89,9 +89,8 @@ public:
         std::string err;
         std::string warn;
 
-        // std::string filepath = (getAssetDirectory() / "material_test.gltf").string();
-        // std::string filepath = (getAssetDirectory() / "diffuse_base.gltf").string();
-        std::string filepath = (getAssetDirectory() / "clean_scene_v3.gltf").string();
+        // std::string filepath = (getAssetDirectory() / "clean_scene_v3.gltf").string();
+        std::string filepath = (getAssetDirectory() / "clean_scene_v3_180_2.gltf").string();
         bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
@@ -487,6 +486,20 @@ public:
             }
         }
         topAccel = context.createTopAccel({.accelInstances = accelInstances});
+    }
+
+    bool shouldUpdate(int frame) const {
+        if (frame <= 1) {
+            return true;
+        }
+        for (const auto& node : nodes) {
+            if (node.meshIndex != -1) {
+                if (node.computeTransformMatrix(frame - 1) != node.computeTransformMatrix(frame)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     void updateTopAccel(vk::CommandBuffer commandBuffer, int frame) {
