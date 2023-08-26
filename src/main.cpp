@@ -21,9 +21,17 @@ public:
         maxRayRecursionDepth = rtProps.maxRayRecursionDepth;
         spdlog::info("MaxRayRecursionDepth: {}", maxRayRecursionDepth);
 
+        rv::CPUTimer timer;
         scene.loadFromFile(context);
+        spdlog::info("Load from file: {} ms", timer.elapsedInMilli());
+
+        timer.restart();
         scene.buildAccels(context);
+        spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
+
+        timer.restart();
         scene.loadDomeLightTexture(context);
+        spdlog::info("Load textures: {} ms", timer.elapsedInMilli());
 
         // Add materials
         Material diffuseMaterial;
@@ -155,9 +163,11 @@ public:
                 bool enableBloom,
                 int blurIteration) {
         // Update
-        if (playAnimation) {
-            scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
+        if (!playAnimation || !scene.shouldUpdate(pushConstants.frame)) {
+            spdlog::info("Skipped: {}", pushConstants.frame);
+            return;
         }
+        scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
 
         // Ray tracing
         commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
@@ -359,7 +369,7 @@ private:
 
     uint32_t width;
     uint32_t height;
-    uint32_t totalFrames = 150;
+    uint32_t totalFrames = 180;
     uint32_t imageCount = 3;
     uint32_t imageIndex = 0;
     std::vector<vk::UniqueCommandBuffer> commandBuffers{};
