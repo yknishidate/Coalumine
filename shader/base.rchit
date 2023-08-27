@@ -292,12 +292,13 @@ void main()
         vec3 radiance = fr * payload.radiance * NdotL / pdf;
         payload.radiance = emissive + radiance;
     }else if(transmission > 0.0){
+        float ior = 1.51;
+        bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
+        float n1 = into ? 1.0 : ior;
+        float n2 = into ? ior : 1.0;
+        float eta = n1 / n2;
+
         if(roughness == 0.0){
-            float ior = 1.51;
-            bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
-            float n1 = into ? 1.0 : ior;
-            float n2 = into ? ior : 1.0;
-            float eta = n1 / n2;
             vec3 orientedNormal = into ? normal : -normal;
             float cosTheta1 = dot(-gl_WorldRayDirectionEXT, orientedNormal);
             float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
@@ -326,11 +327,6 @@ void main()
             }
             return;
         }
-        float ior = 1.51;
-        bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
-        float n1 = into ? 1.0 : ior;
-        float n2 = into ? ior : 1.0;
-        float eta = n1 / n2;
 
         vec3 wo = worldToLocal(-gl_WorldRayDirectionEXT, normal);
         vec3 wh = sampleGGX(roughness, payload.seed);
