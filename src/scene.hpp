@@ -42,7 +42,10 @@ public:
 
     glm::mat4 computeTransformMatrix(int frame) const {
         if (keyFrames.empty()) {
-            return glm::mat4{1.0};
+            glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
+            glm::mat4 R = glm::mat4_cast(rotation);
+            glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
+            return T * R * S;
         }
         // TODO: use default values
         int index = frame % keyFrames.size();
@@ -83,15 +86,13 @@ class Scene {
 public:
     Scene() = default;
 
-    void loadFromFile(const Context& context) {
+    void loadFromFile(const Context& context, const std::filesystem::path& filepath) {
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
         std::string err;
         std::string warn;
 
-        // std::string filepath = (getAssetDirectory() / "clean_scene_v3.gltf").string();
-        std::string filepath = (getAssetDirectory() / "clean_scene_v3_180_2.gltf").string();
-        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
         }
@@ -99,7 +100,7 @@ public:
             std::cerr << "Err: " << err.c_str() << std::endl;
         }
         if (!ret) {
-            throw std::runtime_error("Failed to parse glTF: " + filepath);
+            throw std::runtime_error("Failed to parse glTF: " + filepath.string());
         }
 
         spdlog::info("Nodes: {}", model.nodes.size());
@@ -559,8 +560,6 @@ public:
 
     std::vector<BottomAccelHandle> bottomAccels;
     TopAccelHandle topAccel;
-    ImageHandle domeLightTexture;
-    ImageHandle lowDomeLightTexture;
 
     std::vector<int> materialIndices;
     BufferHandle materialIndexBuffer;
