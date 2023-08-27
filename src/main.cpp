@@ -439,10 +439,12 @@ public:
             shouldRecreate = true;
         }
         if (shouldRecreate) {
-            try {
-                renderer->createPipelines(context);
-            } catch (const std::exception& e) {
-                spdlog::error(e.what());
+            while (true) {
+                try {
+                    renderer->createPipelines(context);
+                } catch (const std::exception& e) {
+                    spdlog::error(e.what());
+                }
             }
         }
     }

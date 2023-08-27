@@ -286,10 +286,10 @@ void main()
 
         vec3 numerator = D * G * F;
         float denominator = max(4 * max(NdotL, 0.0) * max(NdotV, 0.0), 0.001); // prevent division by zero
-        vec3 specular = numerator / denominator;
+        vec3 fr = numerator / denominator;
 
         float pdf = D * NdotH / (4.0 * VdotH);
-        vec3 radiance = specular * payload.radiance * NdotL / pdf;
+        vec3 radiance = fr * payload.radiance * NdotL / pdf;
         payload.radiance = emissive + radiance;
     }else if(transmission > 0.0){
         if(roughness == 0.0){
@@ -344,12 +344,11 @@ void main()
         vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
         vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
 
-        float intensity = 1.1;
         if(refractDirection == vec3(0.0)){
             // total reflection
             traceRay(origin, reflectDirection);
             float pdf = 1.0;
-            payload.radiance = emissive + baseColor * payload.radiance / pdf * intensity;
+            payload.radiance = emissive + baseColor * payload.radiance / pdf;
             return;
         }
 
@@ -357,12 +356,12 @@ void main()
             // reflection
             traceRay(origin, reflectDirection);
             // NOTE: Fr / pdf = Fr / Fr = 1.0
-            payload.radiance = emissive + baseColor * payload.radiance * intensity;
+            payload.radiance = emissive + baseColor * payload.radiance;
         }else{
             // refraction
             traceRay(origin, refractDirection);
             float pdf = 1.0 - Fr;
-            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf * intensity;
+            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
         }
     }else{
         // Shadow ray
