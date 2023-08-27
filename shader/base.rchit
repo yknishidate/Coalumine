@@ -332,21 +332,25 @@ void main()
         float n2 = into ? ior : 1.0;
         float eta = n1 / n2;
 
-        roughness = 0.1;
+        vec3 wo = worldToLocal(-gl_WorldRayDirectionEXT, normal);
         vec3 wh = sampleGGX(roughness, payload.seed);
+        wh = into ? wh : -wh;
+        
+        // Compute the GGX BRDF
+        float VdotH = max(dot(wo, wh), 0.0);
 
-        vec3 orientedNormal = into ? localToWorld(wh, normal) : -localToWorld(wh, normal);
-
-        float cosTheta1 = dot(-gl_WorldRayDirectionEXT, orientedNormal);
         float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
-        float Fr = fresnelSchlick(cosTheta1, F0);
+        float Fr = fresnelSchlick(VdotH, F0);
         float Ft = (1.0 - Fr) * (eta * eta);
-        vec3 refractDirection = refract(gl_WorldRayDirectionEXT, orientedNormal, eta);
-        vec3 reflectDirection = reflect(gl_WorldRayDirectionEXT, orientedNormal);
+        vec3 wi_refract = refract(-wo, wh, eta);
+        vec3 wi_reflect = reflect(-wo, wh);
 
-        if(refractDirection == vec3(0.0)){
+        if(wi_refract == vec3(0.0)){
             // total reflection
-            traceRay(origin, reflectDirection);
+            float NdotL = max(cosTheta(wi_reflect), 0.0);
+            float NdotV = max(cosTheta(wo), 0.0);
+            float NdotH = max(cosTheta(wh), 0.0);
+            traceRay(origin, localToWorld(wi_reflect, normal));
             float pdf = 1.0;
             payload.radiance = emissive + baseColor * payload.radiance / pdf;
             return;
@@ -354,12 +358,15 @@ void main()
 
         if(rand(payload.seed) < Fr){
             // reflection
-            traceRay(origin, reflectDirection);
+            float NdotL = max(cosTheta(wi_reflect), 0.0);
+            float NdotV = max(cosTheta(wo), 0.0);
+            float NdotH = max(cosTheta(wh), 0.0);
+            traceRay(origin, localToWorld(wi_reflect, normal));
             // NOTE: Fr / pdf = Fr / Fr = 1.0
             payload.radiance = emissive + baseColor * payload.radiance;
         }else{
             // refraction
-            traceRay(origin, refractDirection);
+            traceRay(origin, localToWorld(wi_refract, normal));
             float pdf = 1.0 - Fr;
             payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
         }

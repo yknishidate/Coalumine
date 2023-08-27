@@ -38,7 +38,7 @@ public:
         diffuseMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
         Material glassMaterial;
         glassMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 0.0};
-        glassMaterial.roughnessFactor = 0.2;
+        glassMaterial.roughnessFactor = 0.1;
         Material metalMaterial;
         metalMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
         metalMaterial.metallicFactor = 1.0;
@@ -422,26 +422,31 @@ public:
 
     void recreatePipelinesIfShadersWereUpdated() const {
         bool shouldRecreate = false;
-        if (shouldRecompile("base.rgen", "main")) {
-            compileShader("base.rgen", "main");
-            shouldRecreate = true;
-        }
-        if (shouldRecompile("base.rchit", "main")) {
-            compileShader("base.rchit", "main");
-            shouldRecreate = true;
-        }
-        if (shouldRecompile("base.rmiss", "main")) {
-            compileShader("base.rmiss", "main");
-            shouldRecreate = true;
-        }
-        if (shouldRecompile("shadow.rmiss", "main")) {
-            compileShader("shadow.rmiss", "main");
-            shouldRecreate = true;
+        try {
+            if (shouldRecompile("base.rgen", "main")) {
+                compileShader("base.rgen", "main");
+                shouldRecreate = true;
+            }
+            if (shouldRecompile("base.rchit", "main")) {
+                compileShader("base.rchit", "main");
+                shouldRecreate = true;
+            }
+            if (shouldRecompile("base.rmiss", "main")) {
+                compileShader("base.rmiss", "main");
+                shouldRecreate = true;
+            }
+            if (shouldRecompile("shadow.rmiss", "main")) {
+                compileShader("shadow.rmiss", "main");
+                shouldRecreate = true;
+            }
+        } catch (const std::exception& e) {
+            spdlog::error(e.what());
         }
         if (shouldRecreate) {
             while (true) {
                 try {
                     renderer->createPipelines(context);
+                    return;
                 } catch (const std::exception& e) {
                     spdlog::error(e.what());
                 }
