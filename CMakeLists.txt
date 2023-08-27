@@ -27,3 +27,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # copy files in ./asset to binary directory
 file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Debug)
 file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Release)
+file(COPY ${CMAKE_SOURCE_DIR}/run.ps1 DESTINATION ${PROJECT_BINARY_DIR}/Release)
+file(COPY ${CMAKE_SOURCE_DIR}/fps.txt DESTINATION ${PROJECT_BINARY_DIR}/Release)

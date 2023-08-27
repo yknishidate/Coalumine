@@ -521,13 +521,13 @@ public:
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        // DebugRenderer debugRenderer{};
+        // debugRenderer.run();
 
-        // CPUTimer timer;
-        // HeadlessRenderer headlessRenderer{false, 1920, 1080};
-        // headlessRenderer.run();
-        // spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        CPUTimer timer;
+        HeadlessRenderer headlessRenderer{false, 1920, 1080};
+        headlessRenderer.run();
+        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
