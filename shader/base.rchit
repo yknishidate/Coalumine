@@ -201,14 +201,6 @@ float ggxGeometry(vec3 i, vec3 o, float roughness) {
     return ggxGeometry1(i, a) * ggxGeometry1(o, a);
 }
 
-float ggxGeometry(float NdotV, float NdotL, float roughness) {
-    float r = roughness + 1.0;
-    float k = (r * r) / 8.0;
-    float gv = NdotV / (NdotV * (1.0 - k) + k);
-    float gl = NdotL / (NdotL * (1.0 - k) + k);
-    return gv * gl;
-}
-
 vec3 fresnelSchlick(float VdotH, vec3 F0) {
     return F0 + (1.0 - F0) * pow(1.0 - VdotH, 5.0);
 }
@@ -299,9 +291,9 @@ void main()
         float n1 = into ? 1.0 : ior;
         float n2 = into ? ior : 1.0;
         float eta = n1 / n2;
-        vec3 orientedNormal = into ? normal : -normal;
+        vec3 n = into ? normal : -normal;
         
-        vec3 wi = worldToLocal(-gl_WorldRayDirectionEXT, orientedNormal);
+        vec3 wi = worldToLocal(-gl_WorldRayDirectionEXT, n);
         vec3 wh = sampleGGX(roughness, payload.seed);
         
         float VdotH = max(dot(wi, wh), 0.0);
@@ -311,7 +303,7 @@ void main()
 
         if(wo_refract == vec3(0.0)){
             // total reflection
-            traceRay(origin, localToWorld(wo_reflect, orientedNormal));
+            traceRay(origin, localToWorld(wo_reflect, n));
             
             // Compute the GGX BRDF
             float NdotL = max(cosTheta(wo_reflect), 0.0);
@@ -320,36 +312,37 @@ void main()
             float VdotH = max(dot(wi, wh), 0.0);
 
             vec3 F = vec3(1.0); // for total reflection
-            float G = ggxGeometry(NdotV, NdotL, roughness);
+            float G = ggxGeometry(wi, wo_reflect, roughness);
 
             // Importance sampling:
             // weight = (fr * cos) / pdf
             vec3 weight = (F * G * VdotH) / max(NdotV * NdotH, 0.001);
             payload.radiance = emissive + weight * payload.radiance;
-            return;
         }
         
         float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
-        float Fr = fresnelSchlick(VdotH, F0);
-        float Ft = (1.0 - Fr) * (eta * eta);
-        if(rand(payload.seed) < Fr){
-            traceRay(origin, localToWorld(wo_reflect, orientedNormal));
+        float Re = fresnelSchlick(VdotH, F0);
+        float Tr = (1.0 - Re) * (eta * eta);
+
+        float prob = 0.25 + 0.5 * Re;
+        if(rand(payload.seed) < prob){
+            traceRay(origin, localToWorld(wo_reflect, n));
             
             float NdotL = max(cosTheta(wo_reflect), 0.0);
             float NdotV = max(cosTheta(wi), 0.0);
             float NdotH = max(cosTheta(wh), 0.0);
             float VdotH = max(dot(wi, wh), 0.0);
             
-            vec3 F = vec3(1.0); // for total reflection
-            float G = ggxGeometry(NdotV, NdotL, roughness);
+            vec3 F = fresnelSchlick(VdotH, baseColor * 0.9);
+            float G = ggxGeometry(wi, wo_reflect, roughness);
 
-            vec3 weight = (F * G * VdotH) / max(NdotV * NdotH, 0.001);
+            vec3 weight = (F * G * VdotH * Re) / max(NdotV * NdotH * prob, 0.001);
             payload.radiance = emissive + weight * payload.radiance;
         }else{
             // refraction
-            traceRay(origin, localToWorld(wo_refract, orientedNormal));
-            float pdf = 1.0 - Fr;
-            payload.radiance = emissive + baseColor * payload.radiance * Ft / pdf;
+            traceRay(origin, localToWorld(wo_refract, n));
+            float pdf = 1.0 - prob;
+            payload.radiance = emissive + baseColor * payload.radiance * Tr / pdf;
         }
     }else{
         // Shadow ray
