@@ -10,7 +10,7 @@ layout(location = 0) rayPayloadEXT HitPayload payload;
 void main()
 {
     const vec2 screenPos = vec2(gl_LaunchIDEXT.xy);
-    const vec2 pixelSize = 2.0 / vec2(gl_LaunchSizeEXT.xy);
+    const vec2 samplingRadius = 2.0 / vec2(gl_LaunchSizeEXT.xy);
     const vec2 uv = vec2(gl_LaunchIDEXT.xy) / vec2(gl_LaunchSizeEXT.xy) * 2.0 - 1.0;
     vec4 origin = invView * vec4(0, 0, 0, 1);
 
@@ -18,7 +18,7 @@ void main()
     payload.seed = s.x + s.y;
     vec3 radiance = vec3(0.0);
     for(int i = 0; i < sampleCount; i++){
-        vec2 offset    = vec2(rand(payload.seed), rand(payload.seed)) * pixelSize;
+        vec2 offset    = vec2(rand(payload.seed), rand(payload.seed)) * samplingRadius;
         vec4 target    = invProj * vec4(uv.xy + offset, 1, 1);
         vec4 direction = invView * vec4(normalize(target.xyz), 0);
         payload.radiance = vec3(0.0);
