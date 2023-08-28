@@ -297,21 +297,20 @@ void main()
         if(wo_refract == vec3(0.0)){
             // total reflection
             traceRay(origin, localToWorld(wo_reflect, orientedNormal));
-
-            // NOTE: Fr = 1.0
+            
+            // Compute the GGX BRDF
             float NdotL = max(cosTheta(wo_reflect), 0.0);
             float NdotV = max(cosTheta(wi), 0.0);
             float NdotH = max(cosTheta(wh), 0.0);
             float VdotH = max(dot(wi, wh), 0.0);
-            
-            vec3 F = vec3(1.0); // F = 1.0 in total reflection
-            float D = ggxDistribution(NdotH, roughness);
+
+            vec3 F = vec3(1.0); // for total reflection
             float G = ggxGeometry(NdotV, NdotL, roughness);
 
-            vec3 fr = (D * G * F) / max(4 * NdotL * NdotV, 0.001);
-            float pdf = D * NdotH / max(4.0 * VdotH, 0.001);
-
-            payload.radiance = emissive + fr * payload.radiance / pdf;
+            // Importance sampling:
+            // weight = (fr * cos) / pdf
+            vec3 weight = (F * G * VdotH) / max(NdotV * NdotH, 0.001);
+            payload.radiance = emissive + weight * payload.radiance;
             return;
         }
         
