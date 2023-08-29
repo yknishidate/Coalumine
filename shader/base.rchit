@@ -210,6 +210,7 @@ float fresnelSchlick(float VdotH, float F0) {
 }
 
 vec3 sampleGGX(float roughness, inout uint seed) {
+    // NOTE: This function obeys D(m) * dot(m, n)
     // NOTE: if roughness == 0.0, return vec3(0, 0, 1)
     float u = rand(seed);
     float v = rand(seed);
@@ -232,7 +233,7 @@ void main()
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
     mat3 normalMatrix = mat3(normalMatrices[meshIndex]);
-    normal = normalMatrix * normal;
+    normal = normalize(normalMatrix * normal);
 
     // Get material
     vec3 baseColor = vec3(1.0, 0.0, 1.0);
@@ -278,12 +279,14 @@ void main()
         float nm = max(cosTheta(m), 0.0);
         float mo = max(dot(o, m), 0.0);
 
-        vec3 F = fresnelSchlick(mo, baseColor * 0.9);
+        // NOTE: If F0 = 1, the Fresnel value will always be 1, 
+        // thus eliminating the Fresnel-like effect.
+        vec3 F = fresnelSchlick(mo, baseColor);
         float G = ggxGeometry(i, o, roughness);
 
         // Importance sampling:
         // weight = (fr * cos) / pdf
-        vec3 weight = (F * G * mo) / max(ni * nm, 0.001);
+        vec3 weight = vec3(F * G * mo) / max(ni * nm, 0.001);
         payload.radiance = emissive + weight * payload.radiance;
     }else if(transmission > 0.0){
         float ior = 1.51;
@@ -295,54 +298,40 @@ void main()
         
         vec3 i = worldToLocal(-gl_WorldRayDirectionEXT, n);
         vec3 m = sampleGGX(roughness, payload.seed);
-        
-        float VdotH = max(dot(i, m), 0.0);
-
         vec3 or = reflect(-i, m);      // out(reflect)
         vec3 ot = refract(-i, m, eta); // out(transmit)
+        float mi = max(dot(i, m), 0.0);
+        float ni = max(cosTheta(i), 0.0);
+        float nm = max(cosTheta(m), 0.0);
 
+        // total reflection
         if(or == vec3(0.0)){
-            // total reflection
             traceRay(origin, localToWorld(or, n));
             
             // Compute the GGX BRDF
-            float NdotL = max(cosTheta(or), 0.0);
-            float NdotV = max(cosTheta(i), 0.0);
-            float NdotH = max(cosTheta(m), 0.0);
-            float VdotH = max(dot(or, m), 0.0);
-
-            vec3 F = vec3(1.0); // for total reflection
+            // NOTE: F = 1.0 in total reflection
+            float no = max(cosTheta(or), 0.0);
             float G = ggxGeometry(i, or, roughness);
-
-            // Importance sampling:
-            // weight = (fr * cos) / pdf
-            vec3 weight = (F * G * VdotH) / max(NdotV * NdotH, 0.001);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
             payload.radiance = emissive + weight * payload.radiance;
         }
         
+        // if n = 1.5, F0 = 0.04
         float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
-        float Re = fresnelSchlick(VdotH, F0);
-        float Tr = (1.0 - Re) * (eta * eta);
-
-        float prob = 0.25 + 0.5 * Re;
-        if(rand(payload.seed) < prob){
+        float F = fresnelSchlick(mi, F0);
+        if(rand(payload.seed) < F){
             traceRay(origin, localToWorld(or, n));
             
-            float NdotL = max(cosTheta(or), 0.0);
-            float NdotV = max(cosTheta(i), 0.0);
-            float NdotH = max(cosTheta(m), 0.0);
-            float VdotH = max(dot(or, m), 0.0);
-            
-            vec3 F = fresnelSchlick(VdotH, baseColor * 0.9);
-            float G = ggxGeometry(i, or, roughness);
-
-            vec3 weight = (F * G * VdotH * Re) / max(NdotV * NdotH * prob, 0.001);
+            float G = max(ggxGeometry(i, or, roughness), 0.0);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
             payload.radiance = emissive + weight * payload.radiance;
         }else{
             // refraction
             traceRay(origin, localToWorld(ot, n));
-            float pdf = 1.0 - prob;
-            payload.radiance = emissive + baseColor * payload.radiance * Tr / pdf;
+            
+            float G = max(ggxGeometry(i, ot, roughness), 0.0);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
+            payload.radiance = emissive + weight * payload.radiance;
         }
     }else{
         // Shadow ray
