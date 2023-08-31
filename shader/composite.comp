@@ -24,7 +24,10 @@ void main()
     vec3 baseColor = imageLoad(baseImage, st).rgb;
     vec3 bloomColor = imageLoad(bloomImage, st).rgb;
 
-    vec3 color = baseColor + bloomColor * bloomIntensity;
+    vec3 color = baseColor;
+    if(false){ // enable boolm
+        color += bloomColor * bloomIntensity;
+    }
     color = saturate(color, saturation);
     if(enableToneMapping == 1) color = toneMappingACESFilmic(color, exposure);
     if(enableGammaCorrection == 1) color = pow(color, vec3(1.0 / gamma));

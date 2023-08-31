@@ -183,14 +183,6 @@ float tan2Theta(vec3 w) {
     return sin2Theta(w) / cos2Theta(w);
 }
 
-float ggxDistribution(float NdotH, float roughness) {
-    if(roughness == 0.0) return 10000.0;
-    float alpha = roughness * roughness;
-    float alpha2 = alpha * alpha;
-    float d = (NdotH * alpha2 - NdotH) * NdotH + 1.0;
-    return alpha2 / (PI * d * d);
-}
-
 float ggxGeometry1(vec3 v, float a) {
     float t = tanTheta(v);
     return 2 / (1 + sqrt(1 + a * a * t * t));
@@ -303,6 +295,10 @@ void main()
         float mi = max(dot(i, m), 0.0);
         float ni = max(cosTheta(i), 0.0);
         float nm = max(cosTheta(m), 0.0);
+        if(mi == 0.0){
+            payload.radiance = vec3(0);
+            return;
+        }
 
         // total reflection
         if(or == vec3(0.0)){

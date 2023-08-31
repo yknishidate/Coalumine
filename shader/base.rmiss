@@ -40,10 +40,9 @@ vec3 rotateDirection(vec3 v, float theta, float phi) {
 
 void main()
 {
-    vec3 v = rotateDirection(gl_WorldRayDirectionEXT.xyz, domeLightTheta, domeLightPhi);
-    vec2 uv = sampleSphericalMap(v);
-    //payload.radiance = texture(domeLightTexture, uv).rgb;
-    //payload.radiance = texture(lowDomeLightTexture, uv).rgb;
+    vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
+    uv.x = mod(uv.x + radians(domeLightPhi) / (2 * PI), 1.0);
+    payload.radiance = texture(domeLightTexture, uv).rgb;
 
     // template0
     //payload.radiance = colorRamp5(uv.x,
@@ -52,17 +51,4 @@ void main()
     //    vec3(  2,  37, 131) / 255.0,
     //    vec3(  0,   3,  49) / 255.0,
     //    vec3(  0,   0,   3) / 255.0);
-
-    // template1
-    payload.radiance = colorRamp5(uv.x,
-        vec3(225, 245, 253) / 255.0,
-        vec3(  0,   3,  49) / 255.0,
-        vec3(  2,  37, 131) / 255.0,
-        vec3(  1, 115, 233) / 255.0,
-        vec3(  0,   0,   3) / 255.0);
-
-    // black-white
-    //payload.radiance = colorRamp2(uv.x,
-    //    vec3(0.0, 0.0, 0.0),
-    //    vec3(1.0, 1.0, 1.0));
 }

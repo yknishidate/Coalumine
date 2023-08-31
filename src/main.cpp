@@ -22,16 +22,92 @@ public:
         spdlog::info("MaxRayRecursionDepth: {}", maxRayRecursionDepth);
 
         rv::CPUTimer timer;
-        scene.loadFromFile(context);
-        spdlog::info("Load from file: {} ms", timer.elapsedInMilli());
+        loadMaterialTestScene(context);
+        spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
         scene.buildAccels(context);
         spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
 
-        timer.restart();
-        scene.loadDomeLightTexture(context);
-        spdlog::info("Load textures: {} ms", timer.elapsedInMilli());
+        scene.initMaterialIndexBuffer(context);
+        scene.initAddressBuffer(context);
+
+        baseImage = context.createImage({
+            .usage = ImageUsage::Storage,
+            .extent = {width, height, 1},
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eGeneral,
+            .debugName = "baseImage",
+        });
+
+        createPipelines(context);
+
+        orbitalCamera = OrbitalCamera{app, width, height};
+        // orbitalCamera.phi = 25.0f;
+        // orbitalCamera.theta = 30.0f;
+        orbitalCamera.distance = 12.0f;
+        orbitalCamera.fovY = glm::radians(30.0f);
+        currentCamera = &orbitalCamera;
+
+        if (scene.cameraExists) {
+            fpsCamera = FPSCamera{app, width, height};
+            fpsCamera.position = scene.cameraTranslation;
+            glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
+
+            // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
+            fpsCamera.pitch = -glm::degrees(eulerAngles.x);
+            if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
+                fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
+            }
+            fpsCamera.yaw = glm::mod(glm::degrees(eulerAngles.y), 360.0f);
+            // fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
+            fpsCamera.fovY = scene.cameraYFov;
+            currentCamera = &fpsCamera;
+        }
+    }
+
+    void loadMaterialTestScene(const Context& context) {
+        // Add mesh
+        MeshHandle sphereMesh = context.createSphereMesh({
+            .numSlices = 64,
+            .numStacks = 64,
+            .radius = 0.5,
+        });
+
+        // Add material, mesh, node
+        for (int i = 0; i < 8; i++) {
+            Material metal;
+            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
+            metal.metallicFactor = 1.0f;
+            metal.roughnessFactor = i / 7.0f;
+            int matIndex = scene.addMaterial(context, metal);
+            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+
+            Node node;
+            node.meshIndex = meshIndex;
+            node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
+            scene.addNode(node);
+        }
+        for (int i = 0; i < 8; i++) {
+            Material metal;
+            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
+            metal.metallicFactor = 0.0f;
+            metal.roughnessFactor = i / 7.0f;
+            int matIndex = scene.addMaterial(context, metal);
+            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+
+            Node node;
+            node.meshIndex = meshIndex;
+            node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
+            scene.addNode(node);
+        }
+
+        scene.createNormalMatrixBuffer(context);
+        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
+    }
+
+    void loadCleanScene(const Context& context) {
+        scene.loadFromFile(context, getAssetDirectory() / "clean_scene_v3_180_2.gltf");
 
         // Add materials
         Material diffuseMaterial;
@@ -61,40 +137,6 @@ public:
                     materialIndex = glassMaterialIndex;
                 }
             }
-        }
-
-        scene.initMaterialIndexBuffer(context);
-        scene.initAddressBuffer(context);
-
-        baseImage = context.createImage({
-            .usage = ImageUsage::Storage,
-            .extent = {width, height, 1},
-            .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eGeneral,
-            .debugName = "baseImage",
-        });
-
-        createPipelines(context);
-
-        orbitalCamera = OrbitalCamera{app, width, height};
-        orbitalCamera.phi = 25.0f;
-        orbitalCamera.theta = 30.0f;
-        currentCamera = &orbitalCamera;
-
-        if (scene.cameraExists) {
-            fpsCamera = FPSCamera{app, width, height};
-            fpsCamera.position = scene.cameraTranslation;
-            glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
-
-            // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
-            fpsCamera.pitch = -glm::degrees(eulerAngles.x);
-            if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
-                fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
-            }
-            fpsCamera.yaw = glm::mod(glm::degrees(eulerAngles.y), 360.0f);
-            // fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
-            fpsCamera.fovY = scene.cameraYFov;
-            currentCamera = &fpsCamera;
         }
     }
 
@@ -135,7 +177,6 @@ public:
                     {"baseImage", baseImage},
                     {"bloomImage", bloomPass.bloomImage},
                     {"domeLightTexture", scene.domeLightTexture},
-                    {"lowDomeLightTexture", scene.lowDomeLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });
@@ -158,12 +199,15 @@ public:
         pushConstants.invProj = currentCamera->getInvProj();
     }
 
+    void reset() { pushConstants.frame = 0; }
+
     void render(const CommandBuffer& commandBuffer,
                 bool playAnimation,
                 bool enableBloom,
                 int blurIteration) {
         // Update
-        if (!playAnimation || !scene.shouldUpdate(pushConstants.frame)) {
+        // if (!playAnimation || !scene.shouldUpdate(pushConstants.frame)) {
+        if (!playAnimation) {
             spdlog::info("Skipped: {}", pushConstants.frame);
             return;
         }
@@ -416,7 +460,15 @@ public:
         renderer = std::make_unique<Renderer>(context, width, height, this);
     }
 
-    void onStart() override { gpuTimer = context.createGPUTimer({}); }
+    void onStart() override {
+        gpuTimer = context.createGPUTimer({});
+        imageSavingBuffer = context.createBuffer({
+            .usage = BufferUsage::Staging,
+            .memory = MemoryUsage::Host,
+            .size = width * height * 4 * sizeof(uint8_t),
+            .debugName = "imageSavingBuffer",
+        });
+    }
 
     void onUpdate() override { renderer->update(); }
 
@@ -446,6 +498,7 @@ public:
             while (true) {
                 try {
                     renderer->createPipelines(context);
+                    renderer->reset();
                     return;
                 } catch (const std::exception& e) {
                     spdlog::error(e.what());
@@ -458,56 +511,68 @@ public:
         static int imageIndex = 0;
         static bool enableBloom = false;
         static int blurIteration = 32;
-        ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
-        ImGui::SliderInt("Sample count", &renderer->pushConstants.sampleCount, 1, 512);
-
-        // Dome light
-        ImGui::SliderFloat("Dome light theta", &renderer->pushConstants.domeLightTheta, 0.0, 360.0);
-        ImGui::SliderFloat("Dome light phi", &renderer->pushConstants.domeLightPhi, 0.0, 360.0);
-
-        // Infinite light
-        static glm::vec4 defaultInfiniteLightDirection =
-            renderer->pushConstants.infiniteLightDirection;
-        ImGui::SliderFloat4(
-            "Infinite light direction",
-            reinterpret_cast<float*>(&renderer->pushConstants.infiniteLightDirection), -1.0, 1.0);
-        ImGui::SliderFloat("Infinite light intensity",
-                           &renderer->pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
-        if (ImGui::Button("Reset infinite light")) {
-            renderer->pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
-        }
-
-        // Bloom
-        ImGui::Checkbox("Enable bloom", &enableBloom);
-        if (enableBloom) {
-            ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity, 0.0,
-                               10.0);
-            ImGui::SliderFloat("Bloom threshold", &renderer->pushConstants.bloomThreshold, 0.0,
-                               10.0);
-            ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-            ImGui::SliderInt("Blur size", &renderer->bloomInfo.blurSize, 0, 64);
-        }
-
-        // Tone mapping
-        ImGui::Checkbox("Enable tone mapping",
-                        reinterpret_cast<bool*>(&renderer->compositeInfo.enableToneMapping));
-        if (renderer->compositeInfo.enableToneMapping) {
-            ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0, 5.0);
-        }
-
-        // Gamma correction
-        ImGui::Checkbox("Enable gamma correction",
-                        reinterpret_cast<bool*>(&renderer->compositeInfo.enableGammaCorrection));
-        if (renderer->compositeInfo.enableGammaCorrection) {
-            ImGui::SliderFloat("Gamma", &renderer->compositeInfo.gamma, 0.0, 5.0);
-        }
-
         static bool playAnimation = true;
-        ImGui::Checkbox("Play animation", &playAnimation);
+        static bool open = true;
+        if (open) {
+            ImGui::Begin("Settings", &open);
+            ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
+            ImGui::SliderInt("Sample count", &renderer->pushConstants.sampleCount, 1, 512);
+            if (ImGui::Button("Save image")) {
+                saveImage();
+            }
 
-        // Show GPU time
-        if (renderer->pushConstants.frame > 1) {
-            ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
+            // Dome light
+            if (ImGui::SliderFloat("Dome light phi", &renderer->pushConstants.domeLightPhi, 0.0,
+                                   360.0)) {
+                renderer->reset();
+            }
+
+            // Infinite light
+            static glm::vec4 defaultInfiniteLightDirection =
+                renderer->pushConstants.infiniteLightDirection;
+            ImGui::SliderFloat4(
+                "Infinite light direction",
+                reinterpret_cast<float*>(&renderer->pushConstants.infiniteLightDirection), -1.0,
+                1.0);
+            ImGui::SliderFloat("Infinite light intensity",
+                               &renderer->pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
+            if (ImGui::Button("Reset infinite light")) {
+                renderer->pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
+            }
+
+            // Bloom
+            ImGui::Checkbox("Enable bloom", &enableBloom);
+            if (enableBloom) {
+                ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity, 0.0,
+                                   10.0);
+                ImGui::SliderFloat("Bloom threshold", &renderer->pushConstants.bloomThreshold, 0.0,
+                                   10.0);
+                ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
+                ImGui::SliderInt("Blur size", &renderer->bloomInfo.blurSize, 0, 64);
+            }
+
+            // Tone mapping
+            ImGui::Checkbox("Enable tone mapping",
+                            reinterpret_cast<bool*>(&renderer->compositeInfo.enableToneMapping));
+            if (renderer->compositeInfo.enableToneMapping) {
+                ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0, 5.0);
+            }
+
+            // Gamma correction
+            ImGui::Checkbox(
+                "Enable gamma correction",
+                reinterpret_cast<bool*>(&renderer->compositeInfo.enableGammaCorrection));
+            if (renderer->compositeInfo.enableGammaCorrection) {
+                ImGui::SliderFloat("Gamma", &renderer->compositeInfo.gamma, 0.0, 5.0);
+            }
+
+            ImGui::Checkbox("Play animation", &playAnimation);
+
+            // Show GPU time
+            if (renderer->pushConstants.frame > 1) {
+                ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
+            }
+            ImGui::End();
         }
 
         // Check shader files
@@ -520,10 +585,28 @@ public:
         // Copy to swapchain image
         commandBuffer.copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
+
+        // Copy to buffer
+        ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+        commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
+        commandBuffer.copyImageToBuffer(outputImage, imageSavingBuffer);
+        commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eGeneral);
+    }
+
+    void saveImage() {
+        auto* pixels = static_cast<uint8_t*>(imageSavingBuffer->map());
+        std::string frame = std::to_string(renderer->pushConstants.frame);
+        std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
+        std::string img = zeros + frame + ".jpg";
+        writeTask = std::async(std::launch::async, [=]() {
+            stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
+        });
     }
 
     std::unique_ptr<Renderer> renderer;
     GPUTimerHandle gpuTimer;
+    BufferHandle imageSavingBuffer;
+    std::future<void> writeTask;
 };
 
 int main() {
