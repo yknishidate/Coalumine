@@ -11,7 +11,7 @@ struct PushConstants {
     float bloomThreshold = 0.5f;
     float domeLightTheta = 0.0f;
 
-    float domeLightPhi = 32.0f;
+    float domeLightPhi = 0.0f;
 
     // NEE & Infinite light
     int enableNEE = 1;
@@ -88,7 +88,6 @@ struct Material {
 layout(binding = 0, rgba32f) uniform image2D baseImage;
 layout(binding = 1, rgba32f) uniform image2D bloomImage;
 layout(binding = 2) uniform sampler2D domeLightTexture;
-layout(binding = 3) uniform sampler2D lowDomeLightTexture;
 
 // Accel
 layout(binding = 10) uniform accelerationStructureEXT topLevelAS;

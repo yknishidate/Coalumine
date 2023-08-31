@@ -42,9 +42,11 @@ public:
 
     glm::mat4 computeTransformMatrix(int frame) const {
         if (keyFrames.empty()) {
-            return glm::mat4{1.0};
+            glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
+            glm::mat4 R = glm::mat4_cast(rotation);
+            glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
+            return T * R * S;
         }
-        // TODO: use default values
         int index = frame % keyFrames.size();
         glm::mat4 T = glm::translate(glm::mat4{1.0}, keyFrames[index].translation);
         glm::mat4 R = glm::mat4_cast(keyFrames[index].rotation);
@@ -83,15 +85,13 @@ class Scene {
 public:
     Scene() = default;
 
-    void loadFromFile(const Context& context) {
+    void loadFromFile(const Context& context, const std::filesystem::path& filepath) {
         tinygltf::Model model;
         tinygltf::TinyGLTF loader;
         std::string err;
         std::string warn;
 
-        // std::string filepath = (getAssetDirectory() / "clean_scene_v3.gltf").string();
-        std::string filepath = (getAssetDirectory() / "clean_scene_v3_180_2.gltf").string();
-        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+        bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
         if (!warn.empty()) {
             std::cerr << "Warn: " << warn.c_str() << std::endl;
         }
@@ -99,7 +99,7 @@ public:
             std::cerr << "Err: " << err.c_str() << std::endl;
         }
         if (!ret) {
-            throw std::runtime_error("Failed to parse glTF: " + filepath);
+            throw std::runtime_error("Failed to parse glTF: " + filepath.string());
         }
 
         spdlog::info("Nodes: {}", model.nodes.size());
@@ -108,7 +108,10 @@ public:
         loadMeshes(context, model);
         loadMaterials(context, model);
         loadAnimation(context, model);
+        createNormalMatrixBuffer(context);
+    }
 
+    void createNormalMatrixBuffer(const Context& context) {
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
                 normalMatrices.push_back(node.computeNormalMatrix(0));
@@ -123,17 +126,53 @@ public:
         });
     }
 
-    void loadDomeLightTexture(const Context& context) {
-        // Dummy textures
+    void loadDomeLightTexture(const Context& context, const std::filesystem::path& filepath) {
+        domeLightTexture = Image::loadFromFileHDR(context, filepath.string());
+    }
+
+    void createDomeLightTexture(const Context& context,
+                                uint32_t width,
+                                uint32_t height,
+                                const void* data) {
         domeLightTexture = context.createImage({
-            .usage = ImageUsage::Sampled,
+            .usage = vk::ImageUsageFlagBits::eSampled,
+            .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eGeneral,
+            .layout = vk::ImageLayout::eTransferDstOptimal,
+            .mipLevels = 1,
+            .debugName = "domeLightTexture",
         });
-        lowDomeLightTexture = context.createImage({
-            .usage = ImageUsage::Sampled,
-            .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eGeneral,
+
+        // Copy to image
+        BufferHandle stagingBuffer = context.createBuffer({
+            .usage = BufferUsage::Staging,
+            .memory = MemoryUsage::Host,
+            .size = width * height * 4 * sizeof(float),
+            .data = data,
+        });
+
+        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
+            vk::ImageSubresourceLayers subresourceLayers;
+            subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
+            subresourceLayers.setMipLevel(0);
+            subresourceLayers.setBaseArrayLayer(0);
+            subresourceLayers.setLayerCount(1);
+
+            vk::Extent3D extent;
+            extent.setWidth(width);
+            extent.setHeight(height);
+            extent.setDepth(1);
+
+            vk::BufferImageCopy region;
+            region.imageSubresource = subresourceLayers;
+            region.imageExtent = extent;
+
+            domeLightTexture->transitionLayout(commandBuffer, vk::ImageLayout::eTransferDstOptimal);
+            commandBuffer.copyBufferToImage(stagingBuffer->getBuffer(),
+                                            domeLightTexture->getImage(),
+                                            vk::ImageLayout::eTransferDstOptimal, region);
+            domeLightTexture->transitionLayout(commandBuffer,
+                                               vk::ImageLayout::eShaderReadOnlyOptimal);
         });
     }
 
@@ -529,6 +568,20 @@ public:
         return materials.size() - 1;
     }
 
+    int addMesh(const MeshHandle& mesh, int materialIndex) {
+        vertexBuffers.push_back(mesh->vertexBuffer);
+        indexBuffers.push_back(mesh->indexBuffer);
+        vertexCounts.push_back(mesh->vertices.size());
+        triangleCounts.push_back(mesh->indices.size() / 3);
+        materialIndices.push_back(materialIndex);
+        return vertexBuffers.size() - 1;
+    }
+
+    int addNode(const Node& node) {
+        nodes.push_back(node);
+        return nodes.size() - 1;
+    }
+
     void initMaterialIndexBuffer(const Context& context) {
         if (materialIndices.empty()) {
             materialIndices.push_back(-1);  // dummy data
@@ -560,7 +613,6 @@ public:
     std::vector<BottomAccelHandle> bottomAccels;
     TopAccelHandle topAccel;
     ImageHandle domeLightTexture;
-    ImageHandle lowDomeLightTexture;
 
     std::vector<int> materialIndices;
     BufferHandle materialIndexBuffer;
