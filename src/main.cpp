@@ -14,13 +14,6 @@ class Renderer {
 public:
     Renderer(const Context& context, uint32_t width, uint32_t height, App* app)
         : width{width}, height{height} {
-        // Output ray tracing props
-        auto rtProps =
-            context
-                .getPhysicalDeviceProperties2<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>();
-        maxRayRecursionDepth = rtProps.maxRayRecursionDepth;
-        spdlog::info("MaxRayRecursionDepth: {}", maxRayRecursionDepth);
-
         rv::CPUTimer timer;
         loadMaterialTestScene(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
@@ -43,8 +36,6 @@ public:
         createPipelines(context);
 
         orbitalCamera = OrbitalCamera{app, width, height};
-        // orbitalCamera.phi = 25.0f;
-        // orbitalCamera.theta = 30.0f;
         orbitalCamera.distance = 12.0f;
         orbitalCamera.fovY = glm::radians(30.0f);
         currentCamera = &orbitalCamera;
@@ -60,7 +51,6 @@ public:
                 fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
             }
             fpsCamera.yaw = glm::mod(glm::degrees(eulerAngles.y), 360.0f);
-            // fpsCamera.yaw = glm::mod(glm::degrees(-eulerAngles.y) + 180, 360.0f);
             fpsCamera.fovY = scene.cameraYFov;
             currentCamera = &fpsCamera;
         }
@@ -187,7 +177,7 @@ public:
             .chitShaders = shaders[3],
             .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(PushConstants),
-            .maxRayRecursionDepth = maxRayRecursionDepth,
+            .maxRayRecursionDepth = 16,
         });
     }
 
@@ -240,7 +230,6 @@ public:
 
     uint32_t width;
     uint32_t height;
-    uint32_t maxRayRecursionDepth;
 
     Scene scene;
 

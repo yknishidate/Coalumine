@@ -278,7 +278,9 @@ void main()
 
         // Importance sampling:
         // weight = (fr * cos) / pdf
-        vec3 weight = vec3(F * G * mo) / max(ni * nm, 0.001);
+        // NOTE: max(x, 0.1) is greatly affects the appearance. 
+        // Smaller values make it too bright.
+        vec3 weight = vec3(F * G * mo) / max(ni * nm, 0.1);
         payload.radiance = emissive + weight * payload.radiance;
     }else if(transmission > 0.0){
         float ior = 1.51;
@@ -308,7 +310,7 @@ void main()
             // NOTE: F = 1.0 in total reflection
             float no = max(cosTheta(or), 0.0);
             float G = ggxGeometry(i, or, roughness);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
             payload.radiance = emissive + weight * payload.radiance;
         }
         
@@ -319,14 +321,14 @@ void main()
             traceRay(origin, localToWorld(or, n));
             
             float G = max(ggxGeometry(i, or, roughness), 0.0);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
             payload.radiance = emissive + weight * payload.radiance;
         }else{
             // refraction
             traceRay(origin, localToWorld(ot, n));
             
             float G = max(ggxGeometry(i, ot, roughness), 0.0);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.001);
+            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
             payload.radiance = emissive + weight * payload.radiance;
         }
     }else{
