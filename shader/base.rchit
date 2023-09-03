@@ -246,7 +246,7 @@ void main()
     }
 
     payload.depth += 1;
-    if(payload.depth >= 12){
+    if(payload.depth >= 30){
         payload.radiance = emissive;
         return;
     }
@@ -294,9 +294,9 @@ void main()
         vec3 m = sampleGGX(roughness, payload.seed);
         vec3 or = reflect(-i, m);      // out(reflect)
         vec3 ot = refract(-i, m, eta); // out(transmit)
-        float mi = max(dot(i, m), 0.0);
-        float ni = max(cosTheta(i), 0.0);
-        float nm = max(cosTheta(m), 0.0);
+        float mi = dot(i, m);
+        float ni = cosTheta(i);
+        float nm = cosTheta(m);
         if(mi == 0.0){
             payload.radiance = vec3(0);
             return;
@@ -308,9 +308,9 @@ void main()
             
             // Compute the GGX BRDF
             // NOTE: F = 1.0 in total reflection
-            float no = max(cosTheta(or), 0.0);
+            float no = (cosTheta(or));
             float G = ggxGeometry(i, or, roughness);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
+            vec3 weight = vec3(G * mi) / (ni * nm);
             payload.radiance = emissive + weight * payload.radiance;
         }
         
@@ -327,7 +327,7 @@ void main()
             // refraction
             traceRay(origin, localToWorld(ot, n));
             
-            float G = max(ggxGeometry(i, ot, roughness), 0.0);
+            float G = ggxGeometry(i, ot, roughness);
             vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
             payload.radiance = emissive + weight * payload.radiance;
         }
@@ -346,9 +346,6 @@ void main()
         traceRay(origin, direction);
         
         // Radiance (with Diffuse Importance sampling)
-        // Lo = Le + brdf * Li * cos(theta) / pdf
-        //    = Le + (color / PI) * Li * cos(theta) / (cos(theta) / PI)
-        //    = Le + color * Li
         payload.radiance = emissive + (baseColor * payload.radiance + inifiniteLightTerm);
         //payload.radiance = emissive + (baseColor * payload.radiance);
     }

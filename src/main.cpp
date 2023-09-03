@@ -15,7 +15,8 @@ public:
     Renderer(const Context& context, uint32_t width, uint32_t height, App* app)
         : width{width}, height{height} {
         rv::CPUTimer timer;
-        loadMaterialTestScene(context);
+        // loadMaterialTestScene(context);
+        loadRTCamp9Scene(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
@@ -96,7 +97,7 @@ public:
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
 
-    void loadCleanScene(const Context& context) {
+    void loadRTCamp9Scene(const Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "clean_scene_v3_180_2.gltf");
 
         // Add materials
@@ -128,6 +129,9 @@ public:
                 }
             }
         }
+
+        std::vector<float> data(1000 * 500 * 4);
+        scene.createDomeLightTexture(context, data.data(), 1000, 500, 4);
     }
 
     void createPipelines(const Context& context) {
@@ -177,7 +181,7 @@ public:
             .chitShaders = shaders[3],
             .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(PushConstants),
-            .maxRayRecursionDepth = 16,
+            .maxRayRecursionDepth = 31,
         });
     }
 
@@ -254,8 +258,8 @@ class DebugRenderer : public App {
 public:
     DebugRenderer()
         : App({
-              .width = 1920,
-              .height = 1080,
+              .width = 1280,
+              .height = 720,
               .title = "rtcamp9",
               .layers = Layer::Validation,
               .extensions = Extension::RayTracing,

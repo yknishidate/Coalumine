@@ -131,6 +131,34 @@ public:
     }
 
     void createDomeLightTexture(const Context& context,
+                                const float* data,
+                                uint32_t width,
+                                uint32_t height,
+                                uint32_t channel) {
+        domeLightTexture = context.createImage({
+            .usage = rv::ImageUsage::Sampled,
+            .extent = {width, height, 1},
+            .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
+            .layout = vk::ImageLayout::eTransferDstOptimal,
+            .debugName = "domeLightTexture",
+        });
+
+        BufferHandle stagingBuffer = context.createBuffer({
+            .usage = rv::BufferUsage::Staging,
+            .memory = rv::MemoryUsage::Host,
+            .size = width * height * channel * sizeof(float),
+            .data = data,
+            .debugName = "stagingBuffer",
+        });
+
+        context.oneTimeSubmit([&](CommandBuffer commandBuffer) {
+            commandBuffer.copyBufferToImage(stagingBuffer, domeLightTexture);
+            commandBuffer.transitionLayout(domeLightTexture,
+                                           vk::ImageLayout::eShaderReadOnlyOptimal);
+        });
+    }
+
+    void createDomeLightTexture(const Context& context,
                                 uint32_t width,
                                 uint32_t height,
                                 const void* data) {
