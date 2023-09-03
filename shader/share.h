@@ -14,7 +14,7 @@ struct PushConstants {
     float domeLightPhi = 32.0f;
 
     int enableNEE = 1;
-    int enableAccum = 0;
+    int enableAccum = 1;
     int _dummy;
 
     glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{-1.0, -1.0, 0.3}), 1.0};

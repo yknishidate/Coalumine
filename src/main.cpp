@@ -48,8 +48,8 @@ public:
     Renderer(const Context& context, uint32_t width, uint32_t height, App* app)
         : width{width}, height{height} {
         rv::CPUTimer timer;
-        // loadMaterialTestScene(context);
-        loadRTCamp9Scene(context);
+        loadMaterialTestScene(context);
+        // loadRTCamp9Scene(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
@@ -308,8 +308,8 @@ class DebugRenderer : public App {
 public:
     DebugRenderer()
         : App({
-              .width = 1280,
-              .height = 720,
+              .width = 1920,
+              .height = 1080,
               .title = "rtcamp9",
               .layers = Layer::Validation,
               .extensions = Extension::RayTracing,

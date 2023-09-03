@@ -47,7 +47,9 @@ void main()
 
     // Store base color
     vec4 newColor = vec4(radiance, 1);
-    if(enableAccum == 1){
+    if(any(isnan(newColor))){
+        newColor = vec4(1, 0, 1, 1);
+    } else if(enableAccum == 1){
         vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
         newColor = (newColor + (prevColor * frame)) / (frame + 1);
     }
