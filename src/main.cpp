@@ -10,6 +10,39 @@
 #include "render_pass.hpp"
 #include "scene.hpp"
 
+glm::vec3 colorRamp5(float value,
+                     glm::vec3 color0,
+                     glm::vec3 color1,
+                     glm::vec3 color2,
+                     glm::vec3 color3,
+                     glm::vec3 color4) {
+    if (value == 0.0)
+        return glm::vec3(0.0);
+
+    float knot0 = 0.0;
+    float knot1 = 0.2;
+    float knot2 = 0.4;
+    float knot3 = 0.8;
+    float knot4 = 1.0;
+    if (value < knot0) {
+        return color0;
+    } else if (value < knot1) {
+        float t = (value - knot0) / (knot1 - knot0);
+        return mix(color0, color1, t);
+    } else if (value < knot2) {
+        float t = (value - knot1) / (knot2 - knot1);
+        return mix(color1, color2, t);
+    } else if (value < knot3) {
+        float t = (value - knot2) / (knot3 - knot2);
+        return mix(color2, color3, t);
+    } else if (value < knot4) {
+        float t = (value - knot3) / (knot4 - knot3);
+        return mix(color3, color4, t);
+    } else {
+        return color4;
+    }
+}
+
 class Renderer {
 public:
     Renderer(const Context& context, uint32_t width, uint32_t height, App* app)
@@ -130,8 +163,25 @@ public:
             }
         }
 
-        std::vector<float> data(1000 * 500 * 4);
-        scene.createDomeLightTexture(context, data.data(), 1000, 500, 4);
+        uint32_t textureWidth = 1000;
+        uint32_t textureHeight = 100;
+        uint32_t textureChannel = 4;
+
+        std::vector<glm::vec4> data(textureWidth * textureHeight * textureChannel);
+        for (int x = 0; x < textureWidth; x++) {
+            glm::vec3 color = colorRamp5(x / static_cast<float>(textureWidth),         // break
+                                         glm::vec3(225, 245, 253) / glm::vec3(255.0),  // break
+                                         glm::vec3(1, 115, 233) / glm::vec3(255.0),    // break
+                                         glm::vec3(2, 37, 131) / glm::vec3(255.0),     // break
+                                         glm::vec3(0, 3, 49) / glm::vec3(255.0),       // break
+                                         glm::vec3(0, 0, 3) / glm::vec3(255.0));
+            for (int y = 0; y < textureHeight; y++) {
+                data[y * textureWidth + x] = glm::vec4(color, 0.0);
+            }
+        }
+
+        scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  // break
+                                     textureWidth, textureHeight, textureChannel);
     }
 
     void createPipelines(const Context& context) {
@@ -341,6 +391,7 @@ public:
     void onRender(const CommandBuffer& commandBuffer) override {
         static int imageIndex = 0;
         static bool enableBloom = false;
+        static bool enableAccum = renderer->pushConstants.enableAccum;
         static int blurIteration = 32;
         static bool playAnimation = true;
         static bool open = true;
@@ -369,6 +420,11 @@ public:
                                &renderer->pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
             if (ImGui::Button("Reset infinite light")) {
                 renderer->pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
+            }
+
+            if (ImGui::Checkbox("Enable accum", &enableAccum)) {
+                renderer->pushConstants.enableAccum = enableAccum;
+                renderer->reset();
             }
 
             // Bloom

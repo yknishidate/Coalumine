@@ -46,7 +46,10 @@ void main()
     imageStore(bloomImage, ivec2(gl_LaunchIDEXT.xy), vec4(bloomColor, 1));
 
     // Store base color
-    vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
-    vec4 newColor = (vec4(radiance, 1) + (prevColor * frame)) / (frame + 1);
+    vec4 newColor = vec4(radiance, 1);
+    if(enableAccum == 1){
+        vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
+        newColor = (newColor + (prevColor * frame)) / (frame + 1);
+    }
     imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), newColor);
 }
