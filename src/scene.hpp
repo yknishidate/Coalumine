@@ -369,12 +369,12 @@ public:
                 }
 
                 vertexBuffers.push_back(context.createBuffer({
-                    .usage = BufferUsage::Vertex,
+                    .usage = BufferUsage::AccelVertex,
                     .size = sizeof(Vertex) * vertices.size(),
                     .debugName = std::format("vertexBuffers[{}]", vertexBuffers.size()).c_str(),
                 }));
                 indexBuffers.push_back(context.createBuffer({
-                    .usage = BufferUsage::Index,
+                    .usage = BufferUsage::AccelIndex,
                     .size = sizeof(uint32_t) * indices.size(),
                     .debugName = std::format("indexBuffers[{}]", indexBuffers.size()).c_str(),
                 }));
@@ -523,15 +523,18 @@ public:
 
     void buildAccels(const Context& context) {
         bottomAccels.resize(vertexBuffers.size());
-        for (int i = 0; i < vertexBuffers.size(); i++) {
-            bottomAccels[i] = context.createBottomAccel({
-                .vertexBuffer = vertexBuffers[i],
-                .indexBuffer = indexBuffers[i],
-                .vertexStride = sizeof(Vertex),
-                .vertexCount = vertexCounts[i],
-                .triangleCount = triangleCounts[i],
-            });
-        }
+        context.oneTimeSubmit([&](auto commandBuffer) {  //
+            for (int i = 0; i < vertexBuffers.size(); i++) {
+                bottomAccels[i] = context.createBottomAccel({
+                    .vertexBuffer = vertexBuffers[i],
+                    .indexBuffer = indexBuffers[i],
+                    .vertexStride = sizeof(Vertex),
+                    .vertexCount = vertexCounts[i],
+                    .triangleCount = triangleCounts[i],
+                });
+                commandBuffer->buildBottomAccel(bottomAccels[i]);
+            }
+        });
 
         std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
@@ -544,6 +547,9 @@ public:
             }
         }
         topAccel = context.createTopAccel({.accelInstances = accelInstances});
+        context.oneTimeSubmit([&](auto commandBuffer) {  //
+            commandBuffer->buildTopAccel(topAccel);
+        });
     }
 
     bool shouldUpdate(int frame) const {
