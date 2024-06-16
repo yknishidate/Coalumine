@@ -1,7 +1,9 @@
 #pragma once
+#include <reactive/Compiler/Compiler.hpp>
 #include <reactive/Graphics/CommandBuffer.hpp>
 #include <reactive/Graphics/DescriptorSet.hpp>
 
+#define NOMINMAX
 #include <Windows.h>
 #undef near
 #undef far
@@ -44,7 +46,7 @@ inline bool shouldRecompile(const std::string& shaderFileName, const std::string
         return false;
     }
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    auto glslWriteTime = File::getLastWriteTimeWithIncludeFiles(glslFile);
+    auto glslWriteTime = Compiler::getLastWriteTimeWithIncludeFiles(glslFile);
     return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
 }
 
@@ -98,13 +100,22 @@ public:
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR8G8B8A8Unorm,
-            .layout = vk::ImageLayout::eGeneral,
+            .debugName = "finalImageRGBA",
         });
+
         finalImageBGRA = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eB8G8R8A8Unorm,
-            .layout = vk::ImageLayout::eGeneral,
+            .debugName = "finalImageBGRA",
+        });
+
+        finalImageRGBA->createImageView();
+        finalImageBGRA->createImageView();
+
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->transitionLayout(finalImageRGBA, vk::ImageLayout::eGeneral);
+            commandBuffer->transitionLayout(finalImageBGRA, vk::ImageLayout::eGeneral);
         });
 
         shader = context.createShader({
@@ -130,14 +141,14 @@ public:
         });
     }
 
-    void render(const CommandBuffer& commandBuffer,
+    void render(const CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
                 CompositeInfo info) {
-        commandBuffer.bindDescriptorSet(descSet, pipeline);
-        commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(pipeline, &info);
-        commandBuffer.dispatch(pipeline, countX, countY, 1);
+        commandBuffer->bindDescriptorSet(descSet, pipeline);
+        commandBuffer->bindPipeline(pipeline);
+        commandBuffer->pushConstants(pipeline, &info);
+        commandBuffer->dispatch(countX, countY, 1);
     }
 
     vk::Image getOutputImageRGBA() const { return finalImageRGBA->getImage(); }
@@ -163,7 +174,13 @@ public:
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eGeneral,
+            .debugName = "bloomImage",
+        });
+
+        bloomImage->createImageView();
+
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->transitionLayout(bloomImage, vk::ImageLayout::eGeneral);
         });
 
         shader = context.createShader({
@@ -186,17 +203,18 @@ public:
         });
     }
 
-    void render(const CommandBuffer& commandBuffer,
+    void render(const CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
                 BloomInfo info) {
-        commandBuffer.bindDescriptorSet(descSet, pipeline);
-        commandBuffer.bindPipeline(pipeline);
-        commandBuffer.pushConstants(pipeline, &info);
-        commandBuffer.dispatch(pipeline, countX, countY, 1);
-        commandBuffer.imageBarrier(
-            vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eComputeShader,
-            {}, bloomImage, vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
+        commandBuffer->bindDescriptorSet(descSet, pipeline);
+        commandBuffer->bindPipeline(pipeline);
+        commandBuffer->pushConstants(pipeline, &info);
+        commandBuffer->dispatch(countX, countY, 1);
+        commandBuffer->imageBarrier(bloomImage, vk::PipelineStageFlagBits::eComputeShader,
+                                    vk::PipelineStageFlagBits::eComputeShader,
+                                    vk::AccessFlagBits::eShaderWrite,
+                                    vk::AccessFlagBits::eShaderRead);
     }
 
     vk::Image getOutputImage() const { return bloomImage->getImage(); }

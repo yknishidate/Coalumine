@@ -16,6 +16,10 @@
         "docking-experimental"
       ]
     },
+    {
+      "name": "ktx",
+      "features": ["vulkan"]
+    },
     "tinygltf",
     "imguizmo"
   ]

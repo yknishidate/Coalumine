@@ -19,7 +19,7 @@ struct Address {
 };
 
 struct KeyFrame {
-    float time;
+    float time = 0.0f;
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
     glm::quat rotation = {1.0f, 0.0f, 0.0f, 0.0f};
     glm::vec3 scale = {1.0f, 1.0f, 1.0f};
@@ -112,6 +112,7 @@ public:
     }
 
     void createNormalMatrixBuffer(const Context& context) {
+        // TODO: Nodeごとの情報は構造体にまとめる
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
                 normalMatrices.push_back(node.computeNormalMatrix(0));
@@ -121,9 +122,9 @@ public:
             .usage = BufferUsage::Storage,
             .memory = MemoryUsage::DeviceHost,
             .size = sizeof(glm::mat4) * normalMatrices.size(),
-            .data = normalMatrices.data(),
             .debugName = "normalMatrixBuffer",
         });
+        normalMatrixBuffer->copy(normalMatrices.data());
     }
 
     void loadDomeLightTexture(const Context& context, const std::filesystem::path& filepath) {
@@ -139,22 +140,22 @@ public:
             .usage = rv::ImageUsage::Sampled,
             .extent = {width, height, 1},
             .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eTransferDstOptimal,
             .debugName = "domeLightTexture",
         });
+        domeLightTexture->createImageView();
 
         BufferHandle stagingBuffer = context.createBuffer({
             .usage = rv::BufferUsage::Staging,
             .memory = rv::MemoryUsage::Host,
             .size = width * height * channel * sizeof(float),
-            .data = data,
             .debugName = "stagingBuffer",
         });
+        stagingBuffer->copy(data);
 
-        context.oneTimeSubmit([&](CommandBuffer commandBuffer) {
-            commandBuffer.copyBufferToImage(stagingBuffer, domeLightTexture);
-            commandBuffer.transitionLayout(domeLightTexture,
-                                           vk::ImageLayout::eShaderReadOnlyOptimal);
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBufferToImage(stagingBuffer, domeLightTexture);
+            commandBuffer->transitionLayout(domeLightTexture,
+                                            vk::ImageLayout::eShaderReadOnlyOptimal);
         });
     }
 
@@ -166,8 +167,7 @@ public:
             .usage = vk::ImageUsageFlagBits::eSampled,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eTransferDstOptimal,
-            .mipLevels = 1,
+            //.layout = vk::ImageLayout::eTransferDstOptimal,
             .debugName = "domeLightTexture",
         });
 
@@ -176,31 +176,14 @@ public:
             .usage = BufferUsage::Staging,
             .memory = MemoryUsage::Host,
             .size = width * height * 4 * sizeof(float),
-            .data = data,
         });
+        stagingBuffer->copy(data);
 
-        context.oneTimeSubmit([&](vk::CommandBuffer commandBuffer) {
-            vk::ImageSubresourceLayers subresourceLayers;
-            subresourceLayers.setAspectMask(vk::ImageAspectFlagBits::eColor);
-            subresourceLayers.setMipLevel(0);
-            subresourceLayers.setBaseArrayLayer(0);
-            subresourceLayers.setLayerCount(1);
-
-            vk::Extent3D extent;
-            extent.setWidth(width);
-            extent.setHeight(height);
-            extent.setDepth(1);
-
-            vk::BufferImageCopy region;
-            region.imageSubresource = subresourceLayers;
-            region.imageExtent = extent;
-
-            domeLightTexture->transitionLayout(commandBuffer, vk::ImageLayout::eTransferDstOptimal);
-            commandBuffer.copyBufferToImage(stagingBuffer->getBuffer(),
-                                            domeLightTexture->getImage(),
-                                            vk::ImageLayout::eTransferDstOptimal, region);
-            domeLightTexture->transitionLayout(commandBuffer,
-                                               vk::ImageLayout::eShaderReadOnlyOptimal);
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eTransferDstOptimal);
+            commandBuffer->copyBufferToImage(stagingBuffer, domeLightTexture);
+            commandBuffer->transitionLayout(domeLightTexture,
+                                            vk::ImageLayout::eShaderReadOnlyOptimal);
         });
     }
 
@@ -386,18 +369,21 @@ public:
                 vertexBuffers.push_back(context.createBuffer({
                     .usage = BufferUsage::Vertex,
                     .size = sizeof(Vertex) * vertices.size(),
-                    .data = vertices.data(),
                     .debugName = std::format("vertexBuffers[{}]", vertexBuffers.size()).c_str(),
                 }));
                 indexBuffers.push_back(context.createBuffer({
                     .usage = BufferUsage::Index,
                     .size = sizeof(uint32_t) * indices.size(),
-                    .data = indices.data(),
                     .debugName = std::format("indexBuffers[{}]", indexBuffers.size()).c_str(),
                 }));
+
+                context.oneTimeSubmit([&](auto commandBuffer) {
+                    commandBuffer->copyBuffer(vertexBuffers.back(), vertices.data());
+                    commandBuffer->copyBuffer(indexBuffers.back(), indices.data());
+                });
+
                 vertexCounts.push_back(vertices.size());
                 triangleCounts.push_back(indices.size() / 3);
-
                 materialIndices.push_back(gltfPrimitive.material);
             }
         }
@@ -472,9 +458,12 @@ public:
             materials.push_back({});  // dummy data
         }
         materialBuffer = context.createBuffer({
-            .usage = BufferUsage::Storage,
-            .size = materials.size() * sizeof(Material),
-            .data = materials.data(),
+            .usage = BufferUsage::Storage, .size = materials.size() * sizeof(Material),
+            //.data = materials.data(),
+        });
+
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBuffer(materialBuffer, materials.data());
         });
     }
 
@@ -569,7 +558,7 @@ public:
         return false;
     }
 
-    void updateTopAccel(vk::CommandBuffer commandBuffer, int frame) {
+    void updateTopAccel(int frame) {
         std::vector<AccelInstance> accelInstances;
         for (auto& node : nodes) {
             if (node.meshIndex != -1) {
@@ -581,7 +570,7 @@ public:
                 });
             }
         }
-        topAccel->update(commandBuffer, accelInstances);
+        topAccel->updateInstances(accelInstances);
         normalMatrixBuffer->copy(normalMatrices.data());
     }
 
@@ -590,8 +579,10 @@ public:
         materialBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
             .size = materials.size() * sizeof(Material),
-            .data = materials.data(),
             .debugName = "materialBuffer",
+        });
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBuffer(materialBuffer, materials.data());
         });
         return materials.size() - 1;
     }
@@ -611,14 +602,17 @@ public:
     }
 
     void initMaterialIndexBuffer(const Context& context) {
+        // TODO: このへんも一つのバッファにする
         if (materialIndices.empty()) {
             materialIndices.push_back(-1);  // dummy data
         }
         materialIndexBuffer = context.createBuffer({
             .usage = BufferUsage::Index,
             .size = sizeof(int) * materialIndices.size(),
-            .data = materialIndices.data(),
             .debugName = "materialIndexBuffer",
+        });
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBuffer(materialIndexBuffer, materialIndices.data());
         });
     }
 
@@ -627,8 +621,10 @@ public:
         addressBuffer = context.createBuffer({
             .usage = BufferUsage::Storage,
             .size = sizeof(Address),
-            .data = &address,
             .debugName = "addressBuffer",
+        });
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBuffer(addressBuffer, &address);  //
         });
     }
 

@@ -2,11 +2,10 @@
 #include <random>
 
 #include "../shader/share.h"
-#include "reactive/App.hpp"
 
 #define NOMINMAX
 #define TINYGLTF_IMPLEMENTATION
-#include "reactive/common.hpp"
+#include <reactive/reactive.hpp>
 #include "render_pass.hpp"
 #include "scene.hpp"
 
@@ -45,11 +44,11 @@ glm::vec3 colorRamp5(float value,
 
 class Renderer {
 public:
-    Renderer(const Context& context, uint32_t width, uint32_t height, App* app)
+    Renderer(const Context& context, uint32_t width, uint32_t height)
         : width{width}, height{height} {
         rv::CPUTimer timer;
-        loadMaterialTestScene(context);
-        // loadRTCamp9Scene(context);
+        // loadMaterialTestScene(context);
+        loadRTCamp9Scene(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
@@ -63,72 +62,79 @@ public:
             .usage = ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
-            .layout = vk::ImageLayout::eGeneral,
             .debugName = "baseImage",
+        });
+
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->transitionLayout(baseImage, vk::ImageLayout::eGeneral);
         });
 
         createPipelines(context);
 
-        orbitalCamera = OrbitalCamera{app, width, height};
-        orbitalCamera.distance = 12.0f;
-        orbitalCamera.fovY = glm::radians(30.0f);
+        orbitalCamera = {Camera::Type::Orbital, width / static_cast<float>(height)};
+        orbitalCamera.setDistance(12.0f);
+        orbitalCamera.setFovY(glm::radians(30.0f));
         currentCamera = &orbitalCamera;
 
         if (scene.cameraExists) {
-            fpsCamera = FPSCamera{app, width, height};
-            fpsCamera.position = scene.cameraTranslation;
+            fpsCamera = {Camera::Type::FirstPerson, width / static_cast<float>(height)};
+            fpsCamera.setPosition(scene.cameraTranslation);
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
 
             // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
-            fpsCamera.pitch = -glm::degrees(eulerAngles.x);
+            fpsCamera.setPitch(-glm::degrees(eulerAngles.x));
             if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
-                fpsCamera.pitch = -glm::degrees(eulerAngles.x) + 180;
+                fpsCamera.setPitch(-glm::degrees(eulerAngles.x) + 180);
             }
-            fpsCamera.yaw = glm::mod(glm::degrees(eulerAngles.y), 360.0f);
-            fpsCamera.fovY = scene.cameraYFov;
+            fpsCamera.setYaw(glm::mod(glm::degrees(eulerAngles.y), 360.0f));
+            fpsCamera.setFovY(scene.cameraYFov);
             currentCamera = &fpsCamera;
         }
     }
 
-    void loadMaterialTestScene(const Context& context) {
-        // Add mesh
-        MeshHandle sphereMesh = context.createSphereMesh({
-            .numSlices = 64,
-            .numStacks = 64,
-            .radius = 0.5,
-        });
+    // void loadMaterialTestScene(const Context& context) {
+    //     // Add mesh
+    //     Mesh sphereMesh = Mesh::createSphereMesh(  //
+    //         context,                               //
+    //         {
+    //             .numSlices = 64,
+    //             .numStacks = 64,
+    //             .radius = 0.5,
+    //             .useForAccelStruct = true,
+    //             .name = "sphereMesh",
+    //         });
 
-        // Add material, mesh, node
-        for (int i = 0; i < 8; i++) {
-            Material metal;
-            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
-            metal.metallicFactor = 1.0f;
-            metal.roughnessFactor = i / 7.0f;
-            int matIndex = scene.addMaterial(context, metal);
-            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+    //    // Add material, mesh, node
+    //    for (int i = 0; i < 8; i++) {
+    //        Material metal;
+    //        metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
+    //        metal.metallicFactor = 1.0f;
+    //        metal.roughnessFactor = i / 7.0f;
+    //        int matIndex = scene.addMaterial(context, metal);
+    //        int meshIndex = scene.addMesh(sphereMesh, matIndex);
 
-            Node node;
-            node.meshIndex = meshIndex;
-            node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
-            scene.addNode(node);
-        }
-        for (int i = 0; i < 8; i++) {
-            Material metal;
-            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
-            metal.metallicFactor = 0.0f;
-            metal.roughnessFactor = i / 7.0f;
-            int matIndex = scene.addMaterial(context, metal);
-            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+    //        Node node;
+    //        node.meshIndex = meshIndex;
+    //        node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
+    //        scene.addNode(node);
+    //    }
+    //    for (int i = 0; i < 8; i++) {
+    //        Material metal;
+    //        metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
+    //        metal.metallicFactor = 0.0f;
+    //        metal.roughnessFactor = i / 7.0f;
+    //        int matIndex = scene.addMaterial(context, metal);
+    //        int meshIndex = scene.addMesh(sphereMesh, matIndex);
 
-            Node node;
-            node.meshIndex = meshIndex;
-            node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
-            scene.addNode(node);
-        }
+    //        Node node;
+    //        node.meshIndex = meshIndex;
+    //        node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
+    //        scene.addNode(node);
+    //    }
 
-        scene.createNormalMatrixBuffer(context);
-        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
-    }
+    //    scene.createNormalMatrixBuffer(context);
+    //    scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
+    //}
 
     void loadRTCamp9Scene(const Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "clean_scene_v3_180_2.gltf");
@@ -226,9 +232,9 @@ public:
         });
 
         rayTracingPipeline = context.createRayTracingPipeline({
-            .rgenShaders = shaders[0],
-            .missShaders = {shaders, 1, 2},
-            .chitShaders = shaders[3],
+            .rgenGroup = {shaders[0]},
+            .missGroups = {{shaders[1]}, {shaders[2]}},
+            .hitGroups = {{shaders[3]}},
             .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = 31,
@@ -236,8 +242,9 @@ public:
     }
 
     void update() {
-        RV_ASSERT(currentCamera, "currentCamera is nullptr");
-        currentCamera->processInput();
+        assert(currentCamera && "currentCamera is nullptr");
+        // TODO: process input
+        // currentCamera->processInput();
         pushConstants.frame++;
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
@@ -245,7 +252,7 @@ public:
 
     void reset() { pushConstants.frame = 0; }
 
-    void render(const CommandBuffer& commandBuffer,
+    void render(const CommandBufferHandle& commandBuffer,
                 bool playAnimation,
                 bool enableBloom,
                 int blurIteration) {
@@ -255,22 +262,24 @@ public:
             spdlog::info("Skipped: {}", pushConstants.frame);
             return;
         }
-        scene.updateTopAccel(commandBuffer.commandBuffer, pushConstants.frame);
+        scene.updateTopAccel(pushConstants.frame);
 
         // Ray tracing
-        commandBuffer.bindDescriptorSet(descSet, rayTracingPipeline);
-        commandBuffer.bindPipeline(rayTracingPipeline);
-        commandBuffer.pushConstants(rayTracingPipeline, &pushConstants);
-        commandBuffer.traceRays(rayTracingPipeline, width, height, 1);
+        commandBuffer->bindDescriptorSet(descSet, rayTracingPipeline);
+        commandBuffer->bindPipeline(rayTracingPipeline);
+        commandBuffer->pushConstants(rayTracingPipeline, &pushConstants);
+        commandBuffer->traceRays(rayTracingPipeline, width, height, 1);
 
-        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                                   vk::PipelineStageFlagBits::eComputeShader, {}, baseImage,
-                                   vk::AccessFlagBits::eShaderWrite,
-                                   vk::AccessFlagBits::eShaderRead);
-        commandBuffer.imageBarrier(vk::PipelineStageFlagBits::eRayTracingShaderKHR,
-                                   vk::PipelineStageFlagBits::eComputeShader, {},
-                                   bloomPass.bloomImage, vk::AccessFlagBits::eShaderWrite,
-                                   vk::AccessFlagBits::eShaderRead);
+        commandBuffer->imageBarrier(baseImage,  //
+                                    vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+                                    vk::PipelineStageFlagBits::eComputeShader,
+                                    vk::AccessFlagBits::eShaderWrite,
+                                    vk::AccessFlagBits::eShaderRead);
+        commandBuffer->imageBarrier(bloomPass.bloomImage,  //
+                                    vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+                                    vk::PipelineStageFlagBits::eComputeShader,
+                                    vk::AccessFlagBits::eShaderWrite,
+                                    vk::AccessFlagBits::eShaderRead);
 
         // Blur
         if (enableBloom) {
@@ -298,8 +307,8 @@ public:
     RayTracingPipelineHandle rayTracingPipeline;
 
     Camera* currentCamera = nullptr;
-    FPSCamera fpsCamera;
-    OrbitalCamera orbitalCamera;
+    Camera fpsCamera;
+    Camera orbitalCamera;
 
     PushConstants pushConstants;
 };
@@ -338,7 +347,7 @@ public:
             compileShader("composite.comp", "main");
         }
 
-        renderer = std::make_unique<Renderer>(context, width, height, this);
+        renderer = std::make_unique<Renderer>(context, Window::getWidth(), Window::getHeight());
     }
 
     void onStart() override {
@@ -346,12 +355,14 @@ public:
         imageSavingBuffer = context.createBuffer({
             .usage = BufferUsage::Staging,
             .memory = MemoryUsage::Host,
-            .size = width * height * 4 * sizeof(uint8_t),
+            .size = Window::getWidth() * Window::getHeight() * 4 * sizeof(uint8_t),
             .debugName = "imageSavingBuffer",
         });
     }
 
-    void onUpdate() override { renderer->update(); }
+    void onUpdate(float dt) override {  //
+        renderer->update();
+    }
 
     void recreatePipelinesIfShadersWereUpdated() const {
         bool shouldRecreate = false;
@@ -388,7 +399,7 @@ public:
         }
     }
 
-    void onRender(const CommandBuffer& commandBuffer) override {
+    void onRender(const CommandBufferHandle& commandBuffer) override {
         static int imageIndex = 0;
         static bool enableBloom = false;
         static bool enableAccum = renderer->pushConstants.enableAccum;
@@ -465,19 +476,19 @@ public:
         // Check shader files
         recreatePipelinesIfShadersWereUpdated();
 
-        commandBuffer.beginTimestamp(gpuTimer);
+        commandBuffer->beginTimestamp(gpuTimer);
         renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
-        commandBuffer.endTimestamp(gpuTimer);
+        commandBuffer->endTimestamp(gpuTimer);
 
         // Copy to swapchain image
-        commandBuffer.copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
-                                vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
+        commandBuffer->copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
+                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
         ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
-        commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
-        commandBuffer.copyImageToBuffer(outputImage, imageSavingBuffer);
-        commandBuffer.transitionLayout(outputImage, vk::ImageLayout::eGeneral);
+        commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
+        commandBuffer->copyImageToBuffer(outputImage, imageSavingBuffer);
+        commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
     }
 
     void saveImage() {
@@ -486,7 +497,7 @@ public:
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
         writeTask = std::async(std::launch::async, [=]() {
-            stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
+            stbi_write_jpg(img.c_str(), Window::getWidth(), Window::getHeight(), 4, pixels, 90);
         });
     }
 
