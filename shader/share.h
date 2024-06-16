@@ -103,9 +103,9 @@ layout(binding = 21) buffer IndexBuffers {
 }
 indexBuffers[];
 
-layout(binding = 22) buffer TransformMatrixBuffer {
-    mat4 transformMatrices[];
-};
+// layout(binding = 22) buffer TransformMatrixBuffer {
+//     mat4 transformMatrices[];
+// };
 
 layout(binding = 23) buffer NormalMatrixBuffer {
     mat4 normalMatrices[];

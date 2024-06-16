@@ -64,6 +64,7 @@ public:
             .format = vk::Format::eR32G32B32A32Sfloat,
             .debugName = "baseImage",
         });
+        baseImage->createImageView();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->transitionLayout(baseImage, vk::ImageLayout::eGeneral);
@@ -230,6 +231,7 @@ public:
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });
+        descSet->update();
 
         rayTracingPipeline = context.createRayTracingPipeline({
             .rgenGroup = {shaders[0]},

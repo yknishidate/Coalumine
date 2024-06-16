@@ -143,6 +143,7 @@ public:
             .debugName = "domeLightTexture",
         });
         domeLightTexture->createImageView();
+        domeLightTexture->createSampler();
 
         BufferHandle stagingBuffer = context.createBuffer({
             .usage = rv::BufferUsage::Staging,
@@ -153,6 +154,7 @@ public:
         stagingBuffer->copy(data);
 
         context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eTransferDstOptimal);
             commandBuffer->copyBufferToImage(stagingBuffer, domeLightTexture);
             commandBuffer->transitionLayout(domeLightTexture,
                                             vk::ImageLayout::eShaderReadOnlyOptimal);

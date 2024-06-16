@@ -133,6 +133,7 @@ public:
                     {"finalImageBGRA", finalImageBGRA},
                 },
         });
+        descSet->update();
 
         pipeline = context.createComputePipeline({
             .computeShader = shader,
@@ -178,6 +179,7 @@ public:
         });
 
         bloomImage->createImageView();
+        // bloomImage->createSampler();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->transitionLayout(bloomImage, vk::ImageLayout::eGeneral);
