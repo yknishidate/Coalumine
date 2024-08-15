@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(rtcamp9 LANGUAGES CXX)
+project(coalumine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 set(REACTIVE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
@@ -24,7 +24,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${TINYGLTF_INCLUDE_DIRS}
 )
 
-# copy files in ./asset to binary directory
 file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Debug)
 file(COPY ${PROJECT_SOURCE_DIR}/asset DESTINATION ${PROJECT_BINARY_DIR}/Release)
 file(COPY ${CMAKE_SOURCE_DIR}/run.ps1 DESTINATION ${PROJECT_BINARY_DIR}/Release)
