@@ -140,9 +140,9 @@ public:
         descSet->update();
 
         pipeline = context.createComputePipeline({
-            .computeShader = shader,
             .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(CompositeInfo),
+            .computeShader = shader,
         });
     }
 
@@ -150,7 +150,7 @@ public:
                 uint32_t countX,
                 uint32_t countY,
                 CompositeInfo info) {
-        commandBuffer->bindDescriptorSet(descSet, pipeline);
+        commandBuffer->bindDescriptorSet(pipeline, descSet);
         commandBuffer->bindPipeline(pipeline);
         commandBuffer->pushConstants(pipeline, &info);
         commandBuffer->dispatch(countX, countY, 1);
@@ -203,9 +203,9 @@ public:
         });
 
         pipeline = context.createComputePipeline({
-            .computeShader = shader,
             .descSetLayout = descSet->getLayout(),
             .pushSize = sizeof(BloomInfo),
+            .computeShader = shader,
         });
     }
 
@@ -213,7 +213,7 @@ public:
                 uint32_t countX,
                 uint32_t countY,
                 BloomInfo info) {
-        commandBuffer->bindDescriptorSet(descSet, pipeline);
+        commandBuffer->bindDescriptorSet(pipeline, descSet);
         commandBuffer->bindPipeline(pipeline);
         commandBuffer->pushConstants(pipeline, &info);
         commandBuffer->dispatch(countX, countY, 1);

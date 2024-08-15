@@ -267,7 +267,7 @@ public:
         scene.updateTopAccel(pushConstants.frame);
 
         // Ray tracing
-        commandBuffer->bindDescriptorSet(descSet, rayTracingPipeline);
+        commandBuffer->bindDescriptorSet(rayTracingPipeline, descSet);
         commandBuffer->bindPipeline(rayTracingPipeline);
         commandBuffer->pushConstants(rayTracingPipeline, &pushConstants);
         commandBuffer->traceRays(rayTracingPipeline, width, height, 1);
@@ -321,7 +321,7 @@ public:
         : App({
               .width = 1920,
               .height = 1080,
-              .title = "rtcamp9",
+              .title = "coalumine",
               .layers = Layer::Validation,
               .extensions = Extension::RayTracing,
           }) {
@@ -366,38 +366,16 @@ public:
         renderer->update();
     }
 
-    void recreatePipelinesIfShadersWereUpdated() const {
-        bool shouldRecreate = false;
+    void recompile() const {
         try {
-            if (shouldRecompile("base.rgen", "main")) {
-                compileShader("base.rgen", "main");
-                shouldRecreate = true;
-            }
-            if (shouldRecompile("base.rchit", "main")) {
-                compileShader("base.rchit", "main");
-                shouldRecreate = true;
-            }
-            if (shouldRecompile("base.rmiss", "main")) {
-                compileShader("base.rmiss", "main");
-                shouldRecreate = true;
-            }
-            if (shouldRecompile("shadow.rmiss", "main")) {
-                compileShader("shadow.rmiss", "main");
-                shouldRecreate = true;
-            }
+            compileShader("base.rgen", "main");
+            compileShader("base.rchit", "main");
+            compileShader("base.rmiss", "main");
+            compileShader("shadow.rmiss", "main");
+            renderer->createPipelines(context);
+            renderer->reset();
         } catch (const std::exception& e) {
             spdlog::error(e.what());
-        }
-        if (shouldRecreate) {
-            while (true) {
-                try {
-                    renderer->createPipelines(context);
-                    renderer->reset();
-                    return;
-                } catch (const std::exception& e) {
-                    spdlog::error(e.what());
-                }
-            }
         }
     }
 
@@ -472,11 +450,13 @@ public:
             if (renderer->pushConstants.frame > 1) {
                 ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
             }
+
+            if (ImGui::Button("Recompile")) {
+                recompile();
+            }
+
             ImGui::End();
         }
-
-        // Check shader files
-        recreatePipelinesIfShadersWereUpdated();
 
         commandBuffer->beginTimestamp(gpuTimer);
         renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
