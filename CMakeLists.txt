@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(REACTIVE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(reactive)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.hpp")
+file(GLOB_RECURSE SOURCES "code/*.cpp" "code/*.hpp")
 file(GLOB SHADERS shader/*) # exclude spv files
 
 source_group("Shader Files" FILES ${SHADERS})

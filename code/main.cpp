@@ -309,9 +309,7 @@ public:
             commandBuffers[imageIndex]->end();
 
             // Submit
-            vk::SubmitInfo submitInfo;
-            submitInfo.setCommandBuffers(*commandBuffer->commandBuffer);
-            context.getQueue().submit(submitInfo);
+            context.submit(commandBuffer);
             context.getQueue().waitIdle();
 
             saveImage(imageIndex);
