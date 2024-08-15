@@ -1,1 +1,2 @@
-ffmpeg -r 30 -i build/%03d.jpg build/out.mp4
+set release_dir=./build/vs/Release
+ffmpeg -r 30 -i %release_dir%/%%03d.jpg %release_dir%/out.mp4

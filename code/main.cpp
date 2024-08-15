@@ -1,4 +1,5 @@
 ﻿#include <future>
+#include <iostream>
 #include <random>
 
 #include "../shader/share.h"
@@ -354,13 +355,27 @@ private:
     std::vector<std::future<void>> writeTasks;
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
-        WindowApp app{};
-        app.run();
+        // 実行モード "window", "headless" は、
+        // コマンドライン引数で与えるか、ランタイムのユーザー入力で与えることができる
+        std::string mode;
+        if (argc != 2) {
+            std::cout << "Which mode? (\"window\" or \"headless\")\n";
+            std::cin >> mode;
+        } else {
+            mode = argv[1];
+        }
 
-        // HeadlessApp headlessApp{false, 1920, 1080};
-        // headlessApp.run();
+        if (mode == "window") {
+            WindowApp app{};
+            app.run();
+        } else if (mode == "headless") {
+            HeadlessApp headlessApp{false, 1920, 1080};
+            headlessApp.run();
+        } else {
+            throw std::runtime_error("Invalid mode. Please input \"window\" or \"headless\".");
+        }
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }

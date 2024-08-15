@@ -1,1 +1,1 @@
-.\coalumine.exe
+.\coalumine.exe headless
