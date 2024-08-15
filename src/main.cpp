@@ -321,9 +321,9 @@ public:
     PushConstants pushConstants;
 };
 
-class DebugRenderer : public App {
+class WindowApp : public App {
 public:
-    DebugRenderer()
+    WindowApp()
         : App({
               .width = 1920,
               .height = 1080,
@@ -497,8 +497,8 @@ public:
 
 int main() {
     try {
-        DebugRenderer debugRenderer{};
-        debugRenderer.run();
+        WindowApp app{};
+        app.run();
     } catch (const std::exception& e) {
         spdlog::error(e.what());
     }
