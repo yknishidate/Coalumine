@@ -3,9 +3,10 @@
 
 #include "../shader/share.h"
 
-#define NOMINMAX
-#define TINYGLTF_IMPLEMENTATION
 #include <reactive/reactive.hpp>
+
+#include <stb_image_write.h>
+
 #include "render_pass.hpp"
 #include "scene.hpp"
 
@@ -47,8 +48,8 @@ public:
     Renderer(const Context& context, uint32_t width, uint32_t height)
         : width{width}, height{height} {
         rv::CPUTimer timer;
-        // loadMaterialTestScene(context);
-        loadRTCamp9Scene(context);
+        loadMaterialTestScene(context);
+        // loadRTCamp9Scene(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
@@ -93,49 +94,45 @@ public:
         }
     }
 
-    // void loadMaterialTestScene(const Context& context) {
-    //     // Add mesh
-    //     Mesh sphereMesh = Mesh::createSphereMesh(  //
-    //         context,                               //
-    //         {
-    //             .numSlices = 64,
-    //             .numStacks = 64,
-    //             .radius = 0.5,
-    //             .useForAccelStruct = true,
-    //             .name = "sphereMesh",
-    //         });
-
-    //    // Add material, mesh, node
-    //    for (int i = 0; i < 8; i++) {
-    //        Material metal;
-    //        metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
-    //        metal.metallicFactor = 1.0f;
-    //        metal.roughnessFactor = i / 7.0f;
-    //        int matIndex = scene.addMaterial(context, metal);
-    //        int meshIndex = scene.addMesh(sphereMesh, matIndex);
-
-    //        Node node;
-    //        node.meshIndex = meshIndex;
-    //        node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
-    //        scene.addNode(node);
-    //    }
-    //    for (int i = 0; i < 8; i++) {
-    //        Material metal;
-    //        metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
-    //        metal.metallicFactor = 0.0f;
-    //        metal.roughnessFactor = i / 7.0f;
-    //        int matIndex = scene.addMaterial(context, metal);
-    //        int meshIndex = scene.addMesh(sphereMesh, matIndex);
-
-    //        Node node;
-    //        node.meshIndex = meshIndex;
-    //        node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
-    //        scene.addNode(node);
-    //    }
-
-    //    scene.createNormalMatrixBuffer(context);
-    //    scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
-    //}
+    void loadMaterialTestScene(const Context& context) {
+        // Add mesh
+        Mesh sphereMesh = Mesh::createSphereMesh(  //
+            context,                               //
+            {
+                .numSlices = 64,
+                .numStacks = 64,
+                .radius = 0.5,
+                .usage = MeshUsage::RayTracing,
+                .name = "sphereMesh",
+            });
+        // Add material, mesh, node
+        for (int i = 0; i < 8; i++) {
+            Material metal;
+            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
+            metal.metallicFactor = 1.0f;
+            metal.roughnessFactor = i / 7.0f;
+            int matIndex = scene.addMaterial(context, metal);
+            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+            Node node;
+            node.meshIndex = meshIndex;
+            node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
+            scene.addNode(node);
+        }
+        for (int i = 0; i < 8; i++) {
+            Material metal;
+            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
+            metal.metallicFactor = 0.0f;
+            metal.roughnessFactor = i / 7.0f;
+            int matIndex = scene.addMaterial(context, metal);
+            int meshIndex = scene.addMesh(sphereMesh, matIndex);
+            Node node;
+            node.meshIndex = meshIndex;
+            node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
+            scene.addNode(node);
+        }
+        scene.createNormalMatrixBuffer(context);
+        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
+    }
 
     void loadRTCamp9Scene(const Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "clean_scene_v3_180_2.gltf");
@@ -176,18 +173,18 @@ public:
 
         std::vector<glm::vec4> data(textureWidth * textureHeight * textureChannel);
         for (uint32_t x = 0; x < textureWidth; x++) {
-            glm::vec3 color = colorRamp5(x / static_cast<float>(textureWidth),         // break
-                                         glm::vec3(225, 245, 253) / glm::vec3(255.0),  // break
-                                         glm::vec3(1, 115, 233) / glm::vec3(255.0),    // break
-                                         glm::vec3(2, 37, 131) / glm::vec3(255.0),     // break
-                                         glm::vec3(0, 3, 49) / glm::vec3(255.0),       // break
+            glm::vec3 color = colorRamp5(x / static_cast<float>(textureWidth),         //
+                                         glm::vec3(225, 245, 253) / glm::vec3(255.0),  //
+                                         glm::vec3(1, 115, 233) / glm::vec3(255.0),    //
+                                         glm::vec3(2, 37, 131) / glm::vec3(255.0),     //
+                                         glm::vec3(0, 3, 49) / glm::vec3(255.0),       //
                                          glm::vec3(0, 0, 3) / glm::vec3(255.0));
             for (uint32_t y = 0; y < textureHeight; y++) {
                 data[y * textureWidth + x] = glm::vec4(color, 0.0);
             }
         }
 
-        scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  // break
+        scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  //
                                      textureWidth, textureHeight, textureChannel);
     }
 
@@ -245,9 +242,18 @@ public:
 
     void update() {
         assert(currentCamera && "currentCamera is nullptr");
-        // TODO: process input
-        // currentCamera->processInput();
-        pushConstants.frame++;
+
+        auto dragLeft = Window::getMouseDragLeft();
+        auto scroll = Window::getMouseScroll();
+        if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
+            currentCamera->processMouseDragLeft(dragLeft);
+            currentCamera->processMouseScroll(scroll);
+
+            pushConstants.frame = 0;
+        } else {
+            pushConstants.frame++;
+        }
+
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
     }
@@ -321,7 +327,7 @@ public:
         : App({
               .width = 1920,
               .height = 1080,
-              .title = "coalumine",
+              .title = "Coalumine",
               .layers = Layer::Validation,
               .extensions = Extension::RayTracing,
           }) {

@@ -114,7 +114,7 @@ public:
 
     int addMaterial(const Context& context, const Material& material);
 
-    int addMesh(const MeshHandle& mesh, int materialIndex);
+    int addMesh(const Mesh& mesh, int materialIndex);
 
     int addNode(const Node& node);
 

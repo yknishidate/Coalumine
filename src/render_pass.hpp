@@ -2,25 +2,15 @@
 #include <reactive/Compiler/Compiler.hpp>
 #include <reactive/Graphics/CommandBuffer.hpp>
 #include <reactive/Graphics/DescriptorSet.hpp>
-
-#define NOMINMAX
-#include <Windows.h>
-#undef near
-#undef far
-#undef RGB
+#include <reactive/Graphics/Pipeline.hpp>
 
 using namespace rv;
 
 namespace fs = std::filesystem;
-inline fs::path getExecutableDirectory() {
-    TCHAR filepath[1024];
-    auto length = GetModuleFileName(NULL, filepath, 1024);
-    assert(length > 0 && "Failed to query the executable path.");
-    return fs::path(filepath).remove_filename();
-}
+fs::path getExecutableDirectory();
 
 inline fs::path getShaderSourceDirectory() {
-    // exectable:  project/build/preset/config/*.exe
+    // executable:  project/build/preset/config/*.exe
     // shader:     project/shader/*.glsl
     const auto projectRoot =
         getExecutableDirectory().parent_path().parent_path().parent_path().parent_path();
@@ -201,6 +191,7 @@ public:
                     {"bloomImage", bloomImage},
                 },
         });
+        descSet->update();
 
         pipeline = context.createComputePipeline({
             .descSetLayout = descSet->getLayout(),

@@ -1,4 +1,5 @@
-﻿#include "scene.hpp"
+﻿#define TINYGLTF_IMPLEMENTATION
+#include "scene.hpp"
 
 #include <glm/glm.hpp>
 #include <iostream>
@@ -505,11 +506,11 @@ int Scene::addMaterial(const Context& context, const Material& material) {
     return static_cast<int>(materials.size() - 1);
 }
 
-int Scene::addMesh(const MeshHandle& mesh, int materialIndex) {
-    vertexBuffers.push_back(mesh->vertexBuffer);
-    indexBuffers.push_back(mesh->indexBuffer);
-    vertexCounts.push_back(static_cast<uint32_t>(mesh->vertices.size()));
-    triangleCounts.push_back(static_cast<uint32_t>(mesh->indices.size() / 3));
+int Scene::addMesh(const Mesh& mesh, int materialIndex) {
+    vertexBuffers.push_back(mesh.vertexBuffer);
+    indexBuffers.push_back(mesh.indexBuffer);
+    vertexCounts.push_back(static_cast<uint32_t>(mesh.vertices.size()));
+    triangleCounts.push_back(static_cast<uint32_t>(mesh.indices.size() / 3));
     materialIndices.push_back(materialIndex);
     return static_cast<int>(vertexBuffers.size() - 1);
 }
