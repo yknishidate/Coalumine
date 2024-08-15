@@ -18,7 +18,7 @@ struct PushConstants {
     int _dummy;
 
     glm::vec4 infiniteLightDirection = glm::vec4{glm::normalize(glm::vec3{-1.0, -1.0, 0.3}), 1.0};
-    float infiniteLightIntensity = 0.8;
+    float infiniteLightIntensity = 0.8f;
 };
 #else
 layout(push_constant) uniform PushConstants {
@@ -76,12 +76,15 @@ struct Material {
     int metallicRoughnessTextureIndex;
     int normalTextureIndex;
     int occlusionTextureIndex;
-    int emissiveTextureIndex;
 
-    vec4 baseColorFactor;
+    int emissiveTextureIndex;
     float metallicFactor;
     float roughnessFactor;
+    float _dummy0;
+
+    vec4 baseColorFactor;
     vec3 emissiveFactor;
+    float _dummy1;
 };
 
 // Image

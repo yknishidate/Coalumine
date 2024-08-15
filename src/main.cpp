@@ -18,11 +18,11 @@ glm::vec3 colorRamp5(float value,
     if (value == 0.0)
         return glm::vec3(0.0);
 
-    float knot0 = 0.0;
-    float knot1 = 0.2;
-    float knot2 = 0.4;
-    float knot3 = 0.8;
-    float knot4 = 1.0;
+    float knot0 = 0.0f;
+    float knot1 = 0.2f;
+    float knot2 = 0.4f;
+    float knot3 = 0.8f;
+    float knot4 = 1.0f;
     if (value < knot0) {
         return color0;
     } else if (value < knot1) {
@@ -145,11 +145,11 @@ public:
         diffuseMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
         Material glassMaterial;
         glassMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 0.0};
-        glassMaterial.roughnessFactor = 0.1;
+        glassMaterial.roughnessFactor = 0.1f;
         Material metalMaterial;
         metalMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
-        metalMaterial.metallicFactor = 1.0;
-        metalMaterial.roughnessFactor = 0.2;
+        metalMaterial.metallicFactor = 1.0f;
+        metalMaterial.roughnessFactor = 0.2f;
         int diffuseMaterialIndex = scene.addMaterial(context, diffuseMaterial);
         int glassMaterialIndex = scene.addMaterial(context, glassMaterial);
         int metalMaterialIndex = scene.addMaterial(context, metalMaterial);
@@ -175,14 +175,14 @@ public:
         uint32_t textureChannel = 4;
 
         std::vector<glm::vec4> data(textureWidth * textureHeight * textureChannel);
-        for (int x = 0; x < textureWidth; x++) {
+        for (uint32_t x = 0; x < textureWidth; x++) {
             glm::vec3 color = colorRamp5(x / static_cast<float>(textureWidth),         // break
                                          glm::vec3(225, 245, 253) / glm::vec3(255.0),  // break
                                          glm::vec3(1, 115, 233) / glm::vec3(255.0),    // break
                                          glm::vec3(2, 37, 131) / glm::vec3(255.0),     // break
                                          glm::vec3(0, 3, 49) / glm::vec3(255.0),       // break
                                          glm::vec3(0, 0, 3) / glm::vec3(255.0));
-            for (int y = 0; y < textureHeight; y++) {
+            for (uint32_t y = 0; y < textureHeight; y++) {
                 data[y * textureWidth + x] = glm::vec4(color, 0.0);
             }
         }

@@ -70,15 +70,15 @@ struct Material {
     int metallicRoughnessTextureIndex{-1};
     int normalTextureIndex{-1};
     int occlusionTextureIndex{-1};
-    int emissiveTextureIndex{-1};
 
-    glm::vec4 baseColorFactor{1.0f};
+    int emissiveTextureIndex{-1};
     float metallicFactor{0.0f};
     float roughnessFactor{0.0f};
+    float _dummy0;
+
+    glm::vec4 baseColorFactor{1.0f};
     glm::vec3 emissiveFactor{0.0f};
-    // AlphaMode alphaMode{AlphaMode::Opaque};
-    // float alphaCutoff{0.5f};
-    // bool doubleSided{false};
+    float _dummy1;
 };
 
 class Scene {
@@ -206,7 +206,7 @@ public:
                 }
 
                 tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
-                cameraYFov = camera.perspective.yfov;
+                cameraYFov = static_cast<float>(camera.perspective.yfov);
                 cameraExists = true;
                 nodes.push_back(Node{});
                 continue;
@@ -384,8 +384,8 @@ public:
                     commandBuffer->copyBuffer(indexBuffers.back(), indices.data());
                 });
 
-                vertexCounts.push_back(vertices.size());
-                triangleCounts.push_back(indices.size() / 3);
+                vertexCounts.push_back(static_cast<uint32_t>(vertices.size()));
+                triangleCounts.push_back(static_cast<uint32_t>(indices.size() / 3));
                 materialIndices.push_back(gltfPrimitive.material);
             }
         }
@@ -423,9 +423,9 @@ public:
             }
 
             // Emissive
-            material.emissiveFactor[0] = mat.emissiveFactor[0];
-            material.emissiveFactor[1] = mat.emissiveFactor[1];
-            material.emissiveFactor[2] = mat.emissiveFactor[2];
+            material.emissiveFactor[0] = static_cast<float>(mat.emissiveFactor[0]);
+            material.emissiveFactor[1] = static_cast<float>(mat.emissiveFactor[1]);
+            material.emissiveFactor[2] = static_cast<float>(mat.emissiveFactor[2]);
             if (mat.additionalValues.contains("emissiveTexture")) {
                 material.emissiveTextureIndex =
                     mat.additionalValues["emissiveTexture"].TextureIndex();
@@ -541,7 +541,7 @@ public:
             if (node.meshIndex != -1) {
                 accelInstances.push_back({
                     .bottomAccel = bottomAccels[node.meshIndex],
-                    .transform = node.computeTransformMatrix(0.0),
+                    .transform = node.computeTransformMatrix(0),
                     .sbtOffset = node.materialType,
                 });
             }
@@ -592,21 +592,21 @@ public:
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->copyBuffer(materialBuffer, materials.data());
         });
-        return materials.size() - 1;
+        return static_cast<int>(materials.size() - 1);
     }
 
     int addMesh(const MeshHandle& mesh, int materialIndex) {
         vertexBuffers.push_back(mesh->vertexBuffer);
         indexBuffers.push_back(mesh->indexBuffer);
-        vertexCounts.push_back(mesh->vertices.size());
-        triangleCounts.push_back(mesh->indices.size() / 3);
+        vertexCounts.push_back(static_cast<uint32_t>(mesh->vertices.size()));
+        triangleCounts.push_back(static_cast<uint32_t>(mesh->indices.size() / 3));
         materialIndices.push_back(materialIndex);
-        return vertexBuffers.size() - 1;
+        return static_cast<int>(vertexBuffers.size() - 1);
     }
 
     int addNode(const Node& node) {
         nodes.push_back(node);
-        return nodes.size() - 1;
+        return static_cast<uint32_t>(nodes.size() - 1);
     }
 
     void initMaterialIndexBuffer(const Context& context) {

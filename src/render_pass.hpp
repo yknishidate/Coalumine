@@ -20,7 +20,11 @@ inline fs::path getExecutableDirectory() {
 }
 
 inline fs::path getShaderSourceDirectory() {
-    return getExecutableDirectory().parent_path().parent_path().parent_path() / "shader";
+    // exectable:  project/build/preset/config/*.exe
+    // shader:     project/shader/*.glsl
+    const auto projectRoot =
+        getExecutableDirectory().parent_path().parent_path().parent_path().parent_path();
+    return projectRoot / "shader";
 }
 
 inline fs::path getSpvDirectory() {
@@ -79,10 +83,10 @@ inline std::vector<uint32_t> compileOrReadShader(const std::string& shaderFileNa
 }
 
 struct CompositeInfo {
-    float bloomIntensity = 1.0;
-    float saturation = 1.0;
-    float exposure = 1.0;
-    float gamma = 2.2;
+    float bloomIntensity = 1.0f;
+    float saturation = 1.0f;
+    float exposure = 1.0f;
+    float gamma = 2.2f;
     int enableToneMapping = 1;
     int enableGammaCorrection = 1;
 };
