@@ -18,7 +18,7 @@ void main()
 {
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
     uv.x = mod(uv.x + radians(domeLightPhi) / (2 * PI), 1.0); // rotate phi
-    payload.radiance = clamp(texture(domeLightTexture, uv).rgb, 0.0, 10.0);
+    payload.radiance = clamp(texture(domeLightTexture, uv).rgb, 0.0, 100.0);
 
     // template0
     //payload.radiance = colorRamp5(uv.x,
