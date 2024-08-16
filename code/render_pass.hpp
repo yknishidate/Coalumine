@@ -63,15 +63,6 @@ inline std::vector<uint32_t> readShader(const std::string& shaderFileName,
     return spvCode;
 }
 
-inline std::vector<uint32_t> compileOrReadShader(const std::string& shaderFileName,
-                                                 const std::string& entryPoint) {
-    if (shouldRecompile(shaderFileName, entryPoint)) {
-        return compileShader(shaderFileName, entryPoint);
-    } else {
-        return readShader(shaderFileName, entryPoint);
-    }
-}
-
 struct CompositeInfo {
     float bloomIntensity = 1.0f;
     float saturation = 1.0f;
