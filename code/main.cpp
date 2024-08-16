@@ -14,12 +14,12 @@
 
 class WindowApp : public App {
 public:
-    WindowApp()
+    WindowApp(bool enableValidation, uint32_t width, uint32_t height)
         : App({
-              .width = 1920,
-              .height = 1080,
+              .width = width,
+              .height = height,
               .title = "Coalumine",
-              .layers = Layer::Validation,
+              .layers = enableValidation ? Layer::Validation : ArrayProxy<Layer>{},
               .extensions = Extension::RayTracing,
           }) {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
@@ -81,51 +81,49 @@ public:
     }
 
     void onRender(const CommandBufferHandle& commandBuffer) override {
+        auto& pushConstants = renderer->pushConstants;
+
         static int imageIndex = 0;
         static bool enableBloom = false;
-        static bool enableAccum = renderer->pushConstants.enableAccum;
+        static bool enableAccum = pushConstants.enableAccum;
         static int blurIteration = 32;
         static bool playAnimation = true;
         static bool open = true;
         if (open) {
             ImGui::Begin("Settings", &open);
             ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
-            ImGui::SliderInt("Sample count", &renderer->pushConstants.sampleCount, 1, 512);
+            ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
             if (ImGui::Button("Save image")) {
                 saveImage();
             }
 
             // Dome light
-            if (ImGui::SliderFloat("Dome light phi", &renderer->pushConstants.domeLightPhi, 0.0,
-                                   360.0)) {
+            if (ImGui::SliderFloat("Dome light phi", &pushConstants.domeLightPhi, 0.0, 360.0)) {
                 renderer->reset();
             }
 
             // Infinite light
-            static glm::vec4 defaultInfiniteLightDirection =
-                renderer->pushConstants.infiniteLightDirection;
-            ImGui::SliderFloat4(
-                "Infinite light direction",
-                reinterpret_cast<float*>(&renderer->pushConstants.infiniteLightDirection), -1.0,
-                1.0);
-            ImGui::SliderFloat("Infinite light intensity",
-                               &renderer->pushConstants.infiniteLightIntensity, 0.0f, 1.0f);
+            static glm::vec4 defaultInfiniteLightDirection = pushConstants.infiniteLightDirection;
+            ImGui::SliderFloat4("Infinite light direction",
+                                reinterpret_cast<float*>(&pushConstants.infiniteLightDirection),
+                                -1.0, 1.0);
+            ImGui::SliderFloat("Infinite light intensity", &pushConstants.infiniteLightIntensity,
+                               0.0f, 1.0f);
             if (ImGui::Button("Reset infinite light")) {
-                renderer->pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
+                pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
             }
 
             if (ImGui::Checkbox("Enable accum", &enableAccum)) {
-                renderer->pushConstants.enableAccum = enableAccum;
+                pushConstants.enableAccum = enableAccum;
                 renderer->reset();
             }
 
             // Bloom
             ImGui::Checkbox("Enable bloom", &enableBloom);
             if (enableBloom) {
-                ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity, 0.0,
-                                   10.0);
-                ImGui::SliderFloat("Bloom threshold", &renderer->pushConstants.bloomThreshold, 0.0,
-                                   10.0);
+                ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity,  //
+                                   0.0f, 10.0f);
+                ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f, 10.0f);
                 ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
                 ImGui::SliderInt("Blur size", &renderer->bloomInfo.blurSize, 0, 64);
             }
@@ -134,7 +132,7 @@ public:
             ImGui::Checkbox("Enable tone mapping",
                             reinterpret_cast<bool*>(&renderer->compositeInfo.enableToneMapping));
             if (renderer->compositeInfo.enableToneMapping) {
-                ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0, 5.0);
+                ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0f, 5.0f);
             }
 
             // Gamma correction
@@ -148,7 +146,7 @@ public:
             ImGui::Checkbox("Play animation", &playAnimation);
 
             // Show GPU time
-            if (renderer->pushConstants.frame > 1) {
+            if (pushConstants.frame > 1) {
                 ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
             }
 
@@ -360,19 +358,19 @@ int main(int argc, char* argv[]) {
         // 実行モード "window", "headless" は、
         // コマンドライン引数で与えるか、ランタイムのユーザー入力で与えることができる
         std::string mode;
-        if (argc != 2) {
+        if (argc == 2) {
+            mode = argv[1];
+        } else {
             std::cout << "Which mode? (\"window\" or \"headless\")\n";
             std::cin >> mode;
-        } else {
-            mode = argv[1];
         }
 
         if (mode == "window") {
-            WindowApp app{};
+            WindowApp app{true, 1920, 1080};
             app.run();
         } else if (mode == "headless") {
-            HeadlessApp headlessApp{false, 1920, 1080};
-            headlessApp.run();
+            HeadlessApp app{false, 1920, 1080};
+            app.run();
         } else {
             throw std::runtime_error("Invalid mode. Please input \"window\" or \"headless\".");
         }
