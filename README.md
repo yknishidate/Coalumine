@@ -1,8 +1,12 @@
 # Coalumine
 
-Coalumine（コールマイン）
+Coalumine is a path tracing renderer by Vulkan.
+
+![](https://github.com/user-attachments/assets/8719c890-4db9-4cee-be83-54b75fab3b6c)
+
+## Build
 
 ```sh
-# change to your vcpkg path
-cmake . -B build -D CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
+# for visual studio
+cmake . --preset vs
 ```
