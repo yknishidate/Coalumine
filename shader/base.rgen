@@ -12,15 +12,15 @@ void main()
     const vec2 screenPos = vec2(gl_LaunchIDEXT.xy);
     const vec2 samplingRadius = 2.0 / vec2(gl_LaunchSizeEXT.xy);
     const vec2 uv = vec2(gl_LaunchIDEXT.xy) / vec2(gl_LaunchSizeEXT.xy) * 2.0 - 1.0;
-    vec4 origin = invView * vec4(0, 0, 0, 1);
+    vec4 origin = pc.invView * vec4(0, 0, 0, 1);
 
-    uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (frame + 1));
+    uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.frame + 1));
     payload.seed = s.x + s.y;
     vec3 radiance = vec3(0.0);
-    for(int i = 0; i < sampleCount; i++){
+    for(int i = 0; i < pc.sampleCount; i++){
         vec2 offset    = vec2(rand(payload.seed), rand(payload.seed)) * samplingRadius;
-        vec4 target    = invProj * vec4(uv.xy + offset, 1, 1);
-        vec4 direction = invView * vec4(normalize(target.xyz), 0);
+        vec4 target    = pc.invProj * vec4(uv.xy + offset, 1, 1);
+        vec4 direction = pc.invView * vec4(normalize(target.xyz), 0);
         payload.radiance = vec3(0.0);
         payload.depth = 0;
         traceRayEXT(
@@ -38,18 +38,18 @@ void main()
         );
         radiance += payload.radiance;
     }
-    radiance /= sampleCount;
+    radiance /= pc.sampleCount;
     
     // Store bloom color
     float luminace = computeLuminance(radiance);
-    vec3 bloomColor = radiance * max(vec3(0.0), luminace - bloomThreshold);
+    vec3 bloomColor = radiance * max(vec3(0.0), luminace - pc.bloomThreshold);
     imageStore(bloomImage, ivec2(gl_LaunchIDEXT.xy), vec4(bloomColor, 1));
 
     // Store base color
     vec4 newColor = vec4(radiance, 1);
-    if(enableAccum == 1){
+    if(pc.enableAccum == 1){
         vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
-        newColor = (newColor + (prevColor * frame)) / (frame + 1);
+        newColor = (newColor + (prevColor * pc.frame)) / (pc.frame + 1);
     }
     imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), newColor);
 }

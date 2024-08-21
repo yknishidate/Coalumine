@@ -6,7 +6,7 @@
 
 #include <reactive/reactive.hpp>
 
-void Scene::loadFromFile(const Context& context, const std::filesystem::path& filepath) {
+void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path& filepath) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -29,30 +29,35 @@ void Scene::loadFromFile(const Context& context, const std::filesystem::path& fi
     loadMeshes(context, model);
     loadMaterials(context, model);
     loadAnimation(context, model);
-    createNormalMatrixBuffer(context);
+    createNodeDataBuffer(context);
 }
 
-void Scene::createNormalMatrixBuffer(const Context& context) {
-    // TODO: Nodeごとの情報は構造体にまとめる
+void Scene::createNodeDataBuffer(const rv::Context& context) {
     for (auto& node : nodes) {
+        NodeData data;
         if (node.meshIndex != -1) {
-            normalMatrices.push_back(node.computeNormalMatrix(0));
+            data.vertexBufferAddress = meshes[node.meshIndex].vertexBuffer->getAddress();
+            data.indexBufferAddress = meshes[node.meshIndex].indexBuffer->getAddress();
+            data.materialIndex = meshes[node.meshIndex].materialIndex;
+            data.normalMatrix = node.computeNormalMatrix(0);
         }
+        nodeData.push_back(data);
     }
-    normalMatrixBuffer = context.createBuffer({
-        .usage = BufferUsage::Storage,
-        .memory = MemoryUsage::DeviceHost,
-        .size = sizeof(glm::mat4) * normalMatrices.size(),
-        .debugName = "normalMatrixBuffer",
+    nodeDataBuffer = context.createBuffer({
+        .usage = rv::BufferUsage::Storage,
+        .memory = rv::MemoryUsage::DeviceHost,
+        .size = sizeof(NodeData) * nodeData.size(),
+        .debugName = "nodeDataBuffer",
     });
-    normalMatrixBuffer->copy(normalMatrices.data());
+    nodeDataBuffer->copy(nodeData.data());
 }
 
-void Scene::loadDomeLightTexture(const Context& context, const std::filesystem::path& filepath) {
-    domeLightTexture = Image::loadFromFileHDR(context, filepath.string());
+void Scene::loadDomeLightTexture(const rv::Context& context,
+                                 const std::filesystem::path& filepath) {
+    domeLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
 }
 
-void Scene::createDomeLightTexture(const Context& context,
+void Scene::createDomeLightTexture(const rv::Context& context,
                                    const float* data,
                                    uint32_t width,
                                    uint32_t height,
@@ -66,7 +71,7 @@ void Scene::createDomeLightTexture(const Context& context,
     domeLightTexture->createImageView();
     domeLightTexture->createSampler();
 
-    BufferHandle stagingBuffer = context.createBuffer({
+    rv::BufferHandle stagingBuffer = context.createBuffer({
         .usage = rv::BufferUsage::Staging,
         .memory = rv::MemoryUsage::Host,
         .size = width * height * channel * sizeof(float),
@@ -81,7 +86,7 @@ void Scene::createDomeLightTexture(const Context& context,
     });
 }
 
-inline void Scene::createDomeLightTexture(const Context& context,
+inline void Scene::createDomeLightTexture(const rv::Context& context,
                                           uint32_t width,
                                           uint32_t height,
                                           const void* data) {
@@ -94,9 +99,9 @@ inline void Scene::createDomeLightTexture(const Context& context,
     });
 
     // Copy to image
-    BufferHandle stagingBuffer = context.createBuffer({
-        .usage = BufferUsage::Staging,
-        .memory = MemoryUsage::Host,
+    rv::BufferHandle stagingBuffer = context.createBuffer({
+        .usage = rv::BufferUsage::Staging,
+        .memory = rv::MemoryUsage::Host,
         .size = width * height * 4 * sizeof(float),
     });
     stagingBuffer->copy(data);
@@ -108,7 +113,7 @@ inline void Scene::createDomeLightTexture(const Context& context,
     });
 }
 
-void Scene::loadNodes(const Context& context, tinygltf::Model& gltfModel) {
+void Scene::loadNodes(const rv::Context& context, tinygltf::Model& gltfModel) {
     for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
@@ -177,7 +182,7 @@ void Scene::loadNodes(const Context& context, tinygltf::Model& gltfModel) {
     // });
 }
 
-void Scene::loadMeshes(const Context& context, tinygltf::Model& gltfModel) {
+void Scene::loadMeshes(const rv::Context& context, tinygltf::Model& gltfModel) {
     for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
         auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
         for (const auto& gltfPrimitive : gltfMesh.primitives) {
@@ -210,7 +215,7 @@ void Scene::loadMeshes(const Context& context, tinygltf::Model& gltfModel) {
             }
 
             // Create a vector to store the vertices
-            std::vector<Vertex> vertices(positionAccessor->count);
+            std::vector<rv::Vertex> vertices(positionAccessor->count);
 
             // Loop over the vertices
             for (size_t i = 0; i < positionAccessor->count; i++) {
@@ -286,30 +291,31 @@ void Scene::loadMeshes(const Context& context, tinygltf::Model& gltfModel) {
                 }
             }
 
-            vertexBuffers.push_back(context.createBuffer({
-                .usage = BufferUsage::AccelVertex,
-                .size = sizeof(Vertex) * vertices.size(),
-                .debugName = std::format("vertexBuffers[{}]", vertexBuffers.size()).c_str(),
-            }));
-            indexBuffers.push_back(context.createBuffer({
-                .usage = BufferUsage::AccelIndex,
+            Mesh mesh;
+            mesh.vertexBuffer = context.createBuffer({
+                .usage = rv::BufferUsage::AccelVertex,
+                .size = sizeof(rv::Vertex) * vertices.size(),
+                .debugName = std::format("vertexBuffers[{}]", meshes.size()).c_str(),
+            });
+            mesh.indexBuffer = context.createBuffer({
+                .usage = rv::BufferUsage::AccelIndex,
                 .size = sizeof(uint32_t) * indices.size(),
-                .debugName = std::format("indexBuffers[{}]", indexBuffers.size()).c_str(),
-            }));
-
-            context.oneTimeSubmit([&](auto commandBuffer) {
-                commandBuffer->copyBuffer(vertexBuffers.back(), vertices.data());
-                commandBuffer->copyBuffer(indexBuffers.back(), indices.data());
+                .debugName = std::format("indexBuffers[{}]", meshes.size()).c_str(),
             });
 
-            vertexCounts.push_back(static_cast<uint32_t>(vertices.size()));
-            triangleCounts.push_back(static_cast<uint32_t>(indices.size() / 3));
-            materialIndices.push_back(gltfPrimitive.material);
+            context.oneTimeSubmit([&](auto commandBuffer) {
+                commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
+                commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
+            });
+
+            mesh.vertexCount = static_cast<uint32_t>(vertices.size());
+            mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+            mesh.materialIndex = gltfPrimitive.material;
         }
     }
 }
 
-void Scene::loadMaterials(const Context& context, tinygltf::Model& gltfModel) {
+void Scene::loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel) {
     for (auto& mat : gltfModel.materials) {
         Material material;
 
@@ -376,7 +382,7 @@ void Scene::loadMaterials(const Context& context, tinygltf::Model& gltfModel) {
         materials.push_back({});  // dummy data
     }
     materialBuffer = context.createBuffer({
-        .usage = BufferUsage::Storage, .size = materials.size() * sizeof(Material),
+        .usage = rv::BufferUsage::Storage, .size = materials.size() * sizeof(Material),
         //.data = materials.data(),
     });
 
@@ -384,7 +390,7 @@ void Scene::loadMaterials(const Context& context, tinygltf::Model& gltfModel) {
         [&](auto commandBuffer) { commandBuffer->copyBuffer(materialBuffer, materials.data()); });
 }
 
-void Scene::loadAnimation(const Context& context, const tinygltf::Model& model) {
+void Scene::loadAnimation(const rv::Context& context, const tinygltf::Model& model) {
     for (const auto& animation : model.animations) {
         for (const auto& channel : animation.channels) {
             const auto& sampler = animation.samplers[channel.sampler];
@@ -433,28 +439,30 @@ void Scene::loadAnimation(const Context& context, const tinygltf::Model& model) 
     }
 }
 
-void Scene::buildAccels(const Context& context) {
-    bottomAccels.resize(vertexBuffers.size());
+void Scene::buildAccels(const rv::Context& context) {
+    bottomAccels.resize(meshes.size());
     context.oneTimeSubmit([&](auto commandBuffer) {  //
-        for (int i = 0; i < vertexBuffers.size(); i++) {
+        for (int i = 0; i < meshes.size(); i++) {
             bottomAccels[i] = context.createBottomAccel({
-                .vertexBuffer = vertexBuffers[i],
-                .indexBuffer = indexBuffers[i],
-                .vertexStride = sizeof(Vertex),
-                .vertexCount = vertexCounts[i],
-                .triangleCount = triangleCounts[i],
+                .vertexBuffer = meshes[i].vertexBuffer,
+                .indexBuffer = meshes[i].indexBuffer,
+                .vertexStride = sizeof(rv::Vertex),
+                .vertexCount = meshes[i].vertexCount,
+                .triangleCount = meshes[i].triangleCount,
             });
             commandBuffer->buildBottomAccel(bottomAccels[i]);
         }
     });
 
-    std::vector<AccelInstance> accelInstances;
-    for (auto& node : nodes) {
+    std::vector<rv::AccelInstance> accelInstances;
+    for (size_t i = 0; i < nodes.size(); i++) {
+        auto& node = nodes[i];
         if (node.meshIndex != -1) {
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(0),
-                .sbtOffset = node.materialType,
+                // .sbtOffset = node.materialType,
+                .customIndex = static_cast<uint32_t>(i),
             });
         }
     }
@@ -479,70 +487,49 @@ bool Scene::shouldUpdate(int frame) const {
 }
 
 void Scene::updateTopAccel(int frame) {
-    std::vector<AccelInstance> accelInstances;
-    for (auto& node : nodes) {
+    std::vector<rv::AccelInstance> accelInstances;
+    for (size_t i = 0; i < nodes.size(); i++) {
+        auto& node = nodes[i];
+
         if (node.meshIndex != -1) {
-            normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
+            nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
+            // normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(frame),
-                .sbtOffset = node.materialType,
+                // .sbtOffset = node.materialType,
             });
         }
     }
     topAccel->updateInstances(accelInstances);
-    normalMatrixBuffer->copy(normalMatrices.data());
+    nodeDataBuffer->copy(nodeData.data());
 }
 
-int Scene::addMaterial(const Context& context, const Material& material) {
+int Scene::addMaterial(const rv::Context& context, const Material& material) {
     materials.push_back(material);
     materialBuffer = context.createBuffer({
-        .usage = BufferUsage::Storage,
+        .usage = rv::BufferUsage::Storage,
         .size = materials.size() * sizeof(Material),
         .debugName = "materialBuffer",
     });
-    context.oneTimeSubmit(
-        [&](auto commandBuffer) { commandBuffer->copyBuffer(materialBuffer, materials.data()); });
+    context.oneTimeSubmit([&](auto commandBuffer) {
+        commandBuffer->copyBuffer(materialBuffer, materials.data());  //
+    });
     return static_cast<int>(materials.size() - 1);
 }
 
-int Scene::addMesh(const Mesh& mesh, int materialIndex) {
-    vertexBuffers.push_back(mesh.vertexBuffer);
-    indexBuffers.push_back(mesh.indexBuffer);
-    vertexCounts.push_back(static_cast<uint32_t>(mesh.vertices.size()));
-    triangleCounts.push_back(static_cast<uint32_t>(mesh.indices.size() / 3));
-    materialIndices.push_back(materialIndex);
-    return static_cast<int>(vertexBuffers.size() - 1);
+int Scene::addMesh(const rv::Mesh& mesh, int materialIndex) {
+    meshes.push_back({
+        .vertexBuffer = mesh.vertexBuffer,
+        .indexBuffer = mesh.indexBuffer,
+        .vertexCount = static_cast<uint32_t>(mesh.vertices.size()),
+        .triangleCount = static_cast<uint32_t>(mesh.indices.size() / 3),
+        .materialIndex = materialIndex,
+    });
+    return static_cast<int>(meshes.size() - 1);
 }
 
 int Scene::addNode(const Node& node) {
     nodes.push_back(node);
     return static_cast<uint32_t>(nodes.size() - 1);
-}
-
-void Scene::initMaterialIndexBuffer(const Context& context) {
-    // TODO: このへんも一つのバッファにする
-    if (materialIndices.empty()) {
-        materialIndices.push_back(-1);  // dummy data
-    }
-    materialIndexBuffer = context.createBuffer({
-        .usage = BufferUsage::Index,
-        .size = sizeof(int) * materialIndices.size(),
-        .debugName = "materialIndexBuffer",
-    });
-    context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->copyBuffer(materialIndexBuffer, materialIndices.data());
-    });
-}
-
-void Scene::initAddressBuffer(const Context& context) {
-    address.materials = materialBuffer->getAddress();
-    addressBuffer = context.createBuffer({
-        .usage = BufferUsage::Storage,
-        .size = sizeof(Address),
-        .debugName = "addressBuffer",
-    });
-    context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->copyBuffer(addressBuffer, &address);  //
-    });
 }

@@ -10,24 +10,6 @@ layout(location = 1) rayPayloadEXT bool shadowed;
 
 hitAttributeEXT vec3 attribs;
 
-Vertex unpackVertex(uint meshIndex,  uint vertexIndex) {
-    uint stride = 8;
-    uint offset = vertexIndex * stride;
-    Vertex v;
-    v.pos = vec3(
-        vertexBuffers[meshIndex].vertices[offset +  0], 
-        vertexBuffers[meshIndex].vertices[offset +  1], 
-        vertexBuffers[meshIndex].vertices[offset + 2]);
-    v.normal = vec3(
-        vertexBuffers[meshIndex].vertices[offset +  3], 
-        vertexBuffers[meshIndex].vertices[offset +  4], 
-        vertexBuffers[meshIndex].vertices[offset + 5]);
-    v.texCoord = vec2(
-        vertexBuffers[meshIndex].vertices[offset +  6], 
-        vertexBuffers[meshIndex].vertices[offset +  7]);
-    return v;
-}
-
 // Global space
 vec3 sampleHemisphereUniform(in vec3 normal, inout uint seed) {
     float u = rand(seed);
@@ -216,17 +198,22 @@ vec3 sampleGGX(float roughness, inout uint seed) {
 
 void main()
 {
-    uint meshIndex = gl_InstanceID;
-    Vertex v0 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 0]);
-    Vertex v1 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 1]);
-    Vertex v2 = unpackVertex(meshIndex, indexBuffers[meshIndex].indices[3 * gl_PrimitiveID + 2]);
+    NodeData data = nodeData[gl_InstanceCustomIndexEXT];
+
+    VertexBuffer vertexBuffer = VertexBuffer(data.vertexBufferAddress);
+    IndexBuffer indexBuffer = IndexBuffer(data.indexBufferAddress);
+
+    uvec3 index = indexBuffer.indices[gl_PrimitiveID];
+    Vertex v0 = vertexBuffer.vertices[index[0]];
+    Vertex v1 = vertexBuffer.vertices[index[1]];
+    Vertex v2 = vertexBuffer.vertices[index[2]];
     
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
     vec3 pos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
-    mat3 normalMatrix = mat3(normalMatrices[meshIndex]);
+    mat3 normalMatrix = mat3(data.normalMatrix);
     normal = normalize(normalMatrix * normal);
 
     // Get material
@@ -236,10 +223,9 @@ void main()
     float roughness = 0.0;
     vec3 emissive = vec3(0.0);
 
-    int materialIndex = materialIndices[meshIndex];
+    int materialIndex = data.materialIndex;
     if(materialIndex != -1){
-        Materials _materials = Materials(addresses.materials);
-        Material material = _materials.materials[materialIndex];
+        Material material = materials[materialIndex];
         baseColor = material.baseColorFactor.rgb;
         transmission = 1.0 - material.baseColorFactor.a;
         metallic = material.metallicFactor;
@@ -329,10 +315,10 @@ void main()
         // Shadow ray
         shadowed = true;
         vec3 inifiniteLightTerm = vec3(0.0);
-        traceShadowRay(origin, infiniteLightDirection.xyz, 0.1);
+        traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.1);
         if(!shadowed){
-            float cosTheta = max(dot(normal, infiniteLightDirection.xyz), 0.0);
-            inifiniteLightTerm = baseColor * infiniteLightIntensity * cosTheta;
+            float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
+            inifiniteLightTerm = baseColor * pc.infiniteLightIntensity * cosTheta;
         }
 
         // Diffuse IS

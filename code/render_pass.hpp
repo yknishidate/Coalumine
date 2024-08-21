@@ -70,6 +70,8 @@ struct CompositeInfo {
     float gamma = 2.2f;
     int enableToneMapping = 1;
     int enableGammaCorrection = 1;
+    int _dummy0;
+    int _dummy1;
 };
 
 class CompositePass {

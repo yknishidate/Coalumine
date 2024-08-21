@@ -56,9 +56,6 @@ public:
         scene.buildAccels(context);
         spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
 
-        scene.initMaterialIndexBuffer(context);
-        scene.initAddressBuffer(context);
-
         baseImage = context.createImage({
             .usage = ImageUsage::Storage,
             .extent = {width, height, 1},
@@ -130,7 +127,7 @@ public:
             node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
             scene.addNode(node);
         }
-        scene.createNormalMatrixBuffer(context);
+        scene.createNodeDataBuffer(context);
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
 
@@ -154,15 +151,15 @@ public:
         // Set materials
         std::mt19937 rng(12345);
         std::uniform_real_distribution<float> dist1(0.0f, 1.0f);
-        for (auto& materialIndex : scene.materialIndices) {
-            if (materialIndex == -1) {
+        for (auto& mesh : scene.meshes) {
+            if (mesh.materialIndex == -1) {
                 double randVal = dist1(rng);
                 if (randVal < 0.33) {
-                    materialIndex = diffuseMaterialIndex;
+                    mesh.materialIndex = diffuseMaterialIndex;
                 } else if (randVal < 0.66) {
-                    materialIndex = metalMaterialIndex;
+                    mesh.materialIndex = metalMaterialIndex;
                 } else {
-                    materialIndex = glassMaterialIndex;
+                    mesh.materialIndex = glassMaterialIndex;
                 }
             }
         }
@@ -214,11 +211,8 @@ public:
             .shaders = shaders,
             .buffers =
                 {
-                    {"VertexBuffers", scene.vertexBuffers},
-                    {"IndexBuffers", scene.indexBuffers},
-                    {"AddressBuffer", scene.addressBuffer},
-                    {"MaterialIndexBuffer", scene.materialIndexBuffer},
-                    {"NormalMatrixBuffer", scene.normalMatrixBuffer},
+                    {"NodeDataBuffer", scene.nodeDataBuffer},
+                    {"MaterialBuffer", scene.materialBuffer},
                 },
             .images =
                 {

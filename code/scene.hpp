@@ -6,7 +6,7 @@
 
 #include <tiny_gltf.h>
 
-using namespace rv;
+#include "../shader/share.h"
 
 struct Address {
     // vk::DeviceAddress vertices;
@@ -30,7 +30,7 @@ enum {
 class Node {
 public:
     int meshIndex = -1;
-    uint32_t materialType = MATERIAL_TYPE_DIFFUSE;
+    // uint32_t materialType = MATERIAL_TYPE_DIFFUSE;
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
@@ -60,92 +60,77 @@ public:
     }
 };
 
-struct Material {
-    // Textures
-    int baseColorTextureIndex{-1};
-    int metallicRoughnessTextureIndex{-1};
-    int normalTextureIndex{-1};
-    int occlusionTextureIndex{-1};
-
-    int emissiveTextureIndex{-1};
-    float metallicFactor{0.0f};
-    float roughnessFactor{0.0f};
-    float _dummy0;
-
-    glm::vec4 baseColorFactor{1.0f};
-    glm::vec3 emissiveFactor{0.0f};
-    float _dummy1;
-};
-
 class Scene {
 public:
     Scene() = default;
 
-    void loadFromFile(const Context& context, const std::filesystem::path& filepath);
+    void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
 
-    void createNormalMatrixBuffer(const Context& context);
+    void createNodeDataBuffer(const rv::Context& context);
 
-    void loadDomeLightTexture(const Context& context, const std::filesystem::path& filepath);
+    // void createNormalMatrixBuffer(const rv::Context& context);
 
-    void createDomeLightTexture(const Context& context,
+    void loadDomeLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
+
+    void createDomeLightTexture(const rv::Context& context,
                                 const float* data,
                                 uint32_t width,
                                 uint32_t height,
                                 uint32_t channel);
 
-    void createDomeLightTexture(const Context& context,
+    void createDomeLightTexture(const rv::Context& context,
                                 uint32_t width,
                                 uint32_t height,
                                 const void* data);
 
-    void loadNodes(const Context& context, tinygltf::Model& gltfModel);
+    void loadNodes(const rv::Context& context, tinygltf::Model& gltfModel);
 
-    void loadMeshes(const Context& context, tinygltf::Model& gltfModel);
+    void loadMeshes(const rv::Context& context, tinygltf::Model& gltfModel);
 
-    void loadMaterials(const Context& context, tinygltf::Model& gltfModel);
+    void loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel);
 
-    void loadAnimation(const Context& context, const tinygltf::Model& model);
+    void loadAnimation(const rv::Context& context, const tinygltf::Model& model);
 
-    void buildAccels(const Context& context);
+    void buildAccels(const rv::Context& context);
 
     bool shouldUpdate(int frame) const;
 
     void updateTopAccel(int frame);
 
-    int addMaterial(const Context& context, const Material& material);
+    int addMaterial(const rv::Context& context, const Material& material);
 
-    int addMesh(const Mesh& mesh, int materialIndex);
+    int addMesh(const rv::Mesh& mesh, int materialIndex);
 
     int addNode(const Node& node);
 
-    void initMaterialIndexBuffer(const Context& context);
+    // void initMaterialIndexBuffer(const rv::Context& context);
 
-    void initAddressBuffer(const Context& context);
+    // void initAddressBuffer(const rv::Context& context);
 
     std::vector<Node> nodes;
-    std::vector<BufferHandle> vertexBuffers;
-    std::vector<BufferHandle> indexBuffers;
-    std::vector<uint32_t> vertexCounts;
-    std::vector<uint32_t> triangleCounts;
 
-    std::vector<BottomAccelHandle> bottomAccels;
-    TopAccelHandle topAccel;
-    ImageHandle domeLightTexture;
+    struct Mesh {
+        rv::BufferHandle vertexBuffer;
+        rv::BufferHandle indexBuffer;
+        uint32_t vertexCount;
+        uint32_t triangleCount;
+        int materialIndex = -1;
+    };
 
-    std::vector<int> materialIndices;
-    BufferHandle materialIndexBuffer;
+    std::vector<Mesh> meshes;
+
+    std::vector<rv::BottomAccelHandle> bottomAccels;
+    rv::TopAccelHandle topAccel;
+    rv::ImageHandle domeLightTexture;
+
+    std::vector<NodeData> nodeData;
+    rv::BufferHandle nodeDataBuffer;
 
     std::vector<Material> materials;
-    BufferHandle materialBuffer;
-
-    Address address;
-    BufferHandle addressBuffer;
+    rv::BufferHandle materialBuffer;
 
     bool cameraExists = false;
     glm::vec3 cameraTranslation;
     glm::quat cameraRotation;
     float cameraYFov;
-
-    std::vector<glm::mat4> normalMatrices;
-    BufferHandle normalMatrixBuffer;
 };
