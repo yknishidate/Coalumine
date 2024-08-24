@@ -8,12 +8,6 @@
 
 #include "../shader/share.h"
 
-struct Address {
-    // vk::DeviceAddress vertices;
-    // vk::DeviceAddress indices;
-    vk::DeviceAddress materials;
-};
-
 struct KeyFrame {
     float time = 0.0f;
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
@@ -21,16 +15,9 @@ struct KeyFrame {
     glm::vec3 scale = {1.0f, 1.0f, 1.0f};
 };
 
-enum {
-    MATERIAL_TYPE_DIFFUSE = 0,
-    MATERIAL_TYPE_METAL = 1,
-    MATERIAL_TYPE_GLASS = 2,
-};
-
 class Node {
 public:
     int meshIndex = -1;
-    // uint32_t materialType = MATERIAL_TYPE_DIFFUSE;
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
@@ -68,8 +55,6 @@ public:
 
     void createNodeDataBuffer(const rv::Context& context);
 
-    // void createNormalMatrixBuffer(const rv::Context& context);
-
     void loadDomeLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
 
     void createDomeLightTexture(const rv::Context& context,
@@ -102,10 +87,6 @@ public:
     int addMesh(const rv::Mesh& mesh, int materialIndex);
 
     int addNode(const Node& node);
-
-    // void initMaterialIndexBuffer(const rv::Context& context);
-
-    // void initAddressBuffer(const rv::Context& context);
 
     std::vector<Node> nodes;
 

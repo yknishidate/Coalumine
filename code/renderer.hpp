@@ -1,4 +1,4 @@
-#include <future>
+﻿#include <future>
 #include <random>
 
 #include "../shader/share.h"
@@ -48,8 +48,11 @@ public:
     Renderer(const Context& context, uint32_t width, uint32_t height)
         : width{width}, height{height} {
         rv::CPUTimer timer;
+
+        // TODO: シーンを切り替えられるようにする
         loadMaterialTestScene(context);
         // loadRTCamp9Scene(context);
+
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         timer.restart();
@@ -102,6 +105,7 @@ public:
                 .usage = MeshUsage::RayTracing,
                 .name = "sphereMesh",
             });
+
         // Add material, mesh, node
         for (int i = 0; i < 8; i++) {
             Material metal;

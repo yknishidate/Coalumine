@@ -165,21 +165,7 @@ void Scene::loadNodes(const rv::Context& context, tinygltf::Model& gltfModel) {
         }
 
         nodes.push_back(Node{});
-
-        // transformMatrices.push_back(node.computeTransformMatrix());
-        // normalMatrices.push_back(node.computeNormalMatrix());
     }
-
-    // transformMatrixBuffer = context.createBuffer({
-    //     .usage = BufferUsage::Storage,
-    //     .size = transformMatrices.size() * sizeof(glm::mat4),
-    //     .data = transformMatrices.data(),
-    // });
-    // normalMatrixBuffer = context.createBuffer({
-    //     .usage = BufferUsage::Storage,
-    //     .size = normalMatrices.size() * sizeof(glm::mat3),
-    //     .data = normalMatrices.data(),
-    // });
 }
 
 void Scene::loadMeshes(const rv::Context& context, tinygltf::Model& gltfModel) {
@@ -359,21 +345,6 @@ void Scene::loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel
                 mat.additionalValues["occlusionTexture"].TextureIndex();
         }
 
-        //// Alpha
-        // if (mat.additionalValues.find("alphaMode") != mat.additionalValues.end()) {
-        //     auto param = mat.additionalValues["alphaMode"];
-        //     if (param.string_value == "BLEND") {
-        //         material.alphaMode = AlphaMode::Blend;
-        //     }
-        //     if (param.string_value == "MASK") {
-        //         material.alphaMode = AlphaMode::Mask;
-        //     }
-        // }
-        // if (mat.additionalValues.find("alphaCutoff") != mat.additionalValues.end()) {
-        //     material.alphaCutoff =
-        //         static_cast<float>(mat.additionalValues["alphaCutoff"].Factor());
-        // }
-
         materials.push_back(material);
     }
 
@@ -382,8 +353,8 @@ void Scene::loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel
         materials.push_back({});  // dummy data
     }
     materialBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::Storage, .size = materials.size() * sizeof(Material),
-        //.data = materials.data(),
+        .usage = rv::BufferUsage::Storage,
+        .size = materials.size() * sizeof(Material),
     });
 
     context.oneTimeSubmit(
@@ -461,7 +432,6 @@ void Scene::buildAccels(const rv::Context& context) {
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(0),
-                // .sbtOffset = node.materialType,
                 .customIndex = static_cast<uint32_t>(i),
             });
         }
@@ -493,11 +463,9 @@ void Scene::updateTopAccel(int frame) {
 
         if (node.meshIndex != -1) {
             nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
-            // normalMatrices[node.meshIndex] = node.computeNormalMatrix(frame);
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(frame),
-                // .sbtOffset = node.materialType,
             });
         }
     }
