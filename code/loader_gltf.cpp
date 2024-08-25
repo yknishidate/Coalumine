@@ -1,36 +1,11 @@
-#define TINYGLTF_IMPLEMENTATION
-
 #include "loader_gltf.hpp"
 #include "scene.hpp"
 
-void LoaderGltf::loadFromFile(Scene& scene,
-                              const rv::Context& context,
-                              const std::filesystem::path& filepath) {
-    tinygltf::Model model;
-    tinygltf::TinyGLTF loader;
-    std::string err;
-    std::string warn;
+#define TINYGLTF_IMPLEMENTATION
+#include <tiny_gltf.h>
 
-    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
-    if (!warn.empty()) {
-        std::cerr << "Warn: " << warn.c_str() << std::endl;
-    }
-    if (!err.empty()) {
-        std::cerr << "Err: " << err.c_str() << std::endl;
-    }
-    if (!ret) {
-        throw std::runtime_error("Failed to parse glTF: " + filepath.string());
-    }
-
-    spdlog::info("Nodes: {}", model.nodes.size());
-    spdlog::info("Meshes: {}", model.meshes.size());
-    loadNodes(scene, context, model);
-    loadMeshes(scene, context, model);
-    loadMaterials(scene, context, model);
-    loadAnimation(scene, context, model);
-}
-
-void LoaderGltf::loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
+namespace {
+void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
     for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
@@ -85,7 +60,7 @@ void LoaderGltf::loadNodes(Scene& scene, const rv::Context& context, tinygltf::M
     }
 }
 
-void LoaderGltf::loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
+void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
     // Count the meshes and reserve the vector
     size_t meshCount = 0;
     for (size_t gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
@@ -228,9 +203,7 @@ void LoaderGltf::loadMeshes(Scene& scene, const rv::Context& context, tinygltf::
     }
 }
 
-void LoaderGltf::loadMaterials(Scene& scene,
-                               const rv::Context& context,
-                               tinygltf::Model& gltfModel) {
+void loadMaterials(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
     for (auto& mat : gltfModel.materials) {
         Material material;
 
@@ -278,9 +251,7 @@ void LoaderGltf::loadMaterials(Scene& scene,
     }
 }
 
-void LoaderGltf::loadAnimation(Scene& scene,
-                               const rv::Context& context,
-                               const tinygltf::Model& model) {
+void loadAnimation(Scene& scene, const rv::Context& context, const tinygltf::Model& model) {
     for (const auto& animation : model.animations) {
         for (const auto& channel : animation.channels) {
             const auto& sampler = animation.samplers[channel.sampler];
@@ -327,4 +298,32 @@ void LoaderGltf::loadAnimation(Scene& scene,
             }
         }
     }
+}
+}  // namespace
+
+void LoaderGltf::loadFromFile(Scene& scene,
+                              const rv::Context& context,
+                              const std::filesystem::path& filepath) {
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
+
+    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
+    if (!warn.empty()) {
+        std::cerr << "Warn: " << warn.c_str() << std::endl;
+    }
+    if (!err.empty()) {
+        std::cerr << "Err: " << err.c_str() << std::endl;
+    }
+    if (!ret) {
+        throw std::runtime_error("Failed to parse glTF: " + filepath.string());
+    }
+
+    spdlog::info("Nodes: {}", model.nodes.size());
+    spdlog::info("Meshes: {}", model.meshes.size());
+    loadNodes(scene, context, model);
+    loadMeshes(scene, context, model);
+    loadMaterials(scene, context, model);
+    loadAnimation(scene, context, model);
 }

@@ -4,7 +4,7 @@
 
 class Scene;
 
-class LoaderGltf {
+class LoaderObj {
 public:
     static void loadFromFile(Scene& scene,
                              const rv::Context& context,
