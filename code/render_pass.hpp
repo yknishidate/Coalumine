@@ -4,8 +4,6 @@
 #include <reactive/Graphics/DescriptorSet.hpp>
 #include <reactive/Graphics/Pipeline.hpp>
 
-using namespace rv;
-
 namespace fs = std::filesystem;
 fs::path getExecutableDirectory();
 
@@ -40,7 +38,7 @@ inline bool shouldRecompile(const std::string& shaderFileName, const std::string
         return false;
     }
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    auto glslWriteTime = Compiler::getLastWriteTimeWithIncludeFiles(glslFile);
+    auto glslWriteTime = rv::Compiler::getLastWriteTimeWithIncludeFiles(glslFile);
     return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
 }
 
@@ -49,8 +47,8 @@ inline std::vector<uint32_t> compileShader(const std::string& shaderFileName,
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
     spdlog::info("Compile shader: {}", spvFile.string());
-    std::vector<uint32_t> spvCode = Compiler::compileToSPV(glslFile.string());
-    File::writeBinary(spvFile, spvCode);
+    std::vector<uint32_t> spvCode = rv::Compiler::compileToSPV(glslFile.string());
+    rv::File::writeBinary(spvFile, spvCode);
     return spvCode;
 }
 
@@ -59,7 +57,7 @@ inline std::vector<uint32_t> readShader(const std::string& shaderFileName,
     auto glslFile = getShaderSourceDirectory() / shaderFileName;
     auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
     std::vector<uint32_t> spvCode;
-    File::readBinary(spvFile, spvCode);
+    rv::File::readBinary(spvFile, spvCode);
     return spvCode;
 }
 
@@ -78,9 +76,9 @@ class CompositePass {
 public:
     CompositePass() = default;
 
-    CompositePass(const Context& context,
-                  ImageHandle baseImage,
-                  ImageHandle bloomImage,
+    CompositePass(const rv::Context& context,
+                  rv::ImageHandle baseImage,
+                  rv::ImageHandle bloomImage,
                   uint32_t width,
                   uint32_t height) {
         finalImageRGBA = context.createImage({
@@ -129,7 +127,7 @@ public:
         });
     }
 
-    void render(const CommandBufferHandle& commandBuffer,
+    void render(const rv::CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
                 CompositeInfo info) {
@@ -142,11 +140,11 @@ public:
     vk::Image getOutputImageRGBA() const { return finalImageRGBA->getImage(); }
     vk::Image getOutputImageBGRA() const { return finalImageBGRA->getImage(); }
 
-    ShaderHandle shader;
-    DescriptorSetHandle descSet;
-    ComputePipelineHandle pipeline;
-    ImageHandle finalImageRGBA;
-    ImageHandle finalImageBGRA;
+    rv::ShaderHandle shader;
+    rv::DescriptorSetHandle descSet;
+    rv::ComputePipelineHandle pipeline;
+    rv::ImageHandle finalImageRGBA;
+    rv::ImageHandle finalImageBGRA;
 };
 
 struct BloomInfo {
@@ -157,7 +155,7 @@ class BloomPass {
 public:
     BloomPass() = default;
 
-    BloomPass(const Context& context, uint32_t width, uint32_t height) {
+    BloomPass(const rv::Context& context, uint32_t width, uint32_t height) {
         bloomImage = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
@@ -193,7 +191,7 @@ public:
         });
     }
 
-    void render(const CommandBufferHandle& commandBuffer,
+    void render(const rv::CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
                 BloomInfo info) {
@@ -209,8 +207,8 @@ public:
 
     vk::Image getOutputImage() const { return bloomImage->getImage(); }
 
-    ShaderHandle shader;
-    DescriptorSetHandle descSet;
-    ComputePipelineHandle pipeline;
-    ImageHandle bloomImage;
+    rv::ShaderHandle shader;
+    rv::DescriptorSetHandle descSet;
+    rv::ComputePipelineHandle pipeline;
+    rv::ImageHandle bloomImage;
 };

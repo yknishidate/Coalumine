@@ -13,7 +13,7 @@
 
 class Renderer {
 public:
-    Renderer(const Context& context, uint32_t width, uint32_t height)
+    Renderer(const rv::Context& context, uint32_t width, uint32_t height)
         : width{width}, height{height} {
         rv::CPUTimer timer;
 
@@ -29,7 +29,7 @@ public:
         spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
 
         baseImage = context.createImage({
-            .usage = ImageUsage::Storage,
+            .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
             .debugName = "baseImage",
@@ -42,13 +42,13 @@ public:
 
         createPipelines(context);
 
-        orbitalCamera = {Camera::Type::Orbital, width / static_cast<float>(height)};
+        orbitalCamera = {rv::Camera::Type::Orbital, width / static_cast<float>(height)};
         orbitalCamera.setDistance(12.0f);
         orbitalCamera.setFovY(glm::radians(30.0f));
         currentCamera = &orbitalCamera;
 
         if (scene.cameraExists) {
-            fpsCamera = {Camera::Type::FirstPerson, width / static_cast<float>(height)};
+            fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
             fpsCamera.setPosition(scene.cameraTranslation);
             glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
 
@@ -63,15 +63,15 @@ public:
         }
     }
 
-    void loadMaterialTestScene(const Context& context) {
+    void loadMaterialTestScene(const rv::Context& context) {
         // Add mesh
-        Mesh sphereMesh = Mesh::createSphereMesh(  //
-            context,                               //
+        rv::Mesh sphereMesh = rv::Mesh::createSphereMesh(  //
+            context,                                       //
             {
                 .numSlices = 64,
                 .numStacks = 64,
                 .radius = 0.5,
-                .usage = MeshUsage::RayTracing,
+                .usage = rv::MeshUsage::RayTracing,
                 .name = "sphereMesh",
             });
 
@@ -106,7 +106,7 @@ public:
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
 
-    void loadRTCamp9Scene(const Context& context) {
+    void loadRTCamp9Scene(const rv::Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "rtcamp9.gltf");
 
         // Add materials
@@ -158,14 +158,14 @@ public:
                                      textureWidth, textureHeight, textureChannel);
     }
 
-    void loadDragonScene(const Context& context) {
+    void loadDragonScene(const rv::Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "dragon.obj");
         scene.createNodeDataBuffer(context);
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
 
-    void createPipelines(const Context& context) {
-        std::vector<ShaderHandle> shaders(4);
+    void createPipelines(const rv::Context& context) {
+        std::vector<rv::ShaderHandle> shaders(4);
         shaders[0] = context.createShader({
             .code = readShader("base.rgen", "main"),
             .stage = vk::ShaderStageFlagBits::eRaygenKHR,
@@ -231,7 +231,7 @@ public:
 
     void reset() { pushConstants.frame = 0; }
 
-    void render(const CommandBufferHandle& commandBuffer,
+    void render(const rv::CommandBufferHandle& commandBuffer,
                 bool playAnimation,
                 bool enableBloom,
                 int blurIteration) {
@@ -280,14 +280,14 @@ public:
     BloomInfo bloomInfo;
     BloomPass bloomPass;
 
-    ImageHandle baseImage;
+    rv::ImageHandle baseImage;
 
-    DescriptorSetHandle descSet;
-    RayTracingPipelineHandle rayTracingPipeline;
+    rv::DescriptorSetHandle descSet;
+    rv::RayTracingPipelineHandle rayTracingPipeline;
 
-    Camera* currentCamera = nullptr;
-    Camera fpsCamera;
-    Camera orbitalCamera;
+    rv::Camera* currentCamera = nullptr;
+    rv::Camera fpsCamera;
+    rv::Camera orbitalCamera;
 
     PushConstants pushConstants;
 };

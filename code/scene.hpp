@@ -4,6 +4,14 @@
 
 #include "../shader/share.h"
 
+struct Mesh {
+    rv::BufferHandle vertexBuffer;
+    rv::BufferHandle indexBuffer;
+    uint32_t vertexCount;
+    uint32_t triangleCount;
+    int materialIndex = -1;
+};
+
 struct KeyFrame {
     float time = 0.0f;
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
@@ -84,16 +92,7 @@ public:
 
     int addNode(const Node& node);
 
-    struct Mesh {
-        rv::BufferHandle vertexBuffer;
-        rv::BufferHandle indexBuffer;
-        uint32_t vertexCount;
-        uint32_t triangleCount;
-        int materialIndex = -1;
-    };
-
     std::vector<Node> nodes;
-
     std::vector<Mesh> meshes;
 
     std::vector<rv::BottomAccelHandle> bottomAccels;

@@ -10,16 +10,16 @@
 #include "renderer.hpp"
 #include "scene.hpp"
 
-class WindowApp : public App {
+class WindowApp : public rv::App {
 public:
     WindowApp(bool enableValidation, uint32_t width, uint32_t height)
-        : App({
+        : rv::App({
               .width = width,
               .height = height,
               .title = "Coalumine",
-              .layers = enableValidation ? Layer::Validation : ArrayProxy<Layer>{},
-              .extensions = Extension::RayTracing,
-              .style = UIStyle::Gray,
+              .layers = enableValidation ? rv::Layer::Validation : rv::ArrayProxy<rv::Layer>{},
+              .extensions = rv::Extension::RayTracing,
+              .style = rv::UIStyle::Gray,
           }) {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
@@ -45,23 +45,24 @@ public:
             compileShader("composite.comp", "main");
         }
 
-        renderer = std::make_unique<Renderer>(context, Window::getWidth(), Window::getHeight());
+        renderer = std::make_unique<Renderer>(context,  //
+                                              rv::Window::getWidth(), rv::Window::getHeight());
     }
 
     void onStart() override {
         gpuTimer = context.createGPUTimer({});
         imageSavingBuffer = context.createBuffer({
-            .usage = BufferUsage::Staging,
-            .memory = MemoryUsage::Host,
-            .size = Window::getWidth() * Window::getHeight() * 4 * sizeof(uint8_t),
+            .usage = rv::BufferUsage::Staging,
+            .memory = rv::MemoryUsage::Host,
+            .size = rv::Window::getWidth() * rv::Window::getHeight() * 4 * sizeof(uint8_t),
             .debugName = "imageSavingBuffer",
         });
     }
 
     void onUpdate(float dt) override {  //
         // RendererはWindowに依存させたくないため。DebugAppが処理する
-        auto dragLeft = Window::getMouseDragLeft();
-        auto scroll = Window::getMouseScroll();
+        auto dragLeft = rv::Window::getMouseDragLeft();
+        auto scroll = rv::Window::getMouseScroll();
 
         renderer->update(dragLeft, scroll);
     }
@@ -79,7 +80,7 @@ public:
         }
     }
 
-    void onRender(const CommandBufferHandle& commandBuffer) override {
+    void onRender(const rv::CommandBufferHandle& commandBuffer) override {
         auto& pushConstants = renderer->pushConstants;
 
         static int imageIndex = 0;
@@ -167,7 +168,7 @@ public:
                                  vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
-        ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+        rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
         commandBuffer->copyImageToBuffer(outputImage, imageSavingBuffer);
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
@@ -179,13 +180,14 @@ public:
         std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
         std::string img = zeros + frame + ".jpg";
         writeTask = std::async(std::launch::async, [=]() {
-            stbi_write_jpg(img.c_str(), Window::getWidth(), Window::getHeight(), 4, pixels, 90);
+            stbi_write_jpg(img.c_str(), rv::Window::getWidth(), rv::Window::getHeight(), 4, pixels,
+                           90);
         });
     }
 
     std::unique_ptr<Renderer> renderer;
-    GPUTimerHandle gpuTimer;
-    BufferHandle imageSavingBuffer;
+    rv::GPUTimerHandle gpuTimer;
+    rv::BufferHandle imageSavingBuffer;
     std::future<void> writeTask;
     char inputTextBuffer[1024] = {0};
 };
@@ -240,7 +242,7 @@ public:
 
         vk::PhysicalDeviceSynchronization2Features synchronization2Features{true};
 
-        StructureChain featuresChain;
+        rv::StructureChain featuresChain;
         featuresChain.add(descFeatures);
         featuresChain.add(storage8BitFeatures);
         featuresChain.add(shaderFloat16Int8Features);
@@ -265,8 +267,8 @@ public:
         imageSavingBuffers.resize(imageCount);
         for (uint32_t i = 0; i < imageCount; i++) {
             imageSavingBuffers[i] = context.createBuffer({
-                .usage = BufferUsage::Staging,
-                .memory = MemoryUsage::Host,
+                .usage = rv::BufferUsage::Staging,
+                .memory = rv::MemoryUsage::Host,
                 .size = width * height * 4 * sizeof(uint8_t),
                 .debugName = "imageSavingBuffer",
             });
@@ -276,7 +278,7 @@ public:
     }
 
     void run() {
-        CPUTimer timer;
+        rv::CPUTimer timer;
 
         renderer->pushConstants.sampleCount = 128;
         for (uint32_t i = 0; i < totalFrames; i++) {
@@ -301,7 +303,7 @@ public:
                 vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
 
             // Copy to buffer
-            ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+            rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
             commandBuffer->copyImageToBuffer(outputImage, imageSavingBuffers[imageIndex]);
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
@@ -340,7 +342,7 @@ public:
     }
 
 private:
-    Context context;
+    rv::Context context;
     std::unique_ptr<Renderer> renderer;
 
     uint32_t width;
@@ -348,10 +350,10 @@ private:
     uint32_t totalFrames = 180;
     uint32_t imageCount = 3;
     uint32_t imageIndex = 0;
-    std::vector<CommandBufferHandle> commandBuffers{};
-    std::vector<ImageHandle> images{};
+    std::vector<rv::CommandBufferHandle> commandBuffers{};
+    std::vector<rv::ImageHandle> images{};
 
-    std::vector<BufferHandle> imageSavingBuffers;
+    std::vector<rv::BufferHandle> imageSavingBuffers;
     std::vector<std::future<void>> writeTasks;
 };
 
