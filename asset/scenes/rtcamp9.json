@@ -18,11 +18,12 @@
         }
     ],
     "default_material": {
-        "type": "Random",
+        "type": "random",
+        "seed": 12345,
         "material_indices": [0, 1, 2]
     },
     "camera": {
-        "type": "Orbital",
+        "type": "orbital",
         "fov_y": 30.0,
         "distance": 10.0,
         "phi": 0.0,
@@ -30,6 +31,7 @@
     },
     "environment_light": {
         "type": "procedural",
+        "texture": "../environments/hochsal_field_4k.hdr",
         "procedural_parameters": {
             "width": 1000,
             "height": 100,

@@ -4,20 +4,19 @@
             "mesh_index": 0,
             "material_index": 0,
             "translation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
-            "rotation": [0.0, 0.0, 0.0]
+            "scale": [3.54, 3.54, 3.54],
+            "rotation": [0.0, 90.0, 0.0]
         },
         {
             "mesh_index": 1,
             "material_index": 0,
             "translation": [0.0, 1.0, 0.0],
-            "scale": [10.0, 10.0, 10.0],
-            "rotation": [0.0, 0.0, 0.0]
+            "scale": [10.0, 10.0, 10.0]
         }
     ],
     "meshes": [
         {
-            "obj": "../models/sphere/sphere.obj"
+            "obj": "../models/dragon/dragon.obj"
         },
         {
             "obj": "../models/plane/plane.obj"

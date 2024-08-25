@@ -1,6 +1,7 @@
 ﻿#include "loader_json.hpp"
 
 #include <fstream>
+#include <random>
 
 #include <nlohmann/json.hpp>
 
@@ -29,12 +30,16 @@ void LoaderJson::loadFromFile(Scene& scene,
         LoaderGltf::loadFromFile(scene, context, gltfPath);
     }
 
+    // gltf読み込み時点のオフセットを取得しておく
+    const int materialOffset = static_cast<int>(scene.materials.size());
+    const int meshOffset = static_cast<int>(scene.meshes.size());
+
     // "objects"セクションのパース
     for (const auto& object : jsonData["objects"]) {
         Node node;
-        node.meshIndex = object["mesh_index"];
+        node.meshIndex = meshOffset + object["mesh_index"];
         if (const auto& itr = object.find("material_index"); itr != object.end()) {
-            node.materialIndex = *itr;
+            node.materialIndex = materialOffset + *itr;
         }
         if (const auto& itr = object.find("translation"); itr != object.end()) {
             node.translation = {itr->at(0), itr->at(1), itr->at(2)};
@@ -43,7 +48,11 @@ void LoaderJson::loadFromFile(Scene& scene,
             node.scale = {itr->at(0), itr->at(1), itr->at(2)};
         }
         if (const auto& itr = object.find("rotation"); itr != object.end()) {
-            node.rotation = {glm::vec3{itr->at(0), itr->at(1), itr->at(2)}};
+            glm::vec3 eularAngle;
+            eularAngle.x = glm::radians(static_cast<float>(itr->at(0)));
+            eularAngle.y = glm::radians(static_cast<float>(itr->at(1)));
+            eularAngle.z = glm::radians(static_cast<float>(itr->at(2)));
+            node.rotation = {eularAngle};
         }
         scene.nodes.push_back(node);
     }
@@ -76,6 +85,22 @@ void LoaderJson::loadFromFile(Scene& scene,
         scene.materials.push_back(mat);
     }
 
+    if (const auto& defaultMat = jsonData.find("default_material"); defaultMat != jsonData.end()) {
+        if (defaultMat->at("type") == "random") {
+            const auto& matIndices = defaultMat->at("material_indices");
+
+            std::mt19937 rng(defaultMat->at("seed"));
+            std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+            for (auto& mesh : scene.meshes) {
+                if (mesh.materialIndex == -1) {
+                    double randomValue = dist(rng);
+                    int indexIndex = static_cast<int>(std::floor(randomValue * matIndices.size()));
+                    mesh.materialIndex = materialOffset + matIndices[indexIndex];
+                }
+            }
+        }
+    }
+
     //// "camera"セクションのパース
     // std::string cameraType = jsonData["camera"]["type"];
     // float fovY = jsonData["camera"]["fov_y"];
@@ -105,11 +130,6 @@ void LoaderJson::loadFromFile(Scene& scene,
                 scene.createDomeLightTexture(context, static_cast<const float*>(&data[0][0]),  //
                                              width, height, 4);
             }
-        }
-
-        if (const auto& tex = light->find("texture"); tex != light->end()) {
-            std::filesystem::path texPath = filepath.parent_path() / *tex;
-            scene.loadDomeLightTexture(context, texPath);
         }
     }
 }

@@ -64,66 +64,8 @@ public:
         }
     }
 
-    void loadRTCamp9Scene(const rv::Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "rtcamp9.gltf");
-
-        // Add materials
-        Material diffuseMaterial;
-        diffuseMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
-        Material glassMaterial;
-        glassMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 0.0};
-        glassMaterial.roughnessFactor = 0.1f;
-        Material metalMaterial;
-        metalMaterial.baseColorFactor = glm::vec4{1.0, 1.0, 1.0, 1.0};
-        metalMaterial.metallicFactor = 1.0f;
-        metalMaterial.roughnessFactor = 0.2f;
-        int diffuseMaterialIndex = scene.addMaterial(context, diffuseMaterial);
-        int glassMaterialIndex = scene.addMaterial(context, glassMaterial);
-        int metalMaterialIndex = scene.addMaterial(context, metalMaterial);
-
-        // Set materials
-        std::mt19937 rng(12345);
-        std::uniform_real_distribution<float> dist1(0.0f, 1.0f);
-        for (auto& mesh : scene.meshes) {
-            if (mesh.materialIndex == -1) {
-                double randVal = dist1(rng);
-                if (randVal < 0.33) {
-                    mesh.materialIndex = diffuseMaterialIndex;
-                } else if (randVal < 0.66) {
-                    mesh.materialIndex = metalMaterialIndex;
-                } else {
-                    mesh.materialIndex = glassMaterialIndex;
-                }
-            }
-        }
-
-        uint32_t textureWidth = 1000;
-        uint32_t textureHeight = 100;
-        uint32_t textureChannel = 4;
-        std::vector<glm::vec4> data = ImageGenerator::gradientHorizontal(
-            textureWidth, textureHeight, textureChannel,
-            {
-                {0.0f, glm::vec3(225, 245, 253) / glm::vec3(255.0)},
-                {0.2f, glm::vec3(1, 115, 233) / glm::vec3(255.0)},
-                {0.4f, glm::vec3(2, 37, 131) / glm::vec3(255.0)},
-                {0.8f, glm::vec3(0, 3, 49) / glm::vec3(255.0)},
-                {1.0f, glm::vec3(0, 0, 3) / glm::vec3(255.0)},
-            });
-
-        scene.createMaterialBuffer(context);
-        scene.createNodeDataBuffer(context);
-        scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  //
-                                     textureWidth, textureHeight, textureChannel);
-    }
-
-    void loadDragonScene(const rv::Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "dragon.obj");
-        scene.createNodeDataBuffer(context);
-        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
-    }
-
     void loadJsonScene(const rv::Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "scenes/rtcamp9.json");
+        scene.loadFromFile(context, getAssetDirectory() / "scenes/dragon.json");
         scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
     }
