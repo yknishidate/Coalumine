@@ -4,6 +4,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "image_generator.hpp"
+#include "loader_gltf.hpp"
 #include "loader_obj.hpp"
 #include "scene.hpp"
 
@@ -19,6 +21,13 @@ void LoaderJson::loadFromFile(Scene& scene,
 
     nlohmann::json jsonData;
     file >> jsonData;
+
+    // "gltf"セクションのパース
+    if (const auto& gltf = jsonData.find("gltf"); gltf != jsonData.end()) {
+        std::filesystem::path gltfPath = filepath.parent_path() / *gltf;
+
+        LoaderGltf::loadFromFile(scene, context, gltfPath);
+    }
 
     // "objects"セクションのパース
     for (const auto& object : jsonData["objects"]) {
@@ -76,6 +85,28 @@ void LoaderJson::loadFromFile(Scene& scene,
 
     // "environment_light"セクションのパース
     if (const auto& light = jsonData.find("environment_light"); light != jsonData.end()) {
+        if (light->at("type") == "texture") {
+            std::filesystem::path texPath = filepath.parent_path() / light->at("texture");
+            scene.loadDomeLightTexture(context, texPath);
+        } else if (light->at("type") == "procedural") {
+            auto params = light->at("procedural_parameters");
+            if (params["method"] == "gradient_horizontal") {
+                uint32_t width = params["width"];
+                uint32_t height = params["height"];
+
+                std::vector<ImageGenerator::Knot> knots;
+                for (const auto& knot : params["knots"]) {
+                    const auto& color = knot["color"];
+                    knots.push_back({knot["position"],
+                                     {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f}});
+                }
+
+                const auto& data = ImageGenerator::gradientHorizontal(width, height, 4, knots);
+                scene.createDomeLightTexture(context, static_cast<const float*>(&data[0][0]),  //
+                                             width, height, 4);
+            }
+        }
+
         if (const auto& tex = light->find("texture"); tex != light->end()) {
             std::filesystem::path texPath = filepath.parent_path() / *tex;
             scene.loadDomeLightTexture(context, texPath);

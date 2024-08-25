@@ -192,12 +192,7 @@
         "theta": -10.0
     },
     "environment_light": {
-        "color": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "intensity": 1.0,
+        "type": "texture",
         "texture": "../environments/studio_small_03_4k.hdr"
     }
 }

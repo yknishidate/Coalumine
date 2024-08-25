@@ -123,7 +123,7 @@ public:
     }
 
     void loadJsonScene(const rv::Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "scenes/ggx_spheres.json");
+        scene.loadFromFile(context, getAssetDirectory() / "scenes/rtcamp9.json");
         scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
     }

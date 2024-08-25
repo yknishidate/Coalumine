@@ -1,0 +1,61 @@
+{
+    "gltf": "../rtcamp9.gltf",
+    "materials": [
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 0.0,
+            "roughness": 1.0
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.1
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.2
+        }
+    ],
+    "default_material": {
+        "type": "Random",
+        "material_indices": [0, 1, 2]
+    },
+    "camera": {
+        "type": "Orbital",
+        "fov_y": 30.0,
+        "distance": 10.0,
+        "phi": 0.0,
+        "theta": -10.0
+    },
+    "environment_light": {
+        "type": "procedural",
+        "procedural_parameters": {
+            "width": 1000,
+            "height": 100,
+            "method": "gradient_horizontal",
+            "knots": [
+                {
+                    "position": 0.0,
+                    "color": [225, 245, 253]
+                },
+                {
+                    "position": 0.2,
+                    "color": [1, 115, 233]
+                },
+                {
+                    "position": 0.4,
+                    "color": [2, 37, 131]
+                },
+                {
+                    "position": 0.8,
+                    "color": [0, 3, 49]
+                },
+                {
+                    "position": 1.0,
+                    "color": [0, 0, 3]
+                }
+            ]
+        }
+    }
+}
