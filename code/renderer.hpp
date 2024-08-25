@@ -7,41 +7,9 @@
 
 #include <stb_image_write.h>
 
+#include "image_generator.hpp"
 #include "render_pass.hpp"
 #include "scene.hpp"
-
-glm::vec3 colorRamp5(float value,
-                     glm::vec3 color0,
-                     glm::vec3 color1,
-                     glm::vec3 color2,
-                     glm::vec3 color3,
-                     glm::vec3 color4) {
-    if (value == 0.0)
-        return glm::vec3(0.0);
-
-    float knot0 = 0.0f;
-    float knot1 = 0.2f;
-    float knot2 = 0.4f;
-    float knot3 = 0.8f;
-    float knot4 = 1.0f;
-    if (value < knot0) {
-        return color0;
-    } else if (value < knot1) {
-        float t = (value - knot0) / (knot1 - knot0);
-        return mix(color0, color1, t);
-    } else if (value < knot2) {
-        float t = (value - knot1) / (knot2 - knot1);
-        return mix(color1, color2, t);
-    } else if (value < knot3) {
-        float t = (value - knot2) / (knot3 - knot2);
-        return mix(color2, color3, t);
-    } else if (value < knot4) {
-        float t = (value - knot3) / (knot4 - knot3);
-        return mix(color3, color4, t);
-    } else {
-        return color4;
-    }
-}
 
 class Renderer {
 public:
@@ -139,7 +107,7 @@ public:
     }
 
     void loadRTCamp9Scene(const Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "clean_scene_v3_180_2.gltf");
+        scene.loadFromFile(context, getAssetDirectory() / "rtcamp9.gltf");
 
         // Add materials
         Material diffuseMaterial;
@@ -174,19 +142,15 @@ public:
         uint32_t textureWidth = 1000;
         uint32_t textureHeight = 100;
         uint32_t textureChannel = 4;
-
-        std::vector<glm::vec4> data(textureWidth * textureHeight * textureChannel);
-        for (uint32_t x = 0; x < textureWidth; x++) {
-            glm::vec3 color = colorRamp5(x / static_cast<float>(textureWidth),         //
-                                         glm::vec3(225, 245, 253) / glm::vec3(255.0),  //
-                                         glm::vec3(1, 115, 233) / glm::vec3(255.0),    //
-                                         glm::vec3(2, 37, 131) / glm::vec3(255.0),     //
-                                         glm::vec3(0, 3, 49) / glm::vec3(255.0),       //
-                                         glm::vec3(0, 0, 3) / glm::vec3(255.0));
-            for (uint32_t y = 0; y < textureHeight; y++) {
-                data[y * textureWidth + x] = glm::vec4(color, 0.0);
-            }
-        }
+        std::vector<glm::vec4> data = ImageGenerator::gradientHorizontal(
+            textureWidth, textureHeight, textureChannel,
+            {
+                {0.0f, glm::vec3(225, 245, 253) / glm::vec3(255.0)},
+                {0.2f, glm::vec3(1, 115, 233) / glm::vec3(255.0)},
+                {0.4f, glm::vec3(2, 37, 131) / glm::vec3(255.0)},
+                {0.8f, glm::vec3(0, 3, 49) / glm::vec3(255.0)},
+                {1.0f, glm::vec3(0, 0, 3) / glm::vec3(255.0)},
+            });
 
         scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
