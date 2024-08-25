@@ -9,7 +9,7 @@
 
 class WindowApp : public rv::App {
 public:
-    WindowApp(bool enableValidation, uint32_t width, uint32_t height)
+    WindowApp(bool enableValidation, uint32_t width, uint32_t height, const std::string& sceneName)
         : rv::App({
               .width = width,
               .height = height,
@@ -42,9 +42,12 @@ public:
             compileShader("composite.comp", "main");
         }
 
-        renderer = std::make_unique<Renderer>(context,  //
-                                              rv::Window::getWidth(), rv::Window::getHeight());
-        imageWriter = std::make_unique<ImageWriter>(context, rv::Window::getWidth(),
+        renderer = std::make_unique<Renderer>(context,                  //
+                                              rv::Window::getWidth(),   //
+                                              rv::Window::getHeight(),  //
+                                              sceneName);
+        imageWriter = std::make_unique<ImageWriter>(context,                 //
+                                                    rv::Window::getWidth(),  //
                                                     rv::Window::getHeight(), 1);
     }
 
@@ -176,7 +179,10 @@ public:
 
 class HeadlessApp {
 public:
-    HeadlessApp(bool enableValidation, uint32_t width, uint32_t height)
+    HeadlessApp(bool enableValidation,
+                uint32_t width,
+                uint32_t height,
+                const std::string& sceneName)
         : width{width}, height{height} {
         spdlog::set_pattern("[%^%l%$] %v");
 
@@ -245,7 +251,7 @@ public:
             commandBuffer = context.allocateCommandBuffer();
         }
 
-        renderer = std::make_unique<Renderer>(context, width, height);
+        renderer = std::make_unique<Renderer>(context, width, height, sceneName);
         imageWriter = std::make_unique<ImageWriter>(context, width, height, imageCount);
     }
 
@@ -314,18 +320,26 @@ int main(int argc, char* argv[]) {
         // 実行モード "window", "headless" は、
         // コマンドライン引数で与えるか、ランタイムのユーザー入力で与えることができる
         std::string mode;
-        if (argc == 2) {
+        std::string sceneName;
+        if (argc == 3) {
             mode = argv[1];
+            sceneName = argv[2];
         } else {
             std::cout << "Which mode? (\"window\" or \"headless\")\n";
             std::cin >> mode;
+
+            std::cout << "Which scene?\n";
+            std::cin >> sceneName;
         }
 
+        // Convert "dragon" -> "scenes/dragon.json"
+        sceneName = std::format("scenes/{}.json", sceneName);
+
         if (mode == "window" || mode == "w") {
-            WindowApp app{true, 1920, 1080};
+            WindowApp app{true, 1920, 1080, sceneName};
             app.run();
         } else if (mode == "headless" || mode == "h") {
-            HeadlessApp app{false, 1920, 1080};
+            HeadlessApp app{false, 1920, 1080, sceneName};
             app.run();
         } else {
             throw std::runtime_error("Invalid mode. Please input \"window\" or \"headless\".");

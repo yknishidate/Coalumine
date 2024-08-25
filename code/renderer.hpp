@@ -13,18 +13,19 @@
 
 class Renderer {
 public:
-    Renderer(const rv::Context& context, uint32_t width, uint32_t height)
+    Renderer(const rv::Context& context,
+             uint32_t width,
+             uint32_t height,
+             const std::string& sceneName)
         : width{width}, height{height} {
+        // Load scene
         rv::CPUTimer timer;
-
-        // TODO: シーンを切り替えられるようにする
-        // loadMaterialTestScene(context);
-        // loadRTCamp9Scene(context);
-        // loadDragonScene(context);
-        loadJsonScene(context);
-
+        scene.loadFromFile(context, getAssetDirectory() / sceneName);
+        scene.createMaterialBuffer(context);
+        scene.createNodeDataBuffer(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
+        // Build BVH
         timer.restart();
         scene.buildAccels(context);
         spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
@@ -62,12 +63,6 @@ public:
             fpsCamera.setFovY(scene.cameraYFov);
             currentCamera = &fpsCamera;
         }
-    }
-
-    void loadJsonScene(const rv::Context& context) {
-        scene.loadFromFile(context, getAssetDirectory() / "scenes/dragon.json");
-        scene.createMaterialBuffer(context);
-        scene.createNodeDataBuffer(context);
     }
 
     void createPipelines(const rv::Context& context) {
