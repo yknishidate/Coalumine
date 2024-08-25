@@ -75,11 +75,6 @@ public:
                                 uint32_t height,
                                 uint32_t channel);
 
-    void createDomeLightTexture(const rv::Context& context,
-                                uint32_t width,
-                                uint32_t height,
-                                const void* data);
-
     void buildAccels(const rv::Context& context);
 
     bool shouldUpdate(int frame) const;

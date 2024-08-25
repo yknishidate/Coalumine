@@ -165,32 +165,6 @@ void Scene::createDomeLightTexture(const rv::Context& context,
     });
 }
 
-inline void Scene::createDomeLightTexture(const rv::Context& context,
-                                          uint32_t width,
-                                          uint32_t height,
-                                          const void* data) {
-    domeLightTexture = context.createImage({
-        .usage = vk::ImageUsageFlagBits::eSampled,
-        .extent = {width, height, 1},
-        .format = vk::Format::eR32G32B32A32Sfloat,
-        .debugName = "domeLightTexture",
-    });
-
-    // Copy to image
-    rv::BufferHandle stagingBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::Staging,
-        .memory = rv::MemoryUsage::Host,
-        .size = width * height * 4 * sizeof(float),
-    });
-    stagingBuffer->copy(data);
-
-    context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eTransferDstOptimal);
-        commandBuffer->copyBufferToImage(stagingBuffer, domeLightTexture);
-        commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
-    });
-}
-
 void Scene::buildAccels(const rv::Context& context) {
     bottomAccels.resize(meshes.size());
     context.oneTimeSubmit([&](auto commandBuffer) {  //

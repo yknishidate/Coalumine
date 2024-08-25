@@ -1,11 +1,8 @@
-﻿#include <future>
-#include <iostream>
-#include <random>
+﻿#include <random>
 
 #include <reactive/reactive.hpp>
 
-#include <stb_image_write.h>
-
+#include "image_writer.hpp"
 #include "render_pass.hpp"
 #include "renderer.hpp"
 #include "scene.hpp"
@@ -47,17 +44,11 @@ public:
 
         renderer = std::make_unique<Renderer>(context,  //
                                               rv::Window::getWidth(), rv::Window::getHeight());
+        imageWriter = std::make_unique<ImageWriter>(context, rv::Window::getWidth(),
+                                                    rv::Window::getHeight(), 1);
     }
 
-    void onStart() override {
-        gpuTimer = context.createGPUTimer({});
-        imageSavingBuffer = context.createBuffer({
-            .usage = rv::BufferUsage::Staging,
-            .memory = rv::MemoryUsage::Host,
-            .size = rv::Window::getWidth() * rv::Window::getHeight() * 4 * sizeof(uint8_t),
-            .debugName = "imageSavingBuffer",
-        });
-    }
+    void onStart() override { gpuTimer = context.createGPUTimer({}); }
 
     void onUpdate(float dt) override {  //
         // RendererはWindowに依存させたくないため。DebugAppが処理する
@@ -94,7 +85,8 @@ public:
             ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
             ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
             if (ImGui::Button("Save image")) {
-                saveImage();
+                imageWriter->wait(0);
+                imageWriter->writeImage(0, pushConstants.frame);
             }
 
             // Dome light
@@ -170,25 +162,15 @@ public:
         // Copy to buffer
         rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
-        commandBuffer->copyImageToBuffer(outputImage, imageSavingBuffer);
+        commandBuffer->copyImageToBuffer(outputImage, imageWriter->getBuffer(0));
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
     }
 
-    void saveImage() {
-        auto* pixels = static_cast<uint8_t*>(imageSavingBuffer->map());
-        std::string frame = std::to_string(renderer->pushConstants.frame);
-        std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
-        std::string img = zeros + frame + ".jpg";
-        writeTask = std::async(std::launch::async, [=]() {
-            stbi_write_jpg(img.c_str(), rv::Window::getWidth(), rv::Window::getHeight(), 4, pixels,
-                           90);
-        });
-    }
-
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<ImageWriter> imageWriter;
+
     rv::GPUTimerHandle gpuTimer;
-    rv::BufferHandle imageSavingBuffer;
-    std::future<void> writeTask;
+
     char inputTextBuffer[1024] = {0};
 };
 
@@ -263,18 +245,8 @@ public:
             commandBuffer = context.allocateCommandBuffer();
         }
 
-        writeTasks.resize(imageCount);
-        imageSavingBuffers.resize(imageCount);
-        for (uint32_t i = 0; i < imageCount; i++) {
-            imageSavingBuffers[i] = context.createBuffer({
-                .usage = rv::BufferUsage::Staging,
-                .memory = rv::MemoryUsage::Host,
-                .size = width * height * 4 * sizeof(uint8_t),
-                .debugName = "imageSavingBuffer",
-            });
-        }
-
         renderer = std::make_unique<Renderer>(context, width, height);
+        imageWriter = std::make_unique<ImageWriter>(context, width, height, imageCount);
     }
 
     void run() {
@@ -282,10 +254,7 @@ public:
 
         renderer->pushConstants.sampleCount = 128;
         for (uint32_t i = 0; i < totalFrames; i++) {
-            // Wait image saving
-            if (writeTasks[imageIndex].valid()) {
-                writeTasks[imageIndex].get();
-            }
+            imageWriter->wait(imageIndex);
 
             renderer->update({0.0f, 0.0f}, 0.0f);
 
@@ -305,7 +274,7 @@ public:
             // Copy to buffer
             rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
-            commandBuffer->copyImageToBuffer(outputImage, imageSavingBuffers[imageIndex]);
+            commandBuffer->copyImageToBuffer(outputImage, imageWriter->getBuffer(imageIndex));
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
 
             // End command buffer
@@ -315,35 +284,21 @@ public:
             context.submit(commandBuffer);
             context.getQueue().waitIdle();
 
-            saveImage(imageIndex);
+            imageWriter->writeImage(imageIndex, renderer->pushConstants.frame);
 
             imageIndex = (imageIndex + 1) % imageCount;
         }
 
         context.getDevice().waitIdle();
-        for (auto& writeTask : writeTasks) {
-            if (writeTask.valid()) {
-                writeTask.get();
-            }
-        }
+        imageWriter->waitAll();
 
         spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
-    }
-
-    void saveImage(uint32_t index) {
-        auto* pixels = static_cast<uint8_t*>(imageSavingBuffers[index]->map());
-        std::string frame = std::to_string(renderer->pushConstants.frame);
-        std::string zeros = std::string(std::max(0, 3 - static_cast<int>(frame.size())), '0');
-        std::string img = zeros + frame + ".jpg";
-        writeTasks[index] = std::async(std::launch::async, [=]() {
-            stbi_write_jpg(img.c_str(), width, height, 4, pixels, 90);
-            spdlog::info("Saved: {}/{}", frame, totalFrames);
-        });
     }
 
 private:
     rv::Context context;
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<ImageWriter> imageWriter;
 
     uint32_t width;
     uint32_t height;
@@ -352,9 +307,6 @@ private:
     uint32_t imageIndex = 0;
     std::vector<rv::CommandBufferHandle> commandBuffers{};
     std::vector<rv::ImageHandle> images{};
-
-    std::vector<rv::BufferHandle> imageSavingBuffers;
-    std::vector<std::future<void>> writeTasks;
 };
 
 int main(int argc, char* argv[]) {
