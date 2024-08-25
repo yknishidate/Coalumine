@@ -53,6 +53,7 @@ public:
 };
 
 class Scene {
+    friend class LoaderJson;
     friend class LoaderGltf;
     friend class LoaderObj;
 
@@ -60,8 +61,6 @@ public:
     Scene() = default;
 
     void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
-
-    void loadFromFileJson(const rv::Context& context, const std::filesystem::path& filepath);
 
     void createMaterialBuffer(const rv::Context& context);
 

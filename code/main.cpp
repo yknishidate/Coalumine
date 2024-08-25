@@ -321,10 +321,10 @@ int main(int argc, char* argv[]) {
             std::cin >> mode;
         }
 
-        if (mode == "window") {
+        if (mode == "window" || mode == "w") {
             WindowApp app{true, 1920, 1080};
             app.run();
-        } else if (mode == "headless") {
+        } else if (mode == "headless" || mode == "h") {
             HeadlessApp app{false, 1920, 1080};
             app.run();
         } else {

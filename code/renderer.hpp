@@ -19,8 +19,9 @@ public:
 
         // TODO: シーンを切り替えられるようにする
         // loadMaterialTestScene(context);
-        loadRTCamp9Scene(context);
+        // loadRTCamp9Scene(context);
         // loadDragonScene(context);
+        loadJsonScene(context);
 
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
@@ -103,7 +104,8 @@ public:
 
         scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
-        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
+        scene.loadDomeLightTexture(context,
+                                   getAssetDirectory() / "environments/studio_small_03_4k.hdr");
     }
 
     void loadRTCamp9Scene(const rv::Context& context) {
@@ -162,6 +164,12 @@ public:
         scene.loadFromFile(context, getAssetDirectory() / "dragon.obj");
         scene.createNodeDataBuffer(context);
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
+    }
+
+    void loadJsonScene(const rv::Context& context) {
+        scene.loadFromFile(context, getAssetDirectory() / "scenes/ggx_spheres.json");
+        scene.createMaterialBuffer(context);
+        scene.createNodeDataBuffer(context);
     }
 
     void createPipelines(const rv::Context& context) {

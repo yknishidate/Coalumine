@@ -3,9 +3,9 @@
 #include <iostream>
 
 #include <glm/glm.hpp>
-//#include <nlohmann/json.hpp>
 
 #include "loader_gltf.hpp"
+#include "loader_json.hpp"
 #include "loader_obj.hpp"
 
 void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path& filepath) {
@@ -14,84 +14,10 @@ void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path
     } else if (filepath.extension() == ".obj") {
         LoaderObj::loadFromFile(*this, context, filepath);
     } else if (filepath.extension() == ".json") {
-        loadFromFileJson(context, filepath);
+        LoaderJson::loadFromFile(*this, context, filepath);
     } else {
         spdlog::error("Unknown file type: {}", filepath.string());
     }
-}
-
-void Scene::loadFromFileJson(const rv::Context& context, const std::filesystem::path& filepath) {
-    //// JSONファイルの読み込み
-    // std::ifstream file(filepath);
-    // if (!file.is_open()) {
-    //     // spdlog::error("Failed to open file: {}", filepath.c_str());
-    //     spdlog::error("Failed to open file.");
-    //     return;
-    // }
-
-    // nlohmann::json jsonData;
-    // file >> jsonData;
-
-    //// "objects"セクションのパース
-    // for (const auto& object : jsonData["objects"]) {
-    //     Node node;
-    //     node.meshIndex = object["mesh_index"];
-    //     if (const auto& itr = object.find("material_index"); itr != object.end()) {
-    //         node.materialIndex = *itr;
-    //     }
-    //     if (const auto& itr = object.find("translation"); itr != object.end()) {
-    //         node.translation = {itr->at(0), itr->at(1), itr->at(2)};
-    //     }
-    //     if (const auto& itr = object.find("scale"); itr != object.end()) {
-    //         node.scale = {itr->at(0), itr->at(1), itr->at(2)};
-    //     }
-    //     if (const auto& itr = object.find("rotation"); itr != object.end()) {
-    //         node.rotation = {glm::vec3{itr->at(0), itr->at(1), itr->at(2)}};
-    //     }
-    //     nodes.push_back(node);
-    // }
-
-    //// "meshes"セクションのパース
-    // for (const auto& mesh : jsonData["meshes"]) {
-    //     std::string objPath = mesh["obj"];
-
-    //    // ここでメッシュに対する具体的な処理を行います
-    //    std::cout << "Loading mesh from: " << objPath << std::endl;
-    //}
-
-    //// "materials"セクションのパース
-    // for (const auto& material : jsonData["materials"]) {
-    //     std::vector<float> baseColor = material["base_color"];
-    //     float metallic = material["metallic"];
-    //     float roughness = material["roughness"];
-
-    //    // ここでマテリアルに対する具体的な処理を行います
-    //    std::cout << "Material properties - Base color: (" << baseColor[0] << ", " << baseColor[1]
-    //              << ", " << baseColor[2] << ", " << baseColor[3] << ")"
-    //              << ", Metallic: " << metallic << ", Roughness: " << roughness << std::endl;
-    //}
-
-    //// "camera"セクションのパース
-    // std::string cameraType = jsonData["camera"]["type"];
-    // float fovY = jsonData["camera"]["fov_y"];
-    // float distance = jsonData["camera"]["distance"];
-    // float phi = jsonData["camera"]["phi"];
-    // float theta = jsonData["camera"]["theta"];
-
-    //// ここでカメラに対する具体的な処理を行います
-    // std::cout << "Camera setup - Type: " << cameraType << ", FOV Y: " << fovY
-    //           << ", Distance: " << distance << ", Phi: " << phi << ", Theta: " << theta
-    //           << std::endl;
-
-    //// "environment_light"セクションのパース
-    // std::vector<float> environmentColor = jsonData["environment_light"]["color"];
-    // float intensity = jsonData["environment_light"]["intensity"];
-    // std::string texturePath = jsonData["environment_light"]["texture"];
-
-    //// ここで環境光に対する具体的な処理を行います
-    // std::cout << "Environment light setup - Color: (" << environmentColor[0] << ", "
-    //           << environmentColor[1] << ", " << environmentColor[2] << ")"
-    //           << ", Intensity: " << intensity << ", Texture: " << texturePath << std::endl;
 }
 
 void Scene::createMaterialBuffer(const rv::Context& context) {

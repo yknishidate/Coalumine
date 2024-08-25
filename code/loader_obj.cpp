@@ -1,5 +1,7 @@
 ﻿#include "loader_obj.hpp"
 
+#include <iostream>
+
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
@@ -119,4 +121,66 @@ void LoaderObj::loadFromFile(Scene& scene,
 
         node.meshIndex = shapeIndex;
     }
+}
+
+void LoaderObj::loadMesh(Mesh& mesh,
+                         const rv::Context& context,
+                         const std::filesystem::path& filepath) {
+    tinyobj::attrib_t objAttrib;
+    std::vector<tinyobj::shape_t> objShapes;
+    std::vector<tinyobj::material_t> objMaterials;
+    std::string objWarn, objErr;
+
+    std::filesystem::path base_dir = filepath.parent_path();
+    if (!tinyobj::LoadObj(&objAttrib, &objShapes, &objMaterials, &objWarn, &objErr,
+                          filepath.string().c_str(), base_dir.string().c_str(), true)) {
+        spdlog::error("Failed to load");
+    }
+
+    // メッシュは1つだけと想定して最初の要素だけ読み込む
+    auto& shape = objShapes.front();
+    std::unordered_map<rv::Vertex, uint32_t> uniqueVertices;
+    std::vector<rv::Vertex> vertices;
+    std::vector<uint32_t> indices;
+    for (const auto& index : shape.mesh.indices) {
+        // TODO: y反転を削除
+        rv::Vertex vertex;
+        vertex.pos = {objAttrib.vertices[3 * index.vertex_index + 0],
+                      -objAttrib.vertices[3 * index.vertex_index + 1],
+                      objAttrib.vertices[3 * index.vertex_index + 2]};
+        if (index.normal_index != -1) {
+            vertex.normal = {objAttrib.normals[3 * index.normal_index + 0],
+                             -objAttrib.normals[3 * index.normal_index + 1],
+                             objAttrib.normals[3 * index.normal_index + 2]};
+        }
+        if (index.texcoord_index != -1) {
+            vertex.texCoord = {objAttrib.texcoords[2 * index.texcoord_index + 0],
+                               1.0f - objAttrib.texcoords[2 * index.texcoord_index + 1]};
+        }
+        if (!uniqueVertices.contains(vertex)) {
+            vertices.push_back(vertex);
+            uniqueVertices[vertex] = static_cast<uint32_t>(uniqueVertices.size());
+        }
+        indices.push_back(uniqueVertices[vertex]);
+    }
+
+    mesh.vertexBuffer = context.createBuffer({
+        .usage = rv::BufferUsage::AccelVertex,
+        .size = sizeof(rv::Vertex) * vertices.size(),
+        .debugName = "vertexBuffer",
+    });
+    mesh.indexBuffer = context.createBuffer({
+        .usage = rv::BufferUsage::AccelIndex,
+        .size = sizeof(uint32_t) * indices.size(),
+        .debugName = "indexBuffer",
+    });
+
+    context.oneTimeSubmit([&](auto commandBuffer) {
+        commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
+        commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
+    });
+
+    mesh.vertexCount = static_cast<uint32_t>(vertices.size());
+    mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+    mesh.materialIndex = -1;
 }
