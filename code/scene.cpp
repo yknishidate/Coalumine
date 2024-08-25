@@ -1,46 +1,24 @@
-﻿#define TINYGLTF_IMPLEMENTATION
-#include "scene.hpp"
+﻿#include "scene.hpp"
 
-#include <glm/glm.hpp>
 #include <iostream>
 
-#include <reactive/reactive.hpp>
-
+#include <glm/glm.hpp>
+//#include <nlohmann/json.hpp>
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#include "loader_gltf.hpp"
+
 void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path& filepath) {
     if (filepath.extension() == ".gltf") {
-        loadFromFileGltf(context, filepath);
+        LoaderGltf::loadFromFile(*this, context, filepath);
     } else if (filepath.extension() == ".obj") {
         loadFromFileObj(context, filepath);
+    } else if (filepath.extension() == ".json") {
+        loadFromFileJson(context, filepath);
+    } else {
+        spdlog::error("Unknown file type: {}", filepath.string());
     }
-}
-
-void Scene::loadFromFileGltf(const rv::Context& context, const std::filesystem::path& filepath) {
-    tinygltf::Model model;
-    tinygltf::TinyGLTF loader;
-    std::string err;
-    std::string warn;
-
-    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
-    if (!warn.empty()) {
-        std::cerr << "Warn: " << warn.c_str() << std::endl;
-    }
-    if (!err.empty()) {
-        std::cerr << "Err: " << err.c_str() << std::endl;
-    }
-    if (!ret) {
-        throw std::runtime_error("Failed to parse glTF: " + filepath.string());
-    }
-
-    spdlog::info("Nodes: {}", model.nodes.size());
-    spdlog::info("Meshes: {}", model.meshes.size());
-    loadNodes(context, model);
-    loadMeshes(context, model);
-    loadMaterials(context, model);
-    loadAnimation(context, model);
-    createNodeDataBuffer(context);
 }
 
 void Scene::loadFromFileObj(const rv::Context& context, const std::filesystem::path& filepath) {
@@ -96,13 +74,7 @@ void Scene::loadFromFileObj(const rv::Context& context, const std::filesystem::p
         }
     }
 
-    materialBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::Storage,
-        .size = materials.size() * sizeof(Material),
-    });
-    context.oneTimeSubmit([&](auto commandBuffer) {  //
-        commandBuffer->copyBuffer(materialBuffer, materials.data());
-    });
+    createMaterialBuffer(context);
 
     std::unordered_map<rv::Vertex, uint32_t> uniqueVertices;
     meshes.resize(objShapes.size());
@@ -115,6 +87,7 @@ void Scene::loadFromFileObj(const rv::Context& context, const std::filesystem::p
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
         for (const auto& index : shape.mesh.indices) {
+            // TODO: y反転を削除
             rv::Vertex vertex;
             vertex.pos = {objAttrib.vertices[3 * index.vertex_index + 0],
                           -objAttrib.vertices[3 * index.vertex_index + 1],
@@ -162,6 +135,94 @@ void Scene::loadFromFileObj(const rv::Context& context, const std::filesystem::p
     }
 }
 
+void Scene::loadFromFileJson(const rv::Context& context, const std::filesystem::path& filepath) {
+    //// JSONファイルの読み込み
+    // std::ifstream file(filepath);
+    // if (!file.is_open()) {
+    //     // spdlog::error("Failed to open file: {}", filepath.c_str());
+    //     spdlog::error("Failed to open file.");
+    //     return;
+    // }
+
+    // nlohmann::json jsonData;
+    // file >> jsonData;
+
+    //// "objects"セクションのパース
+    // for (const auto& object : jsonData["objects"]) {
+    //     Node node;
+    //     node.meshIndex = object["mesh_index"];
+    //     if (const auto& itr = object.find("material_index"); itr != object.end()) {
+    //         node.materialIndex = *itr;
+    //     }
+    //     if (const auto& itr = object.find("translation"); itr != object.end()) {
+    //         node.translation = {itr->at(0), itr->at(1), itr->at(2)};
+    //     }
+    //     if (const auto& itr = object.find("scale"); itr != object.end()) {
+    //         node.scale = {itr->at(0), itr->at(1), itr->at(2)};
+    //     }
+    //     if (const auto& itr = object.find("rotation"); itr != object.end()) {
+    //         node.rotation = {glm::vec3{itr->at(0), itr->at(1), itr->at(2)}};
+    //     }
+    //     nodes.push_back(node);
+    // }
+
+    //// "meshes"セクションのパース
+    // for (const auto& mesh : jsonData["meshes"]) {
+    //     std::string objPath = mesh["obj"];
+
+    //    // ここでメッシュに対する具体的な処理を行います
+    //    std::cout << "Loading mesh from: " << objPath << std::endl;
+    //}
+
+    //// "materials"セクションのパース
+    // for (const auto& material : jsonData["materials"]) {
+    //     std::vector<float> baseColor = material["base_color"];
+    //     float metallic = material["metallic"];
+    //     float roughness = material["roughness"];
+
+    //    // ここでマテリアルに対する具体的な処理を行います
+    //    std::cout << "Material properties - Base color: (" << baseColor[0] << ", " << baseColor[1]
+    //              << ", " << baseColor[2] << ", " << baseColor[3] << ")"
+    //              << ", Metallic: " << metallic << ", Roughness: " << roughness << std::endl;
+    //}
+
+    //// "camera"セクションのパース
+    // std::string cameraType = jsonData["camera"]["type"];
+    // float fovY = jsonData["camera"]["fov_y"];
+    // float distance = jsonData["camera"]["distance"];
+    // float phi = jsonData["camera"]["phi"];
+    // float theta = jsonData["camera"]["theta"];
+
+    //// ここでカメラに対する具体的な処理を行います
+    // std::cout << "Camera setup - Type: " << cameraType << ", FOV Y: " << fovY
+    //           << ", Distance: " << distance << ", Phi: " << phi << ", Theta: " << theta
+    //           << std::endl;
+
+    //// "environment_light"セクションのパース
+    // std::vector<float> environmentColor = jsonData["environment_light"]["color"];
+    // float intensity = jsonData["environment_light"]["intensity"];
+    // std::string texturePath = jsonData["environment_light"]["texture"];
+
+    //// ここで環境光に対する具体的な処理を行います
+    // std::cout << "Environment light setup - Color: (" << environmentColor[0] << ", "
+    //           << environmentColor[1] << ", " << environmentColor[2] << ")"
+    //           << ", Intensity: " << intensity << ", Texture: " << texturePath << std::endl;
+}
+
+void Scene::createMaterialBuffer(const rv::Context& context) {
+    if (materials.empty()) {
+        materials.push_back({});  // dummy data
+    }
+    materialBuffer = context.createBuffer({
+        .usage = rv::BufferUsage::Storage,
+        .size = materials.size() * sizeof(Material),
+    });
+
+    context.oneTimeSubmit([&](auto commandBuffer) {  //
+        commandBuffer->copyBuffer(materialBuffer, materials.data());
+    });
+}
+
 void Scene::createNodeDataBuffer(const rv::Context& context) {
     nodeData.clear();
     for (auto& node : nodes) {
@@ -169,7 +230,9 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
         if (node.meshIndex != -1) {
             data.vertexBufferAddress = meshes[node.meshIndex].vertexBuffer->getAddress();
             data.indexBufferAddress = meshes[node.meshIndex].indexBuffer->getAddress();
-            data.materialIndex = meshes[node.meshIndex].materialIndex;
+            data.materialIndex = node.materialIndex == -1
+                                     ? meshes[node.meshIndex].materialIndex
+                                     : node.materialIndex;  // マテリアルオーバーライド
             data.normalMatrix = node.computeNormalMatrix(0);
         }
         nodeData.push_back(data);
@@ -243,313 +306,6 @@ inline void Scene::createDomeLightTexture(const rv::Context& context,
     });
 }
 
-void Scene::loadNodes(const rv::Context& context, tinygltf::Model& gltfModel) {
-    for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
-        auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
-        if (gltfNode.camera != -1) {
-            if (!gltfNode.translation.empty()) {
-                cameraTranslation = glm::vec3{gltfNode.translation[0],
-                                              -gltfNode.translation[1],  // invert y
-                                              gltfNode.translation[2]};
-            }
-            if (!gltfNode.rotation.empty()) {
-                cameraRotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
-                                           static_cast<float>(gltfNode.rotation[0]),
-                                           static_cast<float>(gltfNode.rotation[1]),
-                                           static_cast<float>(gltfNode.rotation[2])};
-            }
-
-            tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
-            cameraYFov = static_cast<float>(camera.perspective.yfov);
-            cameraExists = true;
-            nodes.push_back(Node{});
-            continue;
-        }
-
-        if (gltfNode.skin != -1) {
-            nodes.push_back(Node{});
-            continue;
-        }
-
-        if (gltfNode.mesh != -1) {
-            Node node;
-            node.meshIndex = gltfNode.mesh;
-            if (!gltfNode.translation.empty()) {
-                node.translation = glm::vec3{gltfNode.translation[0],
-                                             -gltfNode.translation[1],  // invert y
-                                             gltfNode.translation[2]};
-            }
-
-            if (!gltfNode.rotation.empty()) {
-                node.rotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
-                                          static_cast<float>(gltfNode.rotation[0]),
-                                          static_cast<float>(gltfNode.rotation[1]),
-                                          static_cast<float>(gltfNode.rotation[2])};
-            }
-
-            if (!gltfNode.scale.empty()) {
-                node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
-            }
-            nodes.push_back(node);
-            continue;
-        }
-
-        nodes.push_back(Node{});
-    }
-}
-
-void Scene::loadMeshes(const rv::Context& context, tinygltf::Model& gltfModel) {
-    // Count the meshes and reserve the vector
-    size_t meshCount = 0;
-    for (size_t gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
-        auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
-        meshCount += gltfMesh.primitives.size();
-    }
-    meshes.resize(meshCount);
-
-    size_t meshIndex = 0;
-    for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
-        auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
-        for (const auto& gltfPrimitive : gltfMesh.primitives) {
-            // WARN: Since different attributes may refer to the same data, creating a
-            // vertex/index buffer for each attribute will result in data duplication.
-
-            // Vertex attributes
-            auto& attributes = gltfPrimitive.attributes;
-
-            assert(attributes.find("POSITION") != attributes.end());
-            int positionIndex = attributes.find("POSITION")->second;
-            tinygltf::Accessor* positionAccessor = &gltfModel.accessors[positionIndex];
-            tinygltf::BufferView* positionBufferView =
-                &gltfModel.bufferViews[positionAccessor->bufferView];
-
-            tinygltf::Accessor* normalAccessor = nullptr;
-            tinygltf::BufferView* normalBufferView = nullptr;
-            if (attributes.find("NORMAL") != attributes.end()) {
-                int normalIndex = attributes.find("NORMAL")->second;
-                normalAccessor = &gltfModel.accessors[normalIndex];
-                normalBufferView = &gltfModel.bufferViews[normalAccessor->bufferView];
-            }
-
-            tinygltf::Accessor* texCoordAccessor = nullptr;
-            tinygltf::BufferView* texCoordBufferView = nullptr;
-            if (attributes.find("TEXCOORD_0") != attributes.end()) {
-                int texCoordIndex = attributes.find("TEXCOORD_0")->second;
-                texCoordAccessor = &gltfModel.accessors[texCoordIndex];
-                texCoordBufferView = &gltfModel.bufferViews[texCoordAccessor->bufferView];
-            }
-
-            // Create a vector to store the vertices
-            std::vector<rv::Vertex> vertices(positionAccessor->count);
-
-            // Loop over the vertices
-            for (size_t i = 0; i < positionAccessor->count; i++) {
-                // Compute the byteOffsets
-                size_t positionByteOffset = positionAccessor->byteOffset +
-                                            positionBufferView->byteOffset +
-                                            i * positionBufferView->byteStride;
-                vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
-                    &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
-                vertices[i].pos.y = -vertices[i].pos.y;  // invert y
-
-                if (normalBufferView) {
-                    size_t normalByteOffset = normalAccessor->byteOffset +
-                                              normalBufferView->byteOffset +
-                                              i * normalBufferView->byteStride;
-                    vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
-                        &(gltfModel.buffers[normalBufferView->buffer].data[normalByteOffset]));
-                    vertices[i].normal.y = -vertices[i].normal.y;  // invert y
-                }
-
-                if (texCoordBufferView) {
-                    size_t texCoordByteOffset = texCoordAccessor->byteOffset +
-                                                texCoordBufferView->byteOffset +
-                                                i * texCoordBufferView->byteStride;
-                    vertices[i].texCoord = *reinterpret_cast<const glm::vec2*>(
-                        &(gltfModel.buffers[texCoordBufferView->buffer].data[texCoordByteOffset]));
-                }
-            }
-
-            // Get indices
-            std::vector<uint32_t> indices;
-            {
-                auto& accessor = gltfModel.accessors[gltfPrimitive.indices];
-                auto& bufferView = gltfModel.bufferViews[accessor.bufferView];
-                auto& buffer = gltfModel.buffers[bufferView.buffer];
-
-                size_t indicesCount = accessor.count;
-                switch (accessor.componentType) {
-                    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
-                        uint32_t* buf = new uint32_t[indicesCount];
-                        size_t size = indicesCount * sizeof(uint32_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
-                        for (size_t i = 0; i < indicesCount; i++) {
-                            indices.push_back(buf[i]);
-                        }
-                        break;
-                    }
-                    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
-                        uint16_t* buf = new uint16_t[indicesCount];
-                        size_t size = indicesCount * sizeof(uint16_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
-                        for (size_t i = 0; i < indicesCount; i++) {
-                            indices.push_back(buf[i]);
-                        }
-                        break;
-                    }
-                    case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
-                        uint8_t* buf = new uint8_t[indicesCount];
-                        size_t size = indicesCount * sizeof(uint8_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
-                        for (size_t i = 0; i < indicesCount; i++) {
-                            indices.push_back(buf[i]);
-                        }
-                        break;
-                    }
-                    default:
-                        std::cerr << "Index component type " << accessor.componentType
-                                  << " not supported!" << std::endl;
-                        return;
-                }
-            }
-
-            auto& mesh = meshes[meshIndex];
-            mesh.vertexBuffer = context.createBuffer({
-                .usage = rv::BufferUsage::AccelVertex,
-                .size = sizeof(rv::Vertex) * vertices.size(),
-                .debugName = std::format("vertexBuffers[{}]", meshes.size()).c_str(),
-            });
-            mesh.indexBuffer = context.createBuffer({
-                .usage = rv::BufferUsage::AccelIndex,
-                .size = sizeof(uint32_t) * indices.size(),
-                .debugName = std::format("indexBuffers[{}]", meshes.size()).c_str(),
-            });
-
-            context.oneTimeSubmit([&](auto commandBuffer) {
-                commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
-                commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
-            });
-
-            mesh.vertexCount = static_cast<uint32_t>(vertices.size());
-            mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
-            mesh.materialIndex = gltfPrimitive.material;
-            meshIndex++;
-        }
-    }
-}
-
-void Scene::loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel) {
-    for (auto& mat : gltfModel.materials) {
-        Material material;
-
-        // Base color
-        if (mat.values.contains("baseColorTexture")) {
-            material.baseColorTextureIndex = mat.values["baseColorTexture"].TextureIndex();
-        }
-        if (mat.values.contains("baseColorFactor")) {
-            material.baseColorFactor =
-                glm::make_vec4(mat.values["baseColorFactor"].ColorFactor().data());
-        }
-
-        // Metallic / Roughness
-        if (mat.values.contains("metallicRoughnessTexture")) {
-            material.metallicRoughnessTextureIndex =
-                mat.values["metallicRoughnessTexture"].TextureIndex();
-        }
-        if (mat.values.contains("roughnessFactor")) {
-            material.roughnessFactor = static_cast<float>(mat.values["roughnessFactor"].Factor());
-        }
-        if (mat.values.contains("metallicFactor")) {
-            material.metallicFactor = static_cast<float>(mat.values["metallicFactor"].Factor());
-        }
-
-        // Normal
-        if (mat.additionalValues.contains("normalTexture")) {
-            material.normalTextureIndex = mat.additionalValues["normalTexture"].TextureIndex();
-        }
-
-        // Emissive
-        material.emissiveFactor[0] = static_cast<float>(mat.emissiveFactor[0]);
-        material.emissiveFactor[1] = static_cast<float>(mat.emissiveFactor[1]);
-        material.emissiveFactor[2] = static_cast<float>(mat.emissiveFactor[2]);
-        if (mat.additionalValues.contains("emissiveTexture")) {
-            material.emissiveTextureIndex = mat.additionalValues["emissiveTexture"].TextureIndex();
-        }
-
-        // Occlusion
-        if (mat.additionalValues.contains("occlusionTexture")) {
-            material.occlusionTextureIndex =
-                mat.additionalValues["occlusionTexture"].TextureIndex();
-        }
-
-        materials.push_back(material);
-    }
-
-    // Material
-    if (materials.empty()) {
-        materials.push_back({});  // dummy data
-    }
-    materialBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::Storage,
-        .size = materials.size() * sizeof(Material),
-    });
-
-    context.oneTimeSubmit(
-        [&](auto commandBuffer) { commandBuffer->copyBuffer(materialBuffer, materials.data()); });
-}
-
-void Scene::loadAnimation(const rv::Context& context, const tinygltf::Model& model) {
-    for (const auto& animation : model.animations) {
-        for (const auto& channel : animation.channels) {
-            const auto& sampler = animation.samplers[channel.sampler];
-
-            if (channel.target_path == "translation" || channel.target_path == "rotation" ||
-                channel.target_path == "scale") {
-                const tinygltf::Accessor& inputAccessor = model.accessors[sampler.input];
-                const tinygltf::BufferView& inputBufferView =
-                    model.bufferViews[inputAccessor.bufferView];
-                const tinygltf::Buffer& inputBuffer = model.buffers[inputBufferView.buffer];
-                const float* inputData = reinterpret_cast<const float*>(
-                    &inputBuffer.data[inputBufferView.byteOffset + inputAccessor.byteOffset]);
-                const size_t inputCount = inputAccessor.count;
-
-                const tinygltf::Accessor& outputAccessor = model.accessors[sampler.output];
-                const tinygltf::BufferView& outputBufferView =
-                    model.bufferViews[outputAccessor.bufferView];
-                const tinygltf::Buffer& outputBuffer = model.buffers[outputBufferView.buffer];
-                const float* outputData = reinterpret_cast<const float*>(
-                    &outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
-
-                auto& keyFrames = nodes[channel.target_node].keyFrames;
-                if (keyFrames.empty()) {
-                    keyFrames.resize(inputCount);
-                }
-
-                // Clear default TRS
-                for (size_t i = 0; i < inputCount; i++) {
-                    // KeyFrame keyframe;
-                    keyFrames[i].time = inputData[i];
-
-                    if (channel.target_path == "translation") {
-                        keyFrames[i].translation = glm::vec3(
-                            outputData[i * 3 + 0], -outputData[i * 3 + 1], outputData[i * 3 + 2]);
-                    } else if (channel.target_path == "rotation") {
-                        keyFrames[i].rotation =
-                            glm::quat(outputData[i * 4 + 3], outputData[i * 4 + 0],
-                                      outputData[i * 4 + 1], outputData[i * 4 + 2]);
-                    } else if (channel.target_path == "scale") {
-                        keyFrames[i].scale = glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
-                                                       outputData[i * 3 + 2]);
-                    }
-                }
-            }
-        }
-    }
-}
-
 void Scene::buildAccels(const rv::Context& context) {
     bottomAccels.resize(meshes.size());
     context.oneTimeSubmit([&](auto commandBuffer) {  //
@@ -615,14 +371,6 @@ void Scene::updateTopAccel(int frame) {
 
 int Scene::addMaterial(const rv::Context& context, const Material& material) {
     materials.push_back(material);
-    materialBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::Storage,
-        .size = materials.size() * sizeof(Material),
-        .debugName = "materialBuffer",
-    });
-    context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->copyBuffer(materialBuffer, materials.data());  //
-    });
     return static_cast<int>(materials.size() - 1);
 }
 

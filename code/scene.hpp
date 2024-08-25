@@ -1,10 +1,6 @@
 ﻿#pragma once
 
-#include <reactive/Graphics/Buffer.hpp>
-#include <reactive/Graphics/Context.hpp>
-#include <reactive/Scene/Object.hpp>
-
-#include <tiny_gltf.h>
+#include <reactive/reactive.hpp>
 
 #include "../shader/share.h"
 
@@ -18,8 +14,9 @@ struct KeyFrame {
 class Node {
 public:
     int meshIndex = -1;
+    int materialIndex = -1;  // オーバーライド用
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
-    glm::quat rotation = glm::quat{0.0, 0.0, 0.0, 0.0};
+    glm::quat rotation = glm::quat{1.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
     std::vector<KeyFrame> keyFrames;
 
@@ -48,14 +45,18 @@ public:
 };
 
 class Scene {
+    friend class LoaderGltf;
+
 public:
     Scene() = default;
 
     void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
 
-    void loadFromFileGltf(const rv::Context& context, const std::filesystem::path& filepath);
-
     void loadFromFileObj(const rv::Context& context, const std::filesystem::path& filepath);
+
+    void loadFromFileJson(const rv::Context& context, const std::filesystem::path& filepath);
+
+    void createMaterialBuffer(const rv::Context& context);
 
     void createNodeDataBuffer(const rv::Context& context);
 
@@ -71,14 +72,6 @@ public:
                                 uint32_t width,
                                 uint32_t height,
                                 const void* data);
-
-    void loadNodes(const rv::Context& context, tinygltf::Model& gltfModel);
-
-    void loadMeshes(const rv::Context& context, tinygltf::Model& gltfModel);
-
-    void loadMaterials(const rv::Context& context, tinygltf::Model& gltfModel);
-
-    void loadAnimation(const rv::Context& context, const tinygltf::Model& model);
 
     void buildAccels(const rv::Context& context);
 

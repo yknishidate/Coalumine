@@ -51,8 +51,8 @@ public:
 
         // TODO: シーンを切り替えられるようにする
         // loadMaterialTestScene(context);
-        // loadRTCamp9Scene(context);
-        loadDragonScene(context);
+        loadRTCamp9Scene(context);
+        // loadDragonScene(context);
 
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
@@ -132,6 +132,8 @@ public:
             node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
             scene.addNode(node);
         }
+
+        scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
         scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
@@ -186,9 +188,8 @@ public:
             }
         }
 
-        // Material更新後にバッファ作成
+        scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
-
         scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  //
                                      textureWidth, textureHeight, textureChannel);
     }
