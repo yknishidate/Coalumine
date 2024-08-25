@@ -66,7 +66,7 @@ struct Material {
 
     FIELD(int, emissiveTextureIndex, -1);
     FIELD(float, metallicFactor, 0.0f);
-    FIELD(float, roughnessFactor, 0.0f);
+    FIELD(float, roughnessFactor, 1.0f);
     FIELD(float, _dummy0, 0.0f);
 
     FIELD(vec4, baseColorFactor, vec4(1.0f));

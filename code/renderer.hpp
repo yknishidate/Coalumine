@@ -50,8 +50,9 @@ public:
         rv::CPUTimer timer;
 
         // TODO: シーンを切り替えられるようにする
-        loadMaterialTestScene(context);
+        // loadMaterialTestScene(context);
         // loadRTCamp9Scene(context);
+        loadDragonScene(context);
 
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
@@ -185,8 +186,17 @@ public:
             }
         }
 
+        // Material更新後にバッファ作成
+        scene.createNodeDataBuffer(context);
+
         scene.createDomeLightTexture(context, reinterpret_cast<float*>(data.data()),  //
                                      textureWidth, textureHeight, textureChannel);
+    }
+
+    void loadDragonScene(const Context& context) {
+        scene.loadFromFile(context, getAssetDirectory() / "dragon.obj");
+        scene.createNodeDataBuffer(context);
+        scene.loadDomeLightTexture(context, getAssetDirectory() / "studio_small_03_4k.hdr");
     }
 
     void createPipelines(const Context& context) {

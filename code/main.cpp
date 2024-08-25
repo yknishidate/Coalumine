@@ -2,8 +2,6 @@
 #include <iostream>
 #include <random>
 
-#include "../shader/share.h"
-
 #include <reactive/reactive.hpp>
 
 #include <stb_image_write.h>
@@ -21,6 +19,7 @@ public:
               .title = "Coalumine",
               .layers = enableValidation ? Layer::Validation : ArrayProxy<Layer>{},
               .extensions = Extension::RayTracing,
+              .style = UIStyle::Gray,
           }) {
         spdlog::info("Executable directory: {}", getExecutableDirectory().string());
         spdlog::info("Shader source directory: {}", getShaderSourceDirectory().string());
@@ -154,6 +153,8 @@ public:
                 recompile();
             }
 
+            ImGui::InputTextMultiline("Memo", inputTextBuffer, sizeof(inputTextBuffer));
+
             ImGui::End();
         }
 
@@ -186,6 +187,7 @@ public:
     GPUTimerHandle gpuTimer;
     BufferHandle imageSavingBuffer;
     std::future<void> writeTask;
+    char inputTextBuffer[1024] = {0};
 };
 
 class HeadlessApp {

@@ -53,6 +53,10 @@ public:
 
     void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
 
+    void loadFromFileGltf(const rv::Context& context, const std::filesystem::path& filepath);
+
+    void loadFromFileObj(const rv::Context& context, const std::filesystem::path& filepath);
+
     void createNodeDataBuffer(const rv::Context& context);
 
     void loadDomeLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
@@ -88,8 +92,6 @@ public:
 
     int addNode(const Node& node);
 
-    std::vector<Node> nodes;
-
     struct Mesh {
         rv::BufferHandle vertexBuffer;
         rv::BufferHandle indexBuffer;
@@ -97,6 +99,8 @@ public:
         uint32_t triangleCount;
         int materialIndex = -1;
     };
+
+    std::vector<Node> nodes;
 
     std::vector<Mesh> meshes;
 
