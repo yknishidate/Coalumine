@@ -3,29 +3,183 @@
         {
             "mesh_index": 0,
             "material_index": 0,
-            "translation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, 1.0],
-            "rotation": [0.0, 0.0, 0.0]
+            "translation": [-4.375, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
         },
         {
-            "mesh_index": 1,
-            "material_index": 0,
-            "translation": [0.0, 1.0, 0.0],
-            "scale": [10.0, 10.0, 10.0],
-            "rotation": [0.0, 0.0, 0.0]
+            "mesh_index": 0,
+            "material_index": 1,
+            "translation": [-3.125, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 2,
+            "translation": [-1.875, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 3,
+            "translation": [-0.625, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 4,
+            "translation": [0.625, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 5,
+            "translation": [1.875, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 6,
+            "translation": [3.125, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 7,
+            "translation": [4.375, -1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 8,
+            "translation": [-4.375, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 9,
+            "translation": [-3.125, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 10,
+            "translation": [-1.875, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 11,
+            "translation": [-0.625, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 12,
+            "translation": [0.625, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 13,
+            "translation": [1.875, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 14,
+            "translation": [3.125, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 15,
+            "translation": [4.375, 1.5, 0.0],
+            "scale": [0.5, 0.5, 0.5]
         }
     ],
     "meshes": [
         {
             "obj": "../models/sphere/sphere.obj"
-        },
-        {
-            "obj": "../models/plane/plane.obj"
         }
     ],
     "materials": [
         {
             "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.01
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.142857143
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.285714286
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.428571429
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.571428571
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.714285714
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 0.857142857
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 1.0,
+            "roughness": 1.0
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.01
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.142857143
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.285714286
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.428571429
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.571428571
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.714285714
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.857142857
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
             "metallic": 0.0,
             "roughness": 1.0
         }
@@ -44,6 +198,6 @@
             1.0
         ],
         "intensity": 1.0,
-        "texture": "../environments/hochsal_field_4k.hdr"
+        "texture": "../environments/studio_small_03_4k.hdr"
     }
 }

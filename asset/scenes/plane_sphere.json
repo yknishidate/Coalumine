@@ -1,0 +1,49 @@
+{
+    "objects": [
+        {
+            "mesh_index": 0,
+            "material_index": 0,
+            "translation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+            "rotation": [0.0, 0.0, 0.0]
+        },
+        {
+            "mesh_index": 1,
+            "material_index": 0,
+            "translation": [0.0, 1.0, 0.0],
+            "scale": [10.0, 10.0, 10.0],
+            "rotation": [0.0, 0.0, 0.0]
+        }
+    ],
+    "meshes": [
+        {
+            "obj": "../models/sphere/sphere.obj"
+        },
+        {
+            "obj": "../models/plane/plane.obj"
+        }
+    ],
+    "materials": [
+        {
+            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "metallic": 0.0,
+            "roughness": 1.0
+        }
+    ],
+    "camera": {
+        "type": "Orbital",
+        "fov_y": 30.0,
+        "distance": 10.0,
+        "phi": 0.0,
+        "theta": -10.0
+    },
+    "environment_light": {
+        "color": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "intensity": 1.0,
+        "texture": "../environments/hochsal_field_4k.hdr"
+    }
+}

@@ -64,50 +64,6 @@ public:
         }
     }
 
-    void loadMaterialTestScene(const rv::Context& context) {
-        // Add mesh
-        rv::Mesh sphereMesh = rv::Mesh::createSphereMesh(  //
-            context,                                       //
-            {
-                .numSlices = 64,
-                .numStacks = 64,
-                .radius = 0.5,
-                .usage = rv::MeshUsage::RayTracing,
-                .name = "sphereMesh",
-            });
-
-        // Add material, mesh, node
-        for (int i = 0; i < 8; i++) {
-            Material metal;
-            metal.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 1.0};
-            metal.metallicFactor = 1.0f;
-            metal.roughnessFactor = std::max(0.01f, i / 7.0f);
-            int matIndex = scene.addMaterial(context, metal);
-            int meshIndex = scene.addMesh(sphereMesh, matIndex);
-            Node node;
-            node.meshIndex = meshIndex;
-            node.translation = glm::vec3{(i - 3.5) * 1.25, -1.5, 0.0};
-            scene.addNode(node);
-        }
-        for (int i = 0; i < 8; i++) {
-            Material glass;
-            glass.baseColorFactor = glm::vec4{0.9, 0.9, 0.9, 0.0};
-            glass.metallicFactor = 0.0f;
-            glass.roughnessFactor = std::max(0.01f, i / 7.0f);
-            int matIndex = scene.addMaterial(context, glass);
-            int meshIndex = scene.addMesh(sphereMesh, matIndex);
-            Node node;
-            node.meshIndex = meshIndex;
-            node.translation = glm::vec3{(i - 3.5) * 1.25, 1.5, 0.0};
-            scene.addNode(node);
-        }
-
-        scene.createMaterialBuffer(context);
-        scene.createNodeDataBuffer(context);
-        scene.loadDomeLightTexture(context,
-                                   getAssetDirectory() / "environments/studio_small_03_4k.hdr");
-    }
-
     void loadRTCamp9Scene(const rv::Context& context) {
         scene.loadFromFile(context, getAssetDirectory() / "rtcamp9.gltf");
 
