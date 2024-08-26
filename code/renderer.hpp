@@ -16,11 +16,11 @@ public:
     Renderer(const rv::Context& context,
              uint32_t width,
              uint32_t height,
-             const std::string& sceneName)
+             const std::filesystem::path& scenePath)
         : width{width}, height{height} {
         // Load scene
         rv::CPUTimer timer;
-        scene.loadFromFile(context, getAssetDirectory() / sceneName);
+        scene.loadFromFile(context, scenePath);
         scene.createMaterialBuffer(context);
         scene.createNodeDataBuffer(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
@@ -98,7 +98,7 @@ public:
                 {
                     {"baseImage", baseImage},
                     {"bloomImage", bloomPass.bloomImage},
-                    {"domeLightTexture", scene.domeLightTexture},
+                    {"envLightTexture", scene.envLightTexture},
                 },
             .accels = {{"topLevelAS", scene.topAccel}},
         });
@@ -128,6 +128,9 @@ public:
 
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
+
+        pushConstants.useEnvLightTexture = scene.useEnvLightTexture;
+        pushConstants.envLightColor = {scene.envLightColor, 1.0f};
     }
 
     void reset() { pushConstants.frame = 0; }

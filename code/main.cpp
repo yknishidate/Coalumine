@@ -9,7 +9,10 @@
 
 class WindowApp : public rv::App {
 public:
-    WindowApp(bool enableValidation, uint32_t width, uint32_t height, const std::string& sceneName)
+    WindowApp(bool enableValidation,
+              uint32_t width,
+              uint32_t height,
+              const std::filesystem::path& scenePath)
         : rv::App({
               .width = width,
               .height = height,
@@ -45,7 +48,7 @@ public:
         renderer = std::make_unique<Renderer>(context,                  //
                                               rv::Window::getWidth(),   //
                                               rv::Window::getHeight(),  //
-                                              sceneName);
+                                              scenePath);
         imageWriter = std::make_unique<ImageWriter>(context,                 //
                                                     rv::Window::getWidth(),  //
                                                     rv::Window::getHeight(), 1);
@@ -93,13 +96,13 @@ public:
             }
 
             // Dome light
-            if (ImGui::SliderFloat("Dome light phi", &pushConstants.domeLightPhi, 0.0, 360.0)) {
+            if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0)) {
                 renderer->reset();
             }
 
             // Infinite light
-            static glm::vec4 defaultInfiniteLightDirection = pushConstants.infiniteLightDirection;
-            ImGui::SliderFloat4("Infinite light direction",
+            static glm::vec3 defaultInfiniteLightDirection = pushConstants.infiniteLightDirection;
+            ImGui::SliderFloat3("Infinite light direction",
                                 reinterpret_cast<float*>(&pushConstants.infiniteLightDirection),
                                 -1.0, 1.0);
             ImGui::SliderFloat("Infinite light intensity", &pushConstants.infiniteLightIntensity,
@@ -182,7 +185,7 @@ public:
     HeadlessApp(bool enableValidation,
                 uint32_t width,
                 uint32_t height,
-                const std::string& sceneName)
+                const std::filesystem::path& scenePath)
         : width{width}, height{height} {
         spdlog::set_pattern("[%^%l%$] %v");
 
@@ -251,7 +254,7 @@ public:
             commandBuffer = context.allocateCommandBuffer();
         }
 
-        renderer = std::make_unique<Renderer>(context, width, height, sceneName);
+        renderer = std::make_unique<Renderer>(context, width, height, scenePath);
         imageWriter = std::make_unique<ImageWriter>(context, width, height, imageCount);
     }
 
@@ -332,14 +335,12 @@ int main(int argc, char* argv[]) {
             std::cin >> sceneName;
         }
 
-        // Convert "dragon" -> "scenes/dragon.json"
-        sceneName = std::format("scenes/{}.json", sceneName);
-
+        const auto scenePath = getAssetDirectory() / std::format("scenes/{}.json", sceneName);
         if (mode == "window" || mode == "w") {
-            WindowApp app{true, 1920, 1080, sceneName};
+            WindowApp app{true, 1920, 1080, scenePath};
             app.run();
         } else if (mode == "headless" || mode == "h") {
-            HeadlessApp app{false, 1920, 1080, sceneName};
+            HeadlessApp app{false, 1920, 1080, scenePath};
             app.run();
         } else {
             throw std::runtime_error("Invalid mode. Please input \"window\" or \"headless\".");

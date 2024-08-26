@@ -45,15 +45,17 @@ struct PushConstants {
     FIELD(int, frame, 0);
     FIELD(int, sampleCount, 10);
     FIELD(float, bloomThreshold, 0.5f);
-    FIELD(float, domeLightTheta, 0.0f);
+    FIELD(float, envLightTheta, 0.0f);
 
-    FIELD(float, domeLightPhi, 0.0f);
+    FIELD(float, envLightPhi, 0.0f);
     FIELD(int, enableNEE, 1);
     FIELD(int, enableAccum, 1);
-    FIELD(int, _dummy, 0);
+    FIELD(int, useEnvLightTexture, 0);
 
-    FIELD(vec4, infiniteLightDirection, vec4(0.0f, 1.0f, 0.0f, 1.0f));
+    FIELD(vec3, infiniteLightDirection, vec3(0.0f, 1.0f, 0.0f));
     FIELD(float, infiniteLightIntensity, 0.8f);
+
+    FIELD(vec4, envLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 };
 
 struct Material {
@@ -116,7 +118,7 @@ layout(push_constant) uniform PushConstantsBuffer {
 // Image
 layout(binding = 0, rgba32f) uniform image2D baseImage;
 layout(binding = 1, rgba32f) uniform image2D bloomImage;
-layout(binding = 2) uniform sampler2D domeLightTexture;
+layout(binding = 2) uniform sampler2D envLightTexture;
 
 // Accel
 layout(binding = 10) uniform accelerationStructureEXT topLevelAS;

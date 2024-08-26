@@ -16,15 +16,11 @@ vec2 sampleSphericalMap(vec3 v)
 
 void main()
 {
-    vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
-    uv.x = mod(uv.x + radians(pc.domeLightPhi) / (2 * PI), 1.0); // rotate phi
-    payload.radiance = clamp(texture(domeLightTexture, uv).rgb, 0.0, 100.0);
-
-    // template0
-    //payload.radiance = colorRamp5(uv.x,
-    //    vec3(225, 245, 253) / 255.0,
-    //    vec3(  1, 115, 233) / 255.0,
-    //    vec3(  2,  37, 131) / 255.0,
-    //    vec3(  0,   3,  49) / 255.0,
-    //    vec3(  0,   0,   3) / 255.0);
+    if (pc.useEnvLightTexture == 1) {
+        vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
+        uv.x = mod(uv.x + radians(pc.envLightPhi) / (2 * PI), 1.0); // rotate phi
+        payload.radiance = clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0);
+    } else {
+        payload.radiance = pc.envLightColor.xyz;
+    }
 }

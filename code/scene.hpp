@@ -66,13 +66,13 @@ public:
 
     void createNodeDataBuffer(const rv::Context& context);
 
-    void loadDomeLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
+    void loadEnvLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
 
-    void createDomeLightTexture(const rv::Context& context,
-                                const float* data,
-                                uint32_t width,
-                                uint32_t height,
-                                uint32_t channel);
+    void createEnvLightTexture(const rv::Context& context,
+                               const float* data,
+                               uint32_t width,
+                               uint32_t height,
+                               uint32_t channel);
 
     void buildAccels(const rv::Context& context);
 
@@ -91,7 +91,9 @@ public:
 
     std::vector<rv::BottomAccelHandle> bottomAccels;
     rv::TopAccelHandle topAccel;
-    rv::ImageHandle domeLightTexture;
+    rv::ImageHandle envLightTexture;
+    glm::vec3 envLightColor;
+    bool useEnvLightTexture = false;
 
     std::vector<NodeData> nodeData;
     rv::BufferHandle nodeDataBuffer;

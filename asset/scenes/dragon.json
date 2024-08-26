@@ -37,7 +37,8 @@
         "theta": -10.0
     },
     "environment_light": {
-        "type": "texture",
-        "texture": "../environments/hochsal_field_4k.hdr"
+        "type": "solid",
+        "texture": "../environments/hochsal_field_4k.hdr",
+        "color": [0.5, 0.5, 0.5]
     }
 }

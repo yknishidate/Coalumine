@@ -110,10 +110,12 @@ void LoaderJson::loadFromFile(Scene& scene,
 
     // "environment_light"セクションのパース
     if (const auto& light = jsonData.find("environment_light"); light != jsonData.end()) {
-        if (light->at("type") == "texture") {
+        const auto& type = light->at("type");
+        if (type == "texture") {
             std::filesystem::path texPath = filepath.parent_path() / light->at("texture");
-            scene.loadDomeLightTexture(context, texPath);
-        } else if (light->at("type") == "procedural") {
+            scene.loadEnvLightTexture(context, texPath);
+            scene.useEnvLightTexture = true;
+        } else if (type == "procedural") {
             auto params = light->at("procedural_parameters");
             if (params["method"] == "gradient_horizontal") {
                 uint32_t width = params["width"];
@@ -127,9 +129,17 @@ void LoaderJson::loadFromFile(Scene& scene,
                 }
 
                 const auto& data = ImageGenerator::gradientHorizontal(width, height, 4, knots);
-                scene.createDomeLightTexture(context, static_cast<const float*>(&data[0][0]),  //
-                                             width, height, 4);
+                scene.createEnvLightTexture(context, static_cast<const float*>(&data[0][0]),  //
+                                            width, height, 4);
+                scene.useEnvLightTexture = true;
             }
+        } else if (type == "solid") {
+            const float dummy = 0.0f;
+            scene.createEnvLightTexture(context, &dummy, 1, 1, 4);
+
+            scene.useEnvLightTexture = false;
+            scene.envLightColor = {light->at("color")[0], light->at("color")[1],
+                                   light->at("color")[2]};
         }
     }
 }

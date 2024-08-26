@@ -57,24 +57,23 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
     nodeDataBuffer->copy(nodeData.data());
 }
 
-void Scene::loadDomeLightTexture(const rv::Context& context,
-                                 const std::filesystem::path& filepath) {
-    domeLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
+void Scene::loadEnvLightTexture(const rv::Context& context, const std::filesystem::path& filepath) {
+    envLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
 }
 
-void Scene::createDomeLightTexture(const rv::Context& context,
-                                   const float* data,
-                                   uint32_t width,
-                                   uint32_t height,
-                                   uint32_t channel) {
-    domeLightTexture = context.createImage({
+void Scene::createEnvLightTexture(const rv::Context& context,
+                                  const float* data,
+                                  uint32_t width,
+                                  uint32_t height,
+                                  uint32_t channel) {
+    envLightTexture = context.createImage({
         .usage = rv::ImageUsage::Sampled,
         .extent = {width, height, 1},
         .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
-        .debugName = "domeLightTexture",
+        .debugName = "envLightTexture",
     });
-    domeLightTexture->createImageView();
-    domeLightTexture->createSampler();
+    envLightTexture->createImageView();
+    envLightTexture->createSampler();
 
     rv::BufferHandle stagingBuffer = context.createBuffer({
         .usage = rv::BufferUsage::Staging,
@@ -85,9 +84,9 @@ void Scene::createDomeLightTexture(const rv::Context& context,
     stagingBuffer->copy(data);
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eTransferDstOptimal);
-        commandBuffer->copyBufferToImage(stagingBuffer, domeLightTexture);
-        commandBuffer->transitionLayout(domeLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
+        commandBuffer->transitionLayout(envLightTexture, vk::ImageLayout::eTransferDstOptimal);
+        commandBuffer->copyBufferToImage(stagingBuffer, envLightTexture);
+        commandBuffer->transitionLayout(envLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
     });
 }
 
