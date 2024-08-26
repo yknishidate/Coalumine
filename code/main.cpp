@@ -45,23 +45,23 @@ public:
             compileShader("composite.comp", "main");
         }
 
-        renderer = std::make_unique<Renderer>(context,                  //
-                                              rv::Window::getWidth(),   //
-                                              rv::Window::getHeight(),  //
-                                              scenePath);
-        imageWriter = std::make_unique<ImageWriter>(context,                 //
-                                                    rv::Window::getWidth(),  //
-                                                    rv::Window::getHeight(), 1);
+        m_renderer = std::make_unique<Renderer>(context,                  //
+                                                rv::Window::getWidth(),   //
+                                                rv::Window::getHeight(),  //
+                                                scenePath);
+        m_imageWriter = std::make_unique<ImageWriter>(context,                 //
+                                                      rv::Window::getWidth(),  //
+                                                      rv::Window::getHeight(), 1);
     }
 
-    void onStart() override { gpuTimer = context.createGPUTimer({}); }
+    void onStart() override { m_gpuTimer = context.createGPUTimer({}); }
 
     void onUpdate(float dt) override {  //
         // RendererはWindowに依存させたくないため。DebugAppが処理する
         auto dragLeft = rv::Window::getMouseDragLeft();
         auto scroll = rv::Window::getMouseScroll();
 
-        renderer->update(dragLeft, scroll);
+        m_renderer->update(dragLeft, scroll);
     }
 
     void recompile() const {
@@ -70,15 +70,15 @@ public:
             compileShader("base.rchit", "main");
             compileShader("base.rmiss", "main");
             compileShader("shadow.rmiss", "main");
-            renderer->createPipelines(context);
-            renderer->reset();
+            m_renderer->createPipelines(context);
+            m_renderer->reset();
         } catch (const std::exception& e) {
             spdlog::error(e.what());
         }
     }
 
     void onRender(const rv::CommandBufferHandle& commandBuffer) override {
-        auto& pushConstants = renderer->pushConstants;
+        auto& pushConstants = m_renderer->m_pushConstants;
 
         static int imageIndex = 0;
         static bool enableBloom = false;
@@ -91,13 +91,13 @@ public:
             ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
             ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
             if (ImGui::Button("Save image")) {
-                imageWriter->wait(0);
-                imageWriter->writeImage(0, pushConstants.frame);
+                m_imageWriter->wait(0);
+                m_imageWriter->writeImage(0, pushConstants.frame);
             }
 
             // Dome light
             if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0)) {
-                renderer->reset();
+                m_renderer->reset();
             }
 
             // Infinite light
@@ -113,32 +113,34 @@ public:
 
             if (ImGui::Checkbox("Enable accum", &enableAccum)) {
                 pushConstants.enableAccum = enableAccum;
-                renderer->reset();
+                m_renderer->reset();
             }
 
             // Bloom
             ImGui::Checkbox("Enable bloom", &enableBloom);
             if (enableBloom) {
-                ImGui::SliderFloat("Bloom intensity", &renderer->compositeInfo.bloomIntensity,  //
+                ImGui::SliderFloat("Bloom intensity",
+                                   &m_renderer->m_compositeInfo.bloomIntensity,  //
                                    0.0f, 10.0f);
                 ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f, 10.0f);
                 ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-                ImGui::SliderInt("Blur size", &renderer->bloomInfo.blurSize, 0, 64);
+                ImGui::SliderInt("Blur size", &m_renderer->m_bloomInfo.blurSize, 0, 64);
             }
 
             // Tone mapping
-            ImGui::Checkbox("Enable tone mapping",
-                            reinterpret_cast<bool*>(&renderer->compositeInfo.enableToneMapping));
-            if (renderer->compositeInfo.enableToneMapping) {
-                ImGui::SliderFloat("Exposure", &renderer->compositeInfo.exposure, 0.0f, 5.0f);
+            ImGui::Checkbox(
+                "Enable tone mapping",
+                reinterpret_cast<bool*>(&m_renderer->m_compositeInfo.enableToneMapping));
+            if (m_renderer->m_compositeInfo.enableToneMapping) {
+                ImGui::SliderFloat("Exposure", &m_renderer->m_compositeInfo.exposure, 0.0f, 5.0f);
             }
 
             // Gamma correction
             ImGui::Checkbox(
                 "Enable gamma correction",
-                reinterpret_cast<bool*>(&renderer->compositeInfo.enableGammaCorrection));
-            if (renderer->compositeInfo.enableGammaCorrection) {
-                ImGui::SliderFloat("Gamma", &renderer->compositeInfo.gamma, 0.0, 5.0);
+                reinterpret_cast<bool*>(&m_renderer->m_compositeInfo.enableGammaCorrection));
+            if (m_renderer->m_compositeInfo.enableGammaCorrection) {
+                ImGui::SliderFloat("Gamma", &m_renderer->m_compositeInfo.gamma, 0.0, 5.0);
             }
 
             ImGui::Checkbox("Play animation", &playAnimation);
@@ -146,7 +148,7 @@ public:
             // Show GPU time
             float gpuTime = 0.0f;
             if (pushConstants.frame > 1) {
-                gpuTime = gpuTimer->elapsedInMilli();
+                gpuTime = m_gpuTimer->elapsedInMilli();
             }
             ImGui::Text("GPU time: %f ms", gpuTime);
 
@@ -154,32 +156,32 @@ public:
                 recompile();
             }
 
-            ImGui::InputTextMultiline("Memo", inputTextBuffer, sizeof(inputTextBuffer));
+            ImGui::InputTextMultiline("Memo", m_inputTextBuffer, sizeof(m_inputTextBuffer));
 
             ImGui::End();
         }
 
-        commandBuffer->beginTimestamp(gpuTimer);
-        renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
-        commandBuffer->endTimestamp(gpuTimer);
+        commandBuffer->beginTimestamp(m_gpuTimer);
+        m_renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
+        commandBuffer->endTimestamp(m_gpuTimer);
 
         // Copy to swapchain image
-        commandBuffer->copyImage(renderer->compositePass.finalImageBGRA, getCurrentColorImage(),
+        commandBuffer->copyImage(m_renderer->m_compositePass.finalImageBGRA, getCurrentColorImage(),
                                  vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
-        rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+        rv::ImageHandle outputImage = m_renderer->m_compositePass.finalImageRGBA;
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
-        commandBuffer->copyImageToBuffer(outputImage, imageWriter->getBuffer(0));
+        commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(0));
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
     }
 
-    std::unique_ptr<Renderer> renderer;
-    std::unique_ptr<ImageWriter> imageWriter;
+    std::unique_ptr<Renderer> m_renderer;
+    std::unique_ptr<ImageWriter> m_imageWriter;
 
-    rv::GPUTimerHandle gpuTimer;
+    rv::GPUTimerHandle m_gpuTimer;
 
-    char inputTextBuffer[1024] = {0};
+    char m_inputTextBuffer[1024] = {0};
 };
 
 class HeadlessApp {
@@ -188,7 +190,7 @@ public:
                 uint32_t width,
                 uint32_t height,
                 const std::filesystem::path& scenePath)
-        : width{width}, height{height} {
+        : m_width{width}, m_height{height} {
         spdlog::set_pattern("[%^%l%$] %v");
 
         std::vector<const char*> instanceExtensions;
@@ -201,8 +203,8 @@ public:
         }
 
         // NOTE: Assuming Vulkan 1.3
-        context.initInstance(enableValidation, layers, instanceExtensions, VK_API_VERSION_1_3);
-        context.initPhysicalDevice();
+        m_context.initInstance(enableValidation, layers, instanceExtensions, VK_API_VERSION_1_3);
+        m_context.initPhysicalDevice();
 
         std::vector deviceExtensions{
             VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
@@ -250,74 +252,74 @@ public:
         featuresChain.add(accelerationStructureFeatures);
         featuresChain.add(rayQueryFeatures);
 
-        context.initDevice(deviceExtensions, deviceFeatures, featuresChain.pFirst, true);
-        commandBuffers.resize(imageCount);
-        for (auto& commandBuffer : commandBuffers) {
-            commandBuffer = context.allocateCommandBuffer();
+        m_context.initDevice(deviceExtensions, deviceFeatures, featuresChain.pFirst, true);
+        m_commandBuffers.resize(m_imageCount);
+        for (auto& commandBuffer : m_commandBuffers) {
+            commandBuffer = m_context.allocateCommandBuffer();
         }
 
-        renderer = std::make_unique<Renderer>(context, width, height, scenePath);
-        imageWriter = std::make_unique<ImageWriter>(context, width, height, imageCount);
+        m_renderer = std::make_unique<Renderer>(m_context, width, height, scenePath);
+        m_imageWriter = std::make_unique<ImageWriter>(m_context, width, height, m_imageCount);
     }
 
     void run() {
         rv::CPUTimer timer;
 
-        renderer->pushConstants.sampleCount = 128;
-        for (uint32_t i = 0; i < totalFrames; i++) {
-            imageWriter->wait(imageIndex);
+        m_renderer->m_pushConstants.sampleCount = 128;
+        for (uint32_t i = 0; i < m_totalFrames; i++) {
+            m_imageWriter->wait(m_imageIndex);
 
-            renderer->update({0.0f, 0.0f}, 0.0f);
+            m_renderer->update({0.0f, 0.0f}, 0.0f);
 
-            auto& commandBuffer = commandBuffers[imageIndex];
+            auto& commandBuffer = m_commandBuffers[m_imageIndex];
             commandBuffer->begin();
 
             bool playAnimation = true;
             bool enableBloom = false;
             int blurIteration = 32;
-            renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
+            m_renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
 
             commandBuffer->imageBarrier(
-                renderer->compositePass.finalImageRGBA,  //
+                m_renderer->m_compositePass.finalImageRGBA,  //
                 vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eTransfer,
                 vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
 
             // Copy to buffer
-            rv::ImageHandle outputImage = renderer->compositePass.finalImageRGBA;
+            rv::ImageHandle outputImage = m_renderer->m_compositePass.finalImageRGBA;
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
-            commandBuffer->copyImageToBuffer(outputImage, imageWriter->getBuffer(imageIndex));
+            commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(m_imageIndex));
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
 
             // End command buffer
-            commandBuffers[imageIndex]->end();
+            m_commandBuffers[m_imageIndex]->end();
 
             // Submit
-            context.submit(commandBuffer);
-            context.getQueue().waitIdle();
+            m_context.submit(commandBuffer);
+            m_context.getQueue().waitIdle();
 
-            imageWriter->writeImage(imageIndex, renderer->pushConstants.frame);
+            m_imageWriter->writeImage(m_imageIndex, m_renderer->m_pushConstants.frame);
 
-            imageIndex = (imageIndex + 1) % imageCount;
+            m_imageIndex = (m_imageIndex + 1) % m_imageCount;
         }
 
-        context.getDevice().waitIdle();
-        imageWriter->waitAll();
+        m_context.getDevice().waitIdle();
+        m_imageWriter->waitAll();
 
         spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
     }
 
 private:
-    rv::Context context;
-    std::unique_ptr<Renderer> renderer;
-    std::unique_ptr<ImageWriter> imageWriter;
+    rv::Context m_context;
+    std::unique_ptr<Renderer> m_renderer;
+    std::unique_ptr<ImageWriter> m_imageWriter;
 
-    uint32_t width;
-    uint32_t height;
-    uint32_t totalFrames = 180;
-    uint32_t imageCount = 3;
-    uint32_t imageIndex = 0;
-    std::vector<rv::CommandBufferHandle> commandBuffers{};
-    std::vector<rv::ImageHandle> images{};
+    uint32_t m_width;
+    uint32_t m_height;
+    uint32_t m_totalFrames = 180;
+    uint32_t m_imageCount = 3;
+    uint32_t m_imageIndex = 0;
+    std::vector<rv::CommandBufferHandle> m_commandBuffers{};
+    std::vector<rv::ImageHandle> m_images{};
 };
 
 int main(int argc, char* argv[]) {

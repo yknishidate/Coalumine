@@ -17,51 +17,51 @@ public:
              uint32_t width,
              uint32_t height,
              const std::filesystem::path& scenePath)
-        : width{width}, height{height} {
+        : m_width{width}, m_height{height} {
         // Load scene
         rv::CPUTimer timer;
-        scene.loadFromFile(context, scenePath);
-        scene.createMaterialBuffer(context);
-        scene.createNodeDataBuffer(context);
+        m_scene.loadFromFile(context, scenePath);
+        m_scene.createMaterialBuffer(context);
+        m_scene.createNodeDataBuffer(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         // Build BVH
         timer.restart();
-        scene.buildAccels(context);
+        m_scene.buildAccels(context);
         spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
 
-        baseImage = context.createImage({
+        m_baseImage = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
             .debugName = "baseImage",
         });
-        baseImage->createImageView();
+        m_baseImage->createImageView();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
-            commandBuffer->transitionLayout(baseImage, vk::ImageLayout::eGeneral);
+            commandBuffer->transitionLayout(m_baseImage, vk::ImageLayout::eGeneral);
         });
 
         createPipelines(context);
 
-        orbitalCamera = {rv::Camera::Type::Orbital, width / static_cast<float>(height)};
-        orbitalCamera.setDistance(12.0f);
-        orbitalCamera.setFovY(glm::radians(30.0f));
-        currentCamera = &orbitalCamera;
+        m_orbitalCamera = {rv::Camera::Type::Orbital, width / static_cast<float>(height)};
+        m_orbitalCamera.setDistance(12.0f);
+        m_orbitalCamera.setFovY(glm::radians(30.0f));
+        m_currentCamera = &m_orbitalCamera;
 
-        if (scene.cameraExists) {
-            fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
-            fpsCamera.setPosition(scene.cameraTranslation);
-            glm::vec3 eulerAngles = glm::eulerAngles(scene.cameraRotation);
+        if (m_scene.cameraExists) {
+            m_fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
+            m_fpsCamera.setPosition(m_scene.cameraTranslation);
+            glm::vec3 eulerAngles = glm::eulerAngles(m_scene.cameraRotation);
 
             // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
-            fpsCamera.setPitch(-glm::degrees(eulerAngles.x));
+            m_fpsCamera.setPitch(-glm::degrees(eulerAngles.x));
             if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
-                fpsCamera.setPitch(-glm::degrees(eulerAngles.x) + 180);
+                m_fpsCamera.setPitch(-glm::degrees(eulerAngles.x) + 180);
             }
-            fpsCamera.setYaw(glm::mod(glm::degrees(eulerAngles.y), 360.0f));
-            fpsCamera.setFovY(scene.cameraYFov);
-            currentCamera = &fpsCamera;
+            m_fpsCamera.setYaw(glm::mod(glm::degrees(eulerAngles.y), 360.0f));
+            m_fpsCamera.setFovY(m_scene.cameraYFov);
+            m_currentCamera = &m_fpsCamera;
         }
     }
 
@@ -84,62 +84,63 @@ public:
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
 
-        bloomPass = BloomPass(context, width, height);
-        compositePass = CompositePass(context, baseImage, bloomPass.bloomImage, width, height);
+        m_bloomPass = BloomPass(context, m_width, m_height);
+        m_compositePass =
+            CompositePass(context, m_baseImage, m_bloomPass.bloomImage, m_width, m_height);
 
-        descSet = context.createDescriptorSet({
+        m_descSet = context.createDescriptorSet({
             .shaders = shaders,
             .buffers =
                 {
-                    {"NodeDataBuffer", scene.nodeDataBuffer},
-                    {"MaterialBuffer", scene.materialBuffer},
+                    {"NodeDataBuffer", m_scene.nodeDataBuffer},
+                    {"MaterialBuffer", m_scene.materialBuffer},
                 },
             .images =
                 {
-                    {"baseImage", baseImage},
-                    {"bloomImage", bloomPass.bloomImage},
-                    {"envLightTexture", scene.envLightTexture},
+                    {"baseImage", m_baseImage},
+                    {"bloomImage", m_bloomPass.bloomImage},
+                    {"envLightTexture", m_scene.envLightTexture},
                 },
-            .accels = {{"topLevelAS", scene.topAccel}},
+            .accels = {{"topLevelAS", m_scene.topAccel}},
         });
-        descSet->update();
+        m_descSet->update();
 
-        rayTracingPipeline = context.createRayTracingPipeline({
+        m_rayTracingPipeline = context.createRayTracingPipeline({
             .rgenGroup = {shaders[0]},
             .missGroups = {{shaders[1]}, {shaders[2]}},
             .hitGroups = {{shaders[3]}},
-            .descSetLayout = descSet->getLayout(),
+            .descSetLayout = m_descSet->getLayout(),
             .pushSize = sizeof(PushConstants),
             .maxRayRecursionDepth = 31,
         });
     }
 
     void update(glm::vec2 dragLeft, float scroll) {
-        assert(currentCamera && "currentCamera is nullptr");
+        assert(m_currentCamera && "m_currentCamera is nullptr");
 
         if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
-            currentCamera->processMouseDragLeft(dragLeft);
-            currentCamera->processMouseScroll(scroll);
+            m_currentCamera->processMouseDragLeft(dragLeft);
+            m_currentCamera->processMouseScroll(scroll);
 
-            pushConstants.frame = 0;
+            m_pushConstants.frame = 0;
         } else {
-            pushConstants.frame++;
+            m_pushConstants.frame++;
         }
 
-        pushConstants.invView = currentCamera->getInvView();
-        pushConstants.invProj = currentCamera->getInvProj();
+        m_pushConstants.invView = m_currentCamera->getInvView();
+        m_pushConstants.invProj = m_currentCamera->getInvProj();
 
         // Env light
-        pushConstants.useEnvLightTexture = scene.useEnvLightTexture;
-        pushConstants.envLightColor = {scene.envLightColor, 1.0f};
+        m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
+        m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
 
         // Infinite light
-        pushConstants.infiniteLightColor.xyz = scene.infiniteLightColor;
-        pushConstants.infiniteLightDirection = scene.infiniteLightDir;
-        pushConstants.infiniteLightIntensity = scene.infiniteLightIntensity;
+        m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;
+        m_pushConstants.infiniteLightDirection = m_scene.infiniteLightDir;
+        m_pushConstants.infiniteLightIntensity = m_scene.infiniteLightIntensity;
     }
 
-    void reset() { pushConstants.frame = 0; }
+    void reset() { m_pushConstants.frame = 0; }
 
     void render(const rv::CommandBufferHandle& commandBuffer,
                 bool playAnimation,
@@ -148,23 +149,23 @@ public:
         // Update
         // if (!playAnimation || !scene.shouldUpdate(pushConstants.frame)) {
         if (!playAnimation) {
-            spdlog::info("Skipped: {}", pushConstants.frame);
+            spdlog::info("Skipped: {}", m_pushConstants.frame);
             return;
         }
-        scene.updateTopAccel(pushConstants.frame);
+        m_scene.updateTopAccel(m_pushConstants.frame);
 
         // Ray tracing
-        commandBuffer->bindDescriptorSet(rayTracingPipeline, descSet);
-        commandBuffer->bindPipeline(rayTracingPipeline);
-        commandBuffer->pushConstants(rayTracingPipeline, &pushConstants);
-        commandBuffer->traceRays(rayTracingPipeline, width, height, 1);
+        commandBuffer->bindDescriptorSet(m_rayTracingPipeline, m_descSet);
+        commandBuffer->bindPipeline(m_rayTracingPipeline);
+        commandBuffer->pushConstants(m_rayTracingPipeline, &m_pushConstants);
+        commandBuffer->traceRays(m_rayTracingPipeline, m_width, m_height, 1);
 
-        commandBuffer->imageBarrier(baseImage,  //
+        commandBuffer->imageBarrier(m_baseImage,  //
                                     vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
                                     vk::AccessFlagBits::eShaderRead);
-        commandBuffer->imageBarrier(bloomPass.bloomImage,  //
+        commandBuffer->imageBarrier(m_bloomPass.bloomImage,  //
                                     vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
@@ -173,31 +174,31 @@ public:
         // Blur
         if (enableBloom) {
             for (int i = 0; i < blurIteration; i++) {
-                bloomPass.render(commandBuffer, width / 8, height / 8, bloomInfo);
+                m_bloomPass.render(commandBuffer, m_width / 8, m_height / 8, m_bloomInfo);
             }
         }
 
-        compositePass.render(commandBuffer, width / 8, height / 8, compositeInfo);
+        m_compositePass.render(commandBuffer, m_width / 8, m_height / 8, m_compositeInfo);
     }
 
-    uint32_t width;
-    uint32_t height;
+    uint32_t m_width;
+    uint32_t m_height;
 
-    Scene scene;
+    Scene m_scene;
 
-    CompositeInfo compositeInfo;
-    CompositePass compositePass;
-    BloomInfo bloomInfo;
-    BloomPass bloomPass;
+    CompositeInfo m_compositeInfo;
+    CompositePass m_compositePass;
+    BloomInfo m_bloomInfo;
+    BloomPass m_bloomPass;
 
-    rv::ImageHandle baseImage;
+    rv::ImageHandle m_baseImage;
 
-    rv::DescriptorSetHandle descSet;
-    rv::RayTracingPipelineHandle rayTracingPipeline;
+    rv::DescriptorSetHandle m_descSet;
+    rv::RayTracingPipelineHandle m_rayTracingPipeline;
 
-    rv::Camera* currentCamera = nullptr;
-    rv::Camera fpsCamera;
-    rv::Camera orbitalCamera;
+    rv::Camera* m_currentCamera = nullptr;
+    rv::Camera m_fpsCamera;
+    rv::Camera m_orbitalCamera;
 
-    PushConstants pushConstants;
+    PushConstants m_pushConstants;
 };

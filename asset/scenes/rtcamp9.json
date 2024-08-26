@@ -1,5 +1,5 @@
 {
-    "gltf": "../rtcamp9.gltf",
+    "gltf": "../gltf/rtcamp9.gltf",
     "materials": [
         {
             "base_color": [1.0, 1.0, 1.0, 1.0],
