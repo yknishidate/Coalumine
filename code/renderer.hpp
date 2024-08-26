@@ -129,8 +129,14 @@ public:
         pushConstants.invView = currentCamera->getInvView();
         pushConstants.invProj = currentCamera->getInvProj();
 
+        // Env light
         pushConstants.useEnvLightTexture = scene.useEnvLightTexture;
         pushConstants.envLightColor = {scene.envLightColor, 1.0f};
+
+        // Infinite light
+        pushConstants.infiniteLightColor.xyz = scene.infiniteLightColor;
+        pushConstants.infiniteLightDirection = scene.infiniteLightDir;
+        pushConstants.infiniteLightIntensity = scene.infiniteLightIntensity;
     }
 
     void reset() { pushConstants.frame = 0; }

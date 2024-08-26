@@ -86,21 +86,31 @@ public:
 
     int addNode(const Node& node);
 
+    // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
 
+    // Accel
     std::vector<rv::BottomAccelHandle> bottomAccels;
     rv::TopAccelHandle topAccel;
+
+    // Light
     rv::ImageHandle envLightTexture;
     glm::vec3 envLightColor;
     bool useEnvLightTexture = false;
 
+    glm::vec3 infiniteLightDir = {};
+    glm::vec3 infiniteLightColor = {};
+    float infiniteLightIntensity = 0.0f;
+
+    // Buffer
     std::vector<NodeData> nodeData;
     rv::BufferHandle nodeDataBuffer;
 
     std::vector<Material> materials;
     rv::BufferHandle materialBuffer;
 
+    // Camera
     bool cameraExists = false;
     glm::vec3 cameraTranslation;
     glm::quat cameraRotation;

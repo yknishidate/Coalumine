@@ -318,7 +318,7 @@ void main()
         traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.1);
         if(!shadowed){
             float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
-            inifiniteLightTerm = baseColor * pc.infiniteLightIntensity * cosTheta;
+            inifiniteLightTerm = baseColor * pc.infiniteLightColor.xyz * pc.infiniteLightIntensity * cosTheta;
         }
 
         // Diffuse IS

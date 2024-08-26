@@ -144,9 +144,11 @@ public:
             ImGui::Checkbox("Play animation", &playAnimation);
 
             // Show GPU time
+            float gpuTime = 0.0f;
             if (pushConstants.frame > 1) {
-                ImGui::Text("GPU time: %f ms", gpuTimer->elapsedInMilli());
+                gpuTime = gpuTimer->elapsedInMilli();
             }
+            ImGui::Text("GPU time: %f ms", gpuTime);
 
             if (ImGui::Button("Recompile")) {
                 recompile();

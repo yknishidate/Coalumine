@@ -142,4 +142,16 @@ void LoaderJson::loadFromFile(Scene& scene,
                                    light->at("color")[2]};
         }
     }
+
+    if (const auto& light = jsonData.find("infinite_light"); light != jsonData.end()) {
+        if (const auto& dir = light->find("direction"); dir != light->end()) {
+            scene.infiniteLightDir = glm::normalize(glm::vec3{dir->at(0), dir->at(1), dir->at(2)});
+        }
+        if (const auto& color = light->find("color"); color != light->end()) {
+            scene.infiniteLightColor = {color->at(0), color->at(1), color->at(2)};
+        }
+        if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
+            scene.infiniteLightIntensity = *intensity;
+        }
+    }
 }

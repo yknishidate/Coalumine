@@ -52,8 +52,9 @@ struct PushConstants {
     FIELD(int, enableAccum, 1);
     FIELD(int, useEnvLightTexture, 0);
 
+    FIELD(vec4, infiniteLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
     FIELD(vec3, infiniteLightDirection, vec3(0.0f, 1.0f, 0.0f));
-    FIELD(float, infiniteLightIntensity, 0.8f);
+    FIELD(float, infiniteLightIntensity, 0.0f);
 
     FIELD(vec4, envLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 };
