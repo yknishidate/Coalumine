@@ -315,10 +315,12 @@ void main()
         // Shadow ray
         shadowed = true;
         vec3 inifiniteLightTerm = vec3(0.0);
-        traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.1);
-        if(!shadowed){
-            float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
-            inifiniteLightTerm = baseColor * pc.infiniteLightColor.xyz * pc.infiniteLightIntensity * cosTheta;
+        if (pc.infiniteLightIntensity > 0.0) {
+            traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.001);
+            if(!shadowed){
+                float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
+                inifiniteLightTerm = baseColor * pc.infiniteLightColor.xyz * pc.infiniteLightIntensity * cosTheta;
+            }
         }
 
         // Diffuse IS

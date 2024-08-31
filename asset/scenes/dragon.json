@@ -39,11 +39,11 @@
     "environment_light": {
         "type": "solid",
         "texture": "../environments/hochsal_field_4k.hdr",
-        "color": [0.5, 0.5, 0.5]
+        "color": [0.0, 0.0, 0.0]
     },
     "infinite_light": {
-        "direction": [2.0, 4.0, 1.0],
+        "direction": [2.0, -4.0, 1.0],
         "color": [1.0, 1.0, 1.0],
-        "intensity": 0.0
+        "intensity": 1.0
     }
 }
