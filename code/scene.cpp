@@ -152,24 +152,3 @@ void Scene::updateTopAccel(int frame) {
     topAccel->updateInstances(accelInstances);
     nodeDataBuffer->copy(nodeData.data());
 }
-
-int Scene::addMaterial(const rv::Context& context, const Material& material) {
-    materials.push_back(material);
-    return static_cast<int>(materials.size() - 1);
-}
-
-int Scene::addMesh(const rv::Mesh& mesh, int materialIndex) {
-    meshes.push_back({
-        .vertexBuffer = mesh.vertexBuffer,
-        .indexBuffer = mesh.indexBuffer,
-        .vertexCount = static_cast<uint32_t>(mesh.vertices.size()),
-        .triangleCount = static_cast<uint32_t>(mesh.indices.size() / 3),
-        .materialIndex = materialIndex,
-    });
-    return static_cast<int>(meshes.size() - 1);
-}
-
-int Scene::addNode(const Node& node) {
-    nodes.push_back(node);
-    return static_cast<uint32_t>(nodes.size() - 1);
-}

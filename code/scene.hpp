@@ -80,12 +80,6 @@ public:
 
     void updateTopAccel(int frame);
 
-    int addMaterial(const rv::Context& context, const Material& material);
-
-    int addMesh(const rv::Mesh& mesh, int materialIndex);
-
-    int addNode(const Node& node);
-
     // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
