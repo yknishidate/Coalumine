@@ -233,6 +233,8 @@ public:
 
         vk::PhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures{true};
 
+        vk::PhysicalDeviceScalarBlockLayoutFeatures scalarBlockLayoutFeatures{true};
+
         vk::PhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeatures{true};
 
         vk::PhysicalDeviceSynchronization2Features synchronization2Features{true};
@@ -242,6 +244,7 @@ public:
         featuresChain.add(storage8BitFeatures);
         featuresChain.add(shaderFloat16Int8Features);
         featuresChain.add(bufferDeviceAddressFeatures);
+        featuresChain.add(scalarBlockLayoutFeatures);
         featuresChain.add(shaderObjectFeatures);
         featuresChain.add(synchronization2Features);
 
