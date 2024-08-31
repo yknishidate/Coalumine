@@ -149,15 +149,9 @@ public:
             if (ImGui::CollapsingHeader("Camera")) {
                 auto camera = m_renderer->m_currentCamera;
                 auto pos = camera->getPosition();
+                auto rot = camera->getEulerRotation();
                 ImGui::Text("Position: %f %f %f", pos.x, pos.y, pos.z);
-                if (auto params = camera->getFirstPersonParams()) {
-                    ImGui::Text("Yaw: %f", params.value().yaw);
-                    ImGui::Text("Pitch: %f", params.value().pitch);
-                }
-                if (auto params = camera->getOrbitalParams()) {
-                    ImGui::Text("Theta: %f", params.value().theta);
-                    ImGui::Text("Phi: %f", params.value().phi);
-                }
+                ImGui::Text("Rotation: %f %f %f", rot.x, rot.y, rot.z);
             }
 
             // Show GPU time

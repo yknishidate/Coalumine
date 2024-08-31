@@ -52,10 +52,7 @@ public:
         if (m_scene.cameraExists) {
             m_fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
             m_fpsCamera.setPosition(m_scene.cameraTranslation);
-            glm::vec3 eulerAngles = glm::eulerAngles(m_scene.cameraRotation);
-
-            m_fpsCamera.setPitch(glm::degrees(eulerAngles.x));
-            m_fpsCamera.setYaw(glm::degrees(eulerAngles.y));
+            m_fpsCamera.setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
             m_fpsCamera.setFovY(m_scene.cameraYFov);
             m_currentCamera = &m_fpsCamera;
         }
