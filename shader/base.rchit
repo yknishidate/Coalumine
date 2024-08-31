@@ -332,6 +332,5 @@ void main()
         //    = Le + (color / PI) * Li * cos(theta) / (cos(theta) / PI)
         //    = Le + color * Li
         payload.radiance = emissive + (baseColor * payload.radiance + inifiniteLightTerm);
-        //payload.radiance = emissive + (baseColor * payload.radiance);
     }
 }

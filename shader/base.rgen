@@ -11,7 +11,11 @@ void main()
 {
     const vec2 screenPos = vec2(gl_LaunchIDEXT.xy);
     const vec2 samplingRadius = 2.0 / vec2(gl_LaunchSizeEXT.xy);
-    const vec2 uv = vec2(gl_LaunchIDEXT.xy) / vec2(gl_LaunchSizeEXT.xy) * 2.0 - 1.0;
+    
+    vec2 uv;
+    uv.x = float(gl_LaunchIDEXT.x) / float(gl_LaunchSizeEXT.x) * 2.0 - 1.0;
+    uv.y = (1.0 - float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y)) * 2.0 - 1.0;
+    
     vec4 origin = pc.invView * vec4(0, 0, 0, 1);
 
     uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.frame + 1));

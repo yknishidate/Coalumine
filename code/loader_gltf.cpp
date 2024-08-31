@@ -10,15 +10,15 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
             if (!gltfNode.translation.empty()) {
-                scene.cameraTranslation = glm::vec3{gltfNode.translation[0],
-                                                    -gltfNode.translation[1],  // invert y
-                                                    gltfNode.translation[2]};
+                scene.cameraTranslation.x = static_cast<float>(gltfNode.translation[0]);
+                scene.cameraTranslation.y = static_cast<float>(gltfNode.translation[1]);
+                scene.cameraTranslation.z = static_cast<float>(gltfNode.translation[2]);
             }
             if (!gltfNode.rotation.empty()) {
-                scene.cameraRotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
-                                                 static_cast<float>(gltfNode.rotation[0]),
-                                                 static_cast<float>(gltfNode.rotation[1]),
-                                                 static_cast<float>(gltfNode.rotation[2])};
+                scene.cameraRotation.x = static_cast<float>(gltfNode.rotation[0]);
+                scene.cameraRotation.y = static_cast<float>(gltfNode.rotation[1]);
+                scene.cameraRotation.z = static_cast<float>(gltfNode.rotation[2]);
+                scene.cameraRotation.w = static_cast<float>(gltfNode.rotation[3]);
             }
 
             tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
@@ -37,20 +37,22 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
             Node node;
             node.meshIndex = gltfNode.mesh;
             if (!gltfNode.translation.empty()) {
-                node.translation = glm::vec3{gltfNode.translation[0],
-                                             -gltfNode.translation[1],  // invert y
-                                             gltfNode.translation[2]};
+                node.translation.x = static_cast<float>(gltfNode.translation[0]);
+                node.translation.y = static_cast<float>(gltfNode.translation[1]);
+                node.translation.z = static_cast<float>(gltfNode.translation[2]);
             }
 
             if (!gltfNode.rotation.empty()) {
-                node.rotation = glm::quat{static_cast<float>(gltfNode.rotation[3]),
-                                          static_cast<float>(gltfNode.rotation[0]),
-                                          static_cast<float>(gltfNode.rotation[1]),
-                                          static_cast<float>(gltfNode.rotation[2])};
+                node.rotation.x = static_cast<float>(gltfNode.rotation[0]);
+                node.rotation.y = static_cast<float>(gltfNode.rotation[1]);
+                node.rotation.z = static_cast<float>(gltfNode.rotation[2]);
+                node.rotation.w = static_cast<float>(gltfNode.rotation[3]);
             }
 
             if (!gltfNode.scale.empty()) {
-                node.scale = glm::vec3{gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]};
+                node.scale.x = static_cast<float>(gltfNode.scale[0]);
+                node.scale.y = static_cast<float>(gltfNode.scale[1]);
+                node.scale.z = static_cast<float>(gltfNode.scale[2]);
             }
             scene.nodes.push_back(node);
             continue;
@@ -112,7 +114,6 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                                             i * positionBufferView->byteStride;
                 vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
                     &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
-                vertices[i].pos.y = -vertices[i].pos.y;  // invert y
 
                 if (normalBufferView) {
                     size_t normalByteOffset = normalAccessor->byteOffset +
@@ -120,7 +121,6 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                                               i * normalBufferView->byteStride;
                     vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
                         &(gltfModel.buffers[normalBufferView->buffer].data[normalByteOffset]));
-                    vertices[i].normal.y = -vertices[i].normal.y;  // invert y
                 }
 
                 if (texCoordBufferView) {
@@ -144,8 +144,8 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT: {
                         uint32_t* buf = new uint32_t[indicesCount];
                         size_t size = indicesCount * sizeof(uint32_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
+                        std::memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
+                                    size);
                         for (size_t i = 0; i < indicesCount; i++) {
                             indices.push_back(buf[i]);
                         }
@@ -154,8 +154,8 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT: {
                         uint16_t* buf = new uint16_t[indicesCount];
                         size_t size = indicesCount * sizeof(uint16_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
+                        std::memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
+                                    size);
                         for (size_t i = 0; i < indicesCount; i++) {
                             indices.push_back(buf[i]);
                         }
@@ -164,8 +164,8 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                     case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE: {
                         uint8_t* buf = new uint8_t[indicesCount];
                         size_t size = indicesCount * sizeof(uint8_t);
-                        memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
-                               size);
+                        std::memcpy(buf, &buffer.data[accessor.byteOffset + bufferView.byteOffset],
+                                    size);
                         for (size_t i = 0; i < indicesCount; i++) {
                             indices.push_back(buf[i]);
                         }
@@ -284,15 +284,18 @@ void loadAnimation(Scene& scene, const rv::Context& context, const tinygltf::Mod
                     keyFrames[i].time = inputData[i];
 
                     if (channel.target_path == "translation") {
-                        keyFrames[i].translation = glm::vec3(
-                            outputData[i * 3 + 0], -outputData[i * 3 + 1], outputData[i * 3 + 2]);
+                        keyFrames[i].translation.x = outputData[i * 3 + 0];
+                        keyFrames[i].translation.y = outputData[i * 3 + 1];
+                        keyFrames[i].translation.z = outputData[i * 3 + 2];
                     } else if (channel.target_path == "rotation") {
-                        keyFrames[i].rotation =
-                            glm::quat(outputData[i * 4 + 3], outputData[i * 4 + 0],
-                                      outputData[i * 4 + 1], outputData[i * 4 + 2]);
+                        keyFrames[i].rotation.x = outputData[i * 4 + 0];
+                        keyFrames[i].rotation.y = outputData[i * 4 + 1];
+                        keyFrames[i].rotation.z = outputData[i * 4 + 2];
+                        keyFrames[i].rotation.w = outputData[i * 4 + 3];
                     } else if (channel.target_path == "scale") {
-                        keyFrames[i].scale = glm::vec3(outputData[i * 3 + 0], outputData[i * 3 + 1],
-                                                       outputData[i * 3 + 2]);
+                        keyFrames[i].scale.x = outputData[i * 3 + 0];
+                        keyFrames[i].scale.y = outputData[i * 3 + 1];
+                        keyFrames[i].scale.z = outputData[i * 3 + 2];
                     }
                 }
             }

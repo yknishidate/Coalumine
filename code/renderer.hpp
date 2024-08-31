@@ -54,12 +54,8 @@ public:
             m_fpsCamera.setPosition(m_scene.cameraTranslation);
             glm::vec3 eulerAngles = glm::eulerAngles(m_scene.cameraRotation);
 
-            // TODO: fix this, if(pitch > 90) { pitch = 90 - (pitch - 90); yaw += 180; }
-            m_fpsCamera.setPitch(-glm::degrees(eulerAngles.x));
-            if (glm::degrees(eulerAngles.x) < -90.0f || 90.0f < glm::degrees(eulerAngles.x)) {
-                m_fpsCamera.setPitch(-glm::degrees(eulerAngles.x) + 180);
-            }
-            m_fpsCamera.setYaw(glm::mod(glm::degrees(eulerAngles.y), 360.0f));
+            m_fpsCamera.setPitch(glm::degrees(eulerAngles.x));
+            m_fpsCamera.setYaw(glm::degrees(eulerAngles.y));
             m_fpsCamera.setFovY(m_scene.cameraYFov);
             m_currentCamera = &m_fpsCamera;
         }

@@ -10,7 +10,7 @@
         {
             "mesh_index": 1,
             "material_index": 0,
-            "translation": [0.0, 1.0, 0.0],
+            "translation": [0.0, -1.0, 0.0],
             "scale": [10.0, 10.0, 10.0],
             "rotation": [0.0, 0.0, 0.0]
         }
@@ -39,6 +39,7 @@
     },
     "environment_light": {
         "type": "texture",
+        "color": [0.5, 0.5, 0.5],
         "texture": "../environments/hochsal_field_4k.hdr"
     }
 }

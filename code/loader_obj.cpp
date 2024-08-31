@@ -75,19 +75,18 @@ void LoaderObj::loadFromFile(Scene& scene,
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
         for (const auto& index : shape.mesh.indices) {
-            // TODO: y反転を削除
             rv::Vertex vertex;
-            vertex.pos = {objAttrib.vertices[3 * index.vertex_index + 0],
-                          -objAttrib.vertices[3 * index.vertex_index + 1],
-                          objAttrib.vertices[3 * index.vertex_index + 2]};
+            vertex.pos.x = objAttrib.vertices[3 * index.vertex_index + 0];
+            vertex.pos.y = objAttrib.vertices[3 * index.vertex_index + 1];
+            vertex.pos.z = objAttrib.vertices[3 * index.vertex_index + 2];
             if (index.normal_index != -1) {
-                vertex.normal = {objAttrib.normals[3 * index.normal_index + 0],
-                                 -objAttrib.normals[3 * index.normal_index + 1],
-                                 objAttrib.normals[3 * index.normal_index + 2]};
+                vertex.normal.x = objAttrib.normals[3 * index.normal_index + 0];
+                vertex.normal.y = objAttrib.normals[3 * index.normal_index + 1];
+                vertex.normal.z = objAttrib.normals[3 * index.normal_index + 2];
             }
             if (index.texcoord_index != -1) {
-                vertex.texCoord = {objAttrib.texcoords[2 * index.texcoord_index + 0],
-                                   1.0f - objAttrib.texcoords[2 * index.texcoord_index + 1]};
+                vertex.texCoord.x = objAttrib.texcoords[2 * index.texcoord_index + 0];
+                vertex.texCoord.y = 1.0f - objAttrib.texcoords[2 * index.texcoord_index + 1];  // ?
             }
             if (!uniqueVertices.contains(vertex)) {
                 vertices.push_back(vertex);
@@ -143,19 +142,18 @@ void LoaderObj::loadMesh(Mesh& mesh,
     std::vector<rv::Vertex> vertices;
     std::vector<uint32_t> indices;
     for (const auto& index : shape.mesh.indices) {
-        // TODO: y反転を削除
         rv::Vertex vertex;
-        vertex.pos = {objAttrib.vertices[3 * index.vertex_index + 0],
-                      -objAttrib.vertices[3 * index.vertex_index + 1],
-                      objAttrib.vertices[3 * index.vertex_index + 2]};
+        vertex.pos.x = objAttrib.vertices[3 * index.vertex_index + 0];
+        vertex.pos.y = objAttrib.vertices[3 * index.vertex_index + 1];
+        vertex.pos.z = objAttrib.vertices[3 * index.vertex_index + 2];
         if (index.normal_index != -1) {
-            vertex.normal = {objAttrib.normals[3 * index.normal_index + 0],
-                             -objAttrib.normals[3 * index.normal_index + 1],
-                             objAttrib.normals[3 * index.normal_index + 2]};
+            vertex.normal.x = objAttrib.normals[3 * index.normal_index + 0];
+            vertex.normal.y = objAttrib.normals[3 * index.normal_index + 1];
+            vertex.normal.z = objAttrib.normals[3 * index.normal_index + 2];
         }
         if (index.texcoord_index != -1) {
-            vertex.texCoord = {objAttrib.texcoords[2 * index.texcoord_index + 0],
-                               1.0f - objAttrib.texcoords[2 * index.texcoord_index + 1]};
+            vertex.texCoord.x = objAttrib.texcoords[2 * index.texcoord_index + 0];
+            vertex.texCoord.y = 1.0f - objAttrib.texcoords[2 * index.texcoord_index + 1];  // ?
         }
         if (!uniqueVertices.contains(vertex)) {
             vertices.push_back(vertex);

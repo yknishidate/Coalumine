@@ -145,6 +145,21 @@ public:
 
             ImGui::Checkbox("Play animation", &playAnimation);
 
+            // Camera
+            if (ImGui::CollapsingHeader("Camera")) {
+                auto camera = m_renderer->m_currentCamera;
+                auto pos = camera->getPosition();
+                ImGui::Text("Position: %f %f %f", pos.x, pos.y, pos.z);
+                if (auto params = camera->getFirstPersonParams()) {
+                    ImGui::Text("Yaw: %f", params.value().yaw);
+                    ImGui::Text("Pitch: %f", params.value().pitch);
+                }
+                if (auto params = camera->getOrbitalParams()) {
+                    ImGui::Text("Theta: %f", params.value().theta);
+                    ImGui::Text("Phi: %f", params.value().phi);
+                }
+            }
+
             // Show GPU time
             float gpuTime = 0.0f;
             if (pushConstants.frame > 1) {
