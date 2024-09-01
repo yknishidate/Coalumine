@@ -90,81 +90,97 @@ public:
             ImGui::Begin("Settings", &open);
             ImGui::Combo("Image", &imageIndex, "Render\0Bloom");
             ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
-            if (ImGui::Button("Save image")) {
-                m_imageWriter->wait(0);
-                m_imageWriter->writeImage(0, pushConstants.frame);
-            }
 
-            // Dome light
-            if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0)) {
-                m_renderer->reset();
-            }
-
-            // Infinite light
-            static glm::vec3 defaultInfiniteLightDirection = pushConstants.infiniteLightDirection;
-            ImGui::SliderFloat3("Infinite light direction",
-                                reinterpret_cast<float*>(&pushConstants.infiniteLightDirection),
-                                -1.0, 1.0);
-            ImGui::SliderFloat("Infinite light intensity", &pushConstants.infiniteLightIntensity,
-                               0.0f, 1.0f);
-            if (ImGui::Button("Reset infinite light")) {
-                pushConstants.infiniteLightDirection = defaultInfiniteLightDirection;
-            }
-
+            // Accumulation
             if (ImGui::Checkbox("Enable accum", &enableAccum)) {
                 pushConstants.enableAccum = enableAccum;
                 m_renderer->reset();
             }
 
-            // Bloom
-            ImGui::Checkbox("Enable bloom", &enableBloom);
-            if (enableBloom) {
-                ImGui::SliderFloat("Bloom intensity",
-                                   &m_renderer->m_compositeInfo.bloomIntensity,  //
-                                   0.0f, 10.0f);
-                ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f, 10.0f);
-                ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
-                ImGui::SliderInt("Blur size", &m_renderer->m_bloomInfo.blurSize, 0, 64);
-            }
-
-            // Tone mapping
-            ImGui::Checkbox(
-                "Enable tone mapping",
-                reinterpret_cast<bool*>(&m_renderer->m_compositeInfo.enableToneMapping));
-            if (m_renderer->m_compositeInfo.enableToneMapping) {
-                ImGui::SliderFloat("Exposure", &m_renderer->m_compositeInfo.exposure, 0.0f, 5.0f);
-            }
-
-            // Gamma correction
-            ImGui::Checkbox(
-                "Enable gamma correction",
-                reinterpret_cast<bool*>(&m_renderer->m_compositeInfo.enableGammaCorrection));
-            if (m_renderer->m_compositeInfo.enableGammaCorrection) {
-                ImGui::SliderFloat("Gamma", &m_renderer->m_compositeInfo.gamma, 0.0, 5.0);
-            }
-
+            // Animation
             ImGui::Checkbox("Play animation", &playAnimation);
+
+            // GPU time
+            float gpuTime = pushConstants.frame > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
+            ImGui::Text("GPU time: %f ms", gpuTime);
+
+            // Save button
+            if (ImGui::Button("Save image")) {
+                m_imageWriter->wait(0);
+                m_imageWriter->writeImage(0, pushConstants.frame);
+            }
+
+            // Recompile button
+            if (ImGui::Button("Recompile")) {
+                recompile();
+            }
+
+            // Light
+            if (ImGui::CollapsingHeader("Light")) {
+                ImGui::Indent(16.0f);
+                // Dome light
+                if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0)) {
+                    m_renderer->reset();
+                }
+
+                // Infinite light
+                if (ImGui::SliderFloat3("Infinite light direction",
+                                        &pushConstants.infiniteLightDirection[0], -1.0, 1.0)) {
+                    m_renderer->reset();
+                }
+                if (ImGui::SliderFloat("Infinite light intensity",
+                                       &pushConstants.infiniteLightIntensity, 0.0f, 1.0f)) {
+                    m_renderer->reset();
+                }
+                ImGui::Unindent(16.0f);
+            }
+
+            // Post process
+            if (ImGui::CollapsingHeader("Post process")) {
+                ImGui::Indent(16.0f);
+                auto& compositeInfo = m_renderer->m_compositeInfo;
+                auto& bloomInfo = m_renderer->m_bloomInfo;
+
+                // Bloom
+                ImGui::Checkbox("Enable bloom", &enableBloom);
+                if (enableBloom) {
+                    ImGui::SliderFloat("Bloom intensity",
+                                       &compositeInfo.bloomIntensity,  //
+                                       0.0f, 10.0f);
+                    ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f,
+                                       10.0f);
+                    ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
+                    ImGui::SliderInt("Blur size", &bloomInfo.blurSize, 0, 64);
+                }
+
+                // Tone mapping
+                ImGui::Checkbox("Enable tone mapping",
+                                reinterpret_cast<bool*>(&compositeInfo.enableToneMapping));
+                if (compositeInfo.enableToneMapping) {
+                    ImGui::SliderFloat("Exposure", &compositeInfo.exposure, 0.0f, 5.0f);
+                }
+
+                // Gamma correction
+                ImGui::Checkbox("Enable gamma correction",
+                                reinterpret_cast<bool*>(&compositeInfo.enableGammaCorrection));
+                if (compositeInfo.enableGammaCorrection) {
+                    ImGui::SliderFloat("Gamma", &compositeInfo.gamma, 0.0, 5.0);
+                }
+                ImGui::Unindent(16.0f);
+            }
 
             // Camera
             if (ImGui::CollapsingHeader("Camera")) {
+                ImGui::Indent(16.0f);
                 auto camera = m_renderer->m_currentCamera;
                 auto pos = camera->getPosition();
                 auto rot = camera->getEulerRotation();
                 ImGui::Text("Position: %f %f %f", pos.x, pos.y, pos.z);
                 ImGui::Text("Rotation: %f %f %f", rot.x, rot.y, rot.z);
+                ImGui::Unindent(16.0f);
             }
 
-            // Show GPU time
-            float gpuTime = 0.0f;
-            if (pushConstants.frame > 1) {
-                gpuTime = m_gpuTimer->elapsedInMilli();
-            }
-            ImGui::Text("GPU time: %f ms", gpuTime);
-
-            if (ImGui::Button("Recompile")) {
-                recompile();
-            }
-
+            // Memo
             ImGui::InputTextMultiline("Memo", m_inputTextBuffer, sizeof(m_inputTextBuffer));
 
             ImGui::End();

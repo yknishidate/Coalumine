@@ -56,6 +56,15 @@ public:
             m_fpsCamera.setFovY(m_scene.cameraYFov);
             m_currentCamera = &m_fpsCamera;
         }
+
+        // Env light
+        m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
+        m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
+
+        // Infinite light
+        m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;
+        m_pushConstants.infiniteLightDirection = m_scene.infiniteLightDir;
+        m_pushConstants.infiniteLightIntensity = m_scene.infiniteLightIntensity;
     }
 
     void createPipelines(const rv::Context& context) {
@@ -122,15 +131,6 @@ public:
 
         m_pushConstants.invView = m_currentCamera->getInvView();
         m_pushConstants.invProj = m_currentCamera->getInvProj();
-
-        // Env light
-        m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
-        m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
-
-        // Infinite light
-        m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;
-        m_pushConstants.infiniteLightDirection = m_scene.infiniteLightDir;
-        m_pushConstants.infiniteLightIntensity = m_scene.infiniteLightIntensity;
     }
 
     void reset() { m_pushConstants.frame = 0; }
