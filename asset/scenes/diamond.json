@@ -30,28 +30,22 @@
         {
             "base_color": [1.0, 1.0, 1.0, 0.0],
             "metallic": 0.0,
-            "roughness": 0.01,
+            "roughness": 0.1,
             "ior": 2.3,
-            "dispersion": 0.044
+            "dispersion": 0.1
         }
     ],
     "camera": {
         "type": "orbital",
-        "rotation": [-0.228, 0.188, 0.0],
+        "rotation": [-0.3, 0.0, 0.0],
         "fov_y": 30.0,
         "distance": 1.0,
-        "phi": 0.0,
-        "theta": -10.0,
         "scale":  0.01
     },
     "environment_light": {
-        "type": "solid",
+        "type": "texture",
         "texture": "../environments/studio_small_03_4k.hdr",
-        "color": [0.0, 0.0, 0.0]
-    },
-    "infinite_light": {
-        "direction": [2.0, 4.0, 1.0],
-        "color": [1.0, 1.0, 1.0],
-        "intensity": 3.0
+        "color": [0.0, 0.0, 0.0],
+        "intensity": 1.0
     }
 }

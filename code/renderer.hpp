@@ -56,11 +56,13 @@ public:
             // m_fpsCamera.setFovY(m_scene.cameraYFov);
             // m_currentCamera = &m_fpsCamera;
             m_currentCamera->setScale(m_scene.cameraScale);
+            m_currentCamera->setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
         }
 
         // Env light
         m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
         m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
+        m_pushConstants.envLightIntensity = m_scene.envLightIntensity;
 
         // Infinite light
         m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;

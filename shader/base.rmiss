@@ -20,7 +20,7 @@ void main()
     if (pc.useEnvLightTexture == 1) {
         vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
         uv.x = mod(uv.x + radians(pc.envLightPhi) / (2 * PI), 1.0); // rotate phi
-        payload.radiance = clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0);
+        payload.radiance = clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0) * pc.envLightIntensity;
     } else {
         payload.radiance = pc.envLightColor.xyz;
     }

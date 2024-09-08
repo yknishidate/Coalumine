@@ -45,7 +45,7 @@ struct PushConstants {
     FIELD(int, frame, 0);
     FIELD(int, sampleCount, 10);
     FIELD(float, bloomThreshold, 0.5f);
-    FIELD(float, envLightTheta, 0.0f);
+    FIELD(float, envLightIntensity, 1.0f);
 
     FIELD(float, envLightPhi, 0.0f);
     FIELD(int, enableNEE, 1);

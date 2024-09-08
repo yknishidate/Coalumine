@@ -144,7 +144,12 @@ public:
             if (ImGui::CollapsingHeader("Light")) {
                 ImGui::Indent(16.0f);
                 // Dome light
-                if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0)) {
+                if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0,
+                                       "%.0f")) {
+                    m_renderer->reset();
+                }
+                if (ImGui::SliderFloat("Env light intensity", &pushConstants.envLightIntensity,
+                                       0.0f, 10.0f)) {
                     m_renderer->reset();
                 }
 

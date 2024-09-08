@@ -93,6 +93,7 @@ public:
     // Light
     rv::ImageHandle envLightTexture;
     glm::vec3 envLightColor;
+    float envLightIntensity = 1.0f;
     bool useEnvLightTexture = false;
 
     glm::vec3 infiniteLightDir = {};

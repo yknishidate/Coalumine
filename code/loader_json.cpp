@@ -113,6 +113,10 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (const auto& scale = camera->find("scale"); scale != camera->end()) {
             scene.cameraScale = *scale;
         }
+        if (const auto& rotation = camera->find("rotation"); rotation != camera->end()) {
+            scene.cameraRotation =
+                glm::quat(glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
+        }
     }
 
     // "environment_light"セクションのパース
@@ -147,6 +151,9 @@ void LoaderJson::loadFromFile(Scene& scene,
             scene.useEnvLightTexture = false;
             scene.envLightColor = {light->at("color")[0], light->at("color")[1],
                                    light->at("color")[2]};
+        }
+        if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
+            scene.envLightIntensity = *intensity;
         }
     }
 
