@@ -124,6 +124,9 @@ public:
                 for (size_t i = 0u; i < count; i++) {
                     auto& mat = m_renderer->m_scene.materials[i];
                     if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
+                        if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
+                            m_renderer->reset();
+                        }
                         if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
                                                "%.2f")) {
                             m_renderer->reset();

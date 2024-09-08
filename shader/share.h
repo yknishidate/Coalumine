@@ -100,6 +100,7 @@ struct HitPayload {
     int depth;
     uint seed;
     int component;  // selected RGB (-1 means unselected)
+    float t;
     // vec3 position;
     // vec3 normal;
     // vec3 emission;

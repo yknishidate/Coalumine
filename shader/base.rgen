@@ -28,6 +28,7 @@ void main()
         payload.radiance = vec3(0.0);
         payload.depth = 0;
         payload.component = -1;
+        payload.t = 0.0;
         traceRayEXT(
             topLevelAS,
             gl_RayFlagsOpaqueEXT,

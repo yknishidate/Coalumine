@@ -106,7 +106,7 @@ vec3 sampleHemisphereCosine(in vec3 normal, inout uint seed) {
     return normalize(sampledDirection);
 }
 
-void traceRay(vec3 origin, vec3 direction) {
+void traceRay(vec3 pos, vec3 direction) {
     traceRayEXT(
         topLevelAS,
         gl_RayFlagsOpaqueEXT,
@@ -114,7 +114,7 @@ void traceRay(vec3 origin, vec3 direction) {
         0,    // sbtRecordOffset
         0,    // sbtRecordStride
         0,    // missIndex
-        origin,
+        pos,
         0.001,
         direction,
         1000.0,
@@ -122,7 +122,7 @@ void traceRay(vec3 origin, vec3 direction) {
     );
 }
 
-void traceShadowRay(vec3 origin, vec3 direction, float tmin){
+void traceShadowRay(vec3 pos, vec3 direction, float tmin){
     traceRayEXT(
         topLevelAS,
         gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT,
@@ -130,7 +130,7 @@ void traceShadowRay(vec3 origin, vec3 direction, float tmin){
         0,    // sbtRecordOffset
         0,    // sbtRecordStride
         1,    // missIndex
-        origin,
+        pos,
         tmin,
         direction,
         1000.0,
@@ -186,13 +186,13 @@ float fresnelSchlick(float mi, float F0) {
     return F0 + (1.0 - F0) * pow(1.0 - mi, 5.0);
 }
 
-vec3 getInfiniteLightRadiance(vec3 origin) {
+vec3 getInfiniteLightRadiance(vec3 pos) {
     if (pc.infiniteLightIntensity == 0.0) {
         return vec3(0.0);
     }
 
     shadowed = true;
-    traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.001);
+    traceShadowRay(pos, pc.infiniteLightDirection.xyz, 0.001);
     if(shadowed){
         return vec3(0.0);
     }
@@ -216,13 +216,13 @@ vec3 LambertBRDF(vec3 baseColor) {
     return baseColor / PI;
 }
 
-vec3 GlassRadiance(vec3 origin, vec3 normal, float roughness, float ior) {
+vec3 GlassRadiance(vec3 pos, vec3 normal, float roughness, float ior) {
     bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
     float n1 = into ? 1.0 : ior;
     float n2 = into ? ior : 1.0;
     float eta = n1 / n2;
     vec3 n = into ? normal : -normal;
-        
+
     vec3 i = worldToLocal(-gl_WorldRayDirectionEXT, n);
     vec3 m = sampleGGX(roughness, payload.seed);
     vec3 or = reflect(-i, m);      // out(reflect)
@@ -233,7 +233,7 @@ vec3 GlassRadiance(vec3 origin, vec3 normal, float roughness, float ior) {
 
     // total reflection
     if(or == vec3(0.0)){
-        traceRay(origin, localToWorld(or, n));
+        traceRay(pos, localToWorld(or, n));
 
         // Compute the GGX BRDF
         // NOTE: F = 1.0 in total reflection
@@ -246,14 +246,14 @@ vec3 GlassRadiance(vec3 origin, vec3 normal, float roughness, float ior) {
     float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
     float F = fresnelSchlick(mi, F0);
     if(rand(payload.seed) < F){
-        traceRay(origin, localToWorld(or, n));
+        traceRay(pos, localToWorld(or, n));
             
         float G = ggxGeometry(i, or, m, roughness);
         vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
         return weight * payload.radiance;
     }else{
         // refraction
-        traceRay(origin, localToWorld(ot, n));
+        traceRay(pos, localToWorld(ot, n));
             
         float G = ggxGeometry(i, ot, m, roughness);
         vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
@@ -279,6 +279,7 @@ void main()
     Vertex v2 = vertexBuffer.vertices[index[2]];
     
     const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
+    float t = gl_HitTEXT;
     vec3 pos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
@@ -306,14 +307,11 @@ void main()
         ior = material.ior;
         dispersion = material.dispersion;
     }
-
     payload.depth += 1;
     if(payload.depth >= 24){
         payload.radiance = emissive;
         return;
     }
-
-    vec3 origin = pos;
 
     if(metallic > 0.0){
         // metallicは基本的に2値であると考えていい
@@ -327,7 +325,7 @@ void main()
         vec3 m = sampleGGX(roughness, payload.seed);
         vec3 o = reflect(-i, m);
 
-        traceRay(origin, localToWorld(o, normal));
+        traceRay(pos, localToWorld(o, normal));
 
         // Compute the GGX BRDF
         float no = abs(cosTheta(o));
@@ -347,7 +345,9 @@ void main()
         // 非metallicの場合にのみtransmissionは有効となる
         // emissiveは無視
         if (dispersion == 0.0) {
-            payload.radiance = GlassRadiance(origin, normal, roughness, ior);
+            vec3 radiance = GlassRadiance(pos, normal, roughness, ior);
+            vec3 transmittance = exp(-payload.t * (vec3(1.0) - baseColor)); // payload.tはGlassRadiance()内で更新される
+            payload.radiance = transmittance * radiance;
         } else {
             // λ (μm)
             const vec3 wavelength = vec3(0.7, 0.5461, 0.4358);
@@ -361,10 +361,13 @@ void main()
                 index = int(rand_val * 3.0) % 3;
                 pdf = 0.333333333;
             }
-            float radiance_index = GlassRadiance(origin, normal, roughness, n_rgb[index])[index];
+            float radiance_index = GlassRadiance(pos, normal, roughness, n_rgb[index])[index];
+            float transmittance_index = exp(-payload.t * (1.0 - baseColor[index])); // payload.tはGlassRadiance()内で更新される
             payload.radiance = vec3(0.0);
-            payload.radiance[index] = radiance_index / pdf;
+            payload.radiance[index] = transmittance_index * radiance_index / pdf;
         }
+
+        payload.t = t;
     }else{
         // Infinite light NEE
         vec3 infLightTerm = vec3(0.0);
@@ -372,7 +375,7 @@ void main()
             float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
             if (cosTheta > 0.0) {
                 float pdf = 1.0;
-                vec3 incoming = getInfiniteLightRadiance(origin);
+                vec3 incoming = getInfiniteLightRadiance(pos);
                 vec3 brdf = LambertBRDF(baseColor);
                 infLightTerm = brdf * incoming * cosTheta / pdf;
             }
@@ -382,7 +385,7 @@ void main()
         vec3 ptLightTerm = vec3(0.0);
         {
             vec3 direction = sampleHemisphereCosine(normal, payload.seed);
-            traceRay(origin, direction);
+            traceRay(pos, direction);
 
             // Radiance (with Diffuse Importance sampling)
             // Lo = Le + brdf         * Li * cos(theta) / pdf

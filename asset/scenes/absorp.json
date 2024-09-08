@@ -1,0 +1,48 @@
+{
+    "objects": [
+        {
+            "mesh_index": 0,
+            "material_index": 0,
+            "translation": [-2.0, 0.0, 0.0]
+        },
+        {
+            "mesh_index": 1,
+            "material_index": 1,
+            "translation": [2.0, 0.0, 0.0]
+        }
+    ],
+    "meshes": [
+        {
+            "obj": "../models/rounded_cube/rounded_cube.obj"
+        },
+        {
+            "obj": "../models/sphere/sphere.obj"
+        }
+    ],
+    "materials": [
+        {
+            "base_color": [0.5, 0.8, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.1,
+            "ior": 1.51
+        },
+        {
+            "base_color": [1.0, 0.5, 0.6, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.1,
+            "ior": 1.51
+        }
+    ],
+    "camera": {
+        "type": "orbital",
+        "rotation": [-0.3, 0.0, 0.0],
+        "fov_y": 30.0,
+        "distance": 1.0
+    },
+    "environment_light": {
+        "type": "texture",
+        "texture": "../environments/studio_small_03_4k.hdr",
+        "color": [0.0, 0.0, 0.0],
+        "intensity": 1.0
+    }
+}
