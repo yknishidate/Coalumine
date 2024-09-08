@@ -80,6 +80,8 @@ public:
 
     void updateTopAccel(int frame);
 
+    void updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer);
+
     // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
@@ -109,4 +111,5 @@ public:
     glm::vec3 cameraTranslation;
     glm::quat cameraRotation;
     float cameraYFov;
+    float cameraScale = 1.0f;
 };

@@ -3,15 +3,23 @@
         {
             "mesh_index": 0,
             "material_index": 0,
+            "translation": [-4.0, 0.0, 0.0],
+            "scale": [3.54, 3.54, 3.54],
+            "rotation": [0.0, 90.0, 0.0]
+        },
+        {
+            "mesh_index": 0,
+            "material_index": 1,
             "translation": [0.0, 0.0, 0.0],
             "scale": [3.54, 3.54, 3.54],
             "rotation": [0.0, 90.0, 0.0]
         },
         {
-            "mesh_index": 1,
-            "material_index": 0,
-            "translation": [0.0, -1.0, 0.0],
-            "scale": [10.0, 10.0, 10.0]
+            "mesh_index": 0,
+            "material_index": 2,
+            "translation": [4.0, 0.0, 0.0],
+            "scale": [3.54, 3.54, 3.54],
+            "rotation": [0.0, 90.0, 0.0]
         }
     ],
     "meshes": [
@@ -24,9 +32,22 @@
     ],
     "materials": [
         {
-            "base_color": [1.0, 1.0, 1.0, 1.0],
+            "base_color": [1.0, 1.0, 1.0, 0.0],
             "metallic": 0.0,
-            "roughness": 1.0
+            "roughness": 0.3,
+            "ior": 1.0
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.3,
+            "ior": 1.51
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.3,
+            "ior": 2.2
         }
     ],
     "camera": {
@@ -37,13 +58,13 @@
         "theta": -10.0
     },
     "environment_light": {
-        "type": "solid",
-        "texture": "../environments/hochsal_field_4k.hdr",
+        "type": "texture",
+        "texture": "../environments/studio_small_03_4k.hdr",
         "color": [0.0, 0.0, 0.0]
     },
     "infinite_light": {
         "direction": [2.0, 4.0, 1.0],
         "color": [1.0, 1.0, 1.0],
-        "intensity": 1.0
+        "intensity": 3.0
     }
 }

@@ -100,6 +100,9 @@ public:
             // Animation
             ImGui::Checkbox("Play animation", &playAnimation);
 
+            // Frame
+            ImGui::Text("Frame: %d", pushConstants.frame);
+
             // GPU time
             float gpuTime = pushConstants.frame > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
             ImGui::Text("GPU time: %f ms", gpuTime);
@@ -113,6 +116,28 @@ public:
             // Recompile button
             if (ImGui::Button("Recompile")) {
                 recompile();
+            }
+
+            // Material
+            if (ImGui::CollapsingHeader("Material")) {
+                size_t count = m_renderer->m_scene.materials.size();
+                for (size_t i = 0u; i < count; i++) {
+                    auto& mat = m_renderer->m_scene.materials[i];
+                    if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
+                        if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
+                                               "%.2f")) {
+                            m_renderer->reset();
+                        }
+                        if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
+                            m_renderer->reset();
+                        }
+                        if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
+                            m_renderer->reset();
+                        }
+
+                        ImGui::TreePop();
+                    }
+                }
             }
 
             // Light
@@ -185,6 +210,8 @@ public:
 
             ImGui::End();
         }
+
+        m_renderer->m_scene.updateMaterialBuffer(commandBuffer);
 
         commandBuffer->beginTimestamp(m_gpuTimer);
         m_renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);

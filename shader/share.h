@@ -70,11 +70,11 @@ struct Material {
     FIELD(int, emissiveTextureIndex, -1);
     FIELD(float, metallicFactor, 0.0f);
     FIELD(float, roughnessFactor, 1.0f);
-    FIELD(float, _dummy0, 0.0f);
+    FIELD(float, ior, 1.51f);
 
     FIELD(vec4, baseColorFactor, vec4(1.0f));
     FIELD(vec3, emissiveFactor, vec4(0.0f));
-    FIELD(float, _dummy1, 0.0f);
+    FIELD(float, dispersion, 0.0f);
 };
 
 struct NodeData {
@@ -99,6 +99,7 @@ struct HitPayload {
     vec3 radiance;
     int depth;
     uint seed;
+    int component;  // selected RGB (-1 means unselected)
     // vec3 position;
     // vec3 normal;
     // vec3 emission;

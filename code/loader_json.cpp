@@ -82,6 +82,12 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (const auto& itr = material.find("roughness"); itr != material.end()) {
             mat.roughnessFactor = *itr;
         }
+        if (const auto& itr = material.find("ior"); itr != material.end()) {
+            mat.ior = *itr;
+        }
+        if (const auto& itr = material.find("dispersion"); itr != material.end()) {
+            mat.dispersion = *itr;
+        }
         scene.materials.push_back(mat);
     }
 
@@ -101,12 +107,13 @@ void LoaderJson::loadFromFile(Scene& scene,
         }
     }
 
-    //// "camera"セクションのパース
-    // std::string cameraType = jsonData["camera"]["type"];
-    // float fovY = jsonData["camera"]["fov_y"];
-    // float distance = jsonData["camera"]["distance"];
-    // float phi = jsonData["camera"]["phi"];
-    // float theta = jsonData["camera"]["theta"];
+    // "camera"セクションのパース
+    if (const auto& camera = jsonData.find("camera"); camera != jsonData.end()) {
+        scene.cameraExists = true;
+        if (const auto& scale = camera->find("scale"); scale != camera->end()) {
+            scene.cameraScale = *scale;
+        }
+    }
 
     // "environment_light"セクションのパース
     if (const auto& light = jsonData.find("environment_light"); light != jsonData.end()) {

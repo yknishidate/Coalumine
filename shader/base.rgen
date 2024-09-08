@@ -27,6 +27,7 @@ void main()
         vec4 direction = pc.invView * vec4(normalize(target.xyz), 0);
         payload.radiance = vec3(0.0);
         payload.depth = 0;
+        payload.component = -1;
         traceRayEXT(
             topLevelAS,
             gl_RayFlagsOpaqueEXT,

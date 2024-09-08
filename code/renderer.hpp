@@ -50,11 +50,12 @@ public:
         m_currentCamera = &m_orbitalCamera;
 
         if (m_scene.cameraExists) {
-            m_fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
-            m_fpsCamera.setPosition(m_scene.cameraTranslation);
-            m_fpsCamera.setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
-            m_fpsCamera.setFovY(m_scene.cameraYFov);
-            m_currentCamera = &m_fpsCamera;
+            // m_fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
+            // m_fpsCamera.setPosition(m_scene.cameraTranslation);
+            // m_fpsCamera.setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
+            // m_fpsCamera.setFovY(m_scene.cameraYFov);
+            // m_currentCamera = &m_fpsCamera;
+            m_currentCamera->setScale(m_scene.cameraScale);
         }
 
         // Env light

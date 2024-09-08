@@ -1,5 +1,6 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_debug_printf : enable
 
 #include "./share.h"
 #include "./random.glsl"
@@ -185,6 +186,21 @@ float fresnelSchlick(float mi, float F0) {
     return F0 + (1.0 - F0) * pow(1.0 - mi, 5.0);
 }
 
+vec3 getInfiniteLightRadiance(vec3 origin) {
+    if (pc.infiniteLightIntensity == 0.0) {
+        return vec3(0.0);
+    }
+
+    shadowed = true;
+    traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.001);
+    if(shadowed){
+        return vec3(0.0);
+    }
+
+    // return Li
+    return pc.infiniteLightColor.xyz * pc.infiniteLightIntensity;
+}
+
 vec3 sampleGGX(float roughness, inout uint seed) {
     // NOTE: This function obeys D(m) * dot(m, n)
     // NOTE: if roughness == 0.0, return vec3(0, 0, 1)
@@ -194,6 +210,60 @@ vec3 sampleGGX(float roughness, inout uint seed) {
     float theta = atan(alpha * sqrt(v) / sqrt(1.0 - v));
     float phi = 2.0 * PI * u;
     return vec3(sin(phi) * sin(theta), cos(phi) * sin(theta), cos(theta));
+}
+
+vec3 LambertBRDF(vec3 baseColor) {
+    return baseColor / PI;
+}
+
+vec3 GlassRadiance(vec3 origin, vec3 normal, float roughness, float ior) {
+    bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
+    float n1 = into ? 1.0 : ior;
+    float n2 = into ? ior : 1.0;
+    float eta = n1 / n2;
+    vec3 n = into ? normal : -normal;
+        
+    vec3 i = worldToLocal(-gl_WorldRayDirectionEXT, n);
+    vec3 m = sampleGGX(roughness, payload.seed);
+    vec3 or = reflect(-i, m);      // out(reflect)
+    vec3 ot = refract(-i, m, eta); // out(transmit)
+    float ni = abs(cosTheta(i));
+    float nm = abs(cosTheta(m));
+    float mi = abs(dot(i, m));
+
+    // total reflection
+    if(or == vec3(0.0)){
+        traceRay(origin, localToWorld(or, n));
+
+        // Compute the GGX BRDF
+        // NOTE: F = 1.0 in total reflection
+        float G = ggxGeometry(i, or, m, roughness);
+        vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
+        return weight * payload.radiance;
+    }
+
+    // if n = 1.5, F0 = 0.04
+    float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
+    float F = fresnelSchlick(mi, F0);
+    if(rand(payload.seed) < F){
+        traceRay(origin, localToWorld(or, n));
+            
+        float G = ggxGeometry(i, or, m, roughness);
+        vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
+        return weight * payload.radiance;
+    }else{
+        // refraction
+        traceRay(origin, localToWorld(ot, n));
+            
+        float G = ggxGeometry(i, ot, m, roughness);
+        vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
+        return weight * payload.radiance;
+    }
+}
+
+// Cauchy's equation
+vec3 ComputeIOR(float a, float b, vec3 wavelength) {
+    return a + b / (wavelength * wavelength);
 }
 
 void main()
@@ -222,6 +292,8 @@ void main()
     float metallic = 0.0;
     float roughness = 0.0;
     vec3 emissive = vec3(0.0);
+    float ior = 1.51;
+    float dispersion = 0.0;
 
     int materialIndex = data.materialIndex;
     if(materialIndex != -1){
@@ -231,6 +303,8 @@ void main()
         metallic = material.metallicFactor;
         roughness = material.roughnessFactor;
         emissive = material.emissiveFactor.rgb;
+        ior = material.ior;
+        dispersion = material.dispersion;
     }
 
     payload.depth += 1;
@@ -240,7 +314,9 @@ void main()
     }
 
     vec3 origin = pos;
+
     if(metallic > 0.0){
+        // metallicは基本的に2値であると考えていい
         // Based on Walter 2007
         // i: in
         // o: out
@@ -268,69 +344,53 @@ void main()
         vec3 weight = vec3(F * G * mi) / max(ni * nm, 0.1);
         payload.radiance = emissive + weight * payload.radiance;
     }else if(transmission > 0.0){
-        float ior = 1.51;
-        bool into = dot(gl_WorldRayDirectionEXT, normal) < 0.0;
-        float n1 = into ? 1.0 : ior;
-        float n2 = into ? ior : 1.0;
-        float eta = n1 / n2;
-        vec3 n = into ? normal : -normal;
-        
-        vec3 i = worldToLocal(-gl_WorldRayDirectionEXT, n);
-        vec3 m = sampleGGX(roughness, payload.seed);
-        vec3 or = reflect(-i, m);      // out(reflect)
-        vec3 ot = refract(-i, m, eta); // out(transmit)
-        float ni = abs(cosTheta(i));
-        float nm = abs(cosTheta(m));
-        float mi = abs(dot(i, m));
+        // 非metallicの場合にのみtransmissionは有効となる
+        // emissiveは無視
+        if (dispersion == 0.0) {
+            payload.radiance = GlassRadiance(origin, normal, roughness, ior);
+        } else {
+            // λ (μm)
+            const vec3 wavelength = vec3(0.7, 0.5461, 0.4358);
+            const vec3 n_rgb = ComputeIOR(ior, dispersion, wavelength);
 
-        // total reflection
-        if(or == vec3(0.0)){
-            traceRay(origin, localToWorld(or, n));
-            
-            // Compute the GGX BRDF
-            // NOTE: F = 1.0 in total reflection
-            float G = ggxGeometry(i, or, m, roughness);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
-            payload.radiance = emissive + weight * payload.radiance;
-        }
-        
-        // if n = 1.5, F0 = 0.04
-        float F0 = ((n1 - n2) * (n1 - n2)) / ((n1 + n2) * (n1 + n2));
-        float F = fresnelSchlick(mi, F0);
-        if(rand(payload.seed) < F){
-            traceRay(origin, localToWorld(or, n));
-            
-            float G = ggxGeometry(i, or, m, roughness);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
-            payload.radiance = emissive + weight * payload.radiance;
-        }else{
-            // refraction
-            traceRay(origin, localToWorld(ot, n));
-            
-            float G = ggxGeometry(i, ot, m, roughness);
-            vec3 weight = vec3(G * mi) / max(ni * nm, 0.1);
-            payload.radiance = emissive + weight * payload.radiance;
+            int index = payload.component;
+            float pdf = 1.0;
+            if (payload.component == -1) {
+                // if comp is unselected, select it randomly
+                float rand_val = rand(payload.seed);
+                index = int(rand_val * 3.0) % 3;
+                pdf = 0.333333333;
+            }
+            float radiance_index = GlassRadiance(origin, normal, roughness, n_rgb[index])[index];
+            payload.radiance = vec3(0.0);
+            payload.radiance[index] = radiance_index / pdf;
         }
     }else{
-        // Shadow ray
-        shadowed = true;
-        vec3 inifiniteLightTerm = vec3(0.0);
-        if (pc.infiniteLightIntensity > 0.0) {
-            traceShadowRay(origin, pc.infiniteLightDirection.xyz, 0.001);
-            if(!shadowed){
-                float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
-                inifiniteLightTerm = baseColor * pc.infiniteLightColor.xyz * pc.infiniteLightIntensity * cosTheta;
+        // Infinite light NEE
+        vec3 infLightTerm = vec3(0.0);
+        {
+            float cosTheta = max(dot(normal, pc.infiniteLightDirection.xyz), 0.0);
+            if (cosTheta > 0.0) {
+                float pdf = 1.0;
+                vec3 incoming = getInfiniteLightRadiance(origin);
+                vec3 brdf = LambertBRDF(baseColor);
+                infLightTerm = brdf * incoming * cosTheta / pdf;
             }
         }
 
         // Diffuse IS
-        vec3 direction = sampleHemisphereCosine(normal, payload.seed);
-        traceRay(origin, direction);
-        
-        // Radiance (with Diffuse Importance sampling)
-        // Lo = Le + brdf * Li * cos(theta) / pdf
-        //    = Le + (color / PI) * Li * cos(theta) / (cos(theta) / PI)
-        //    = Le + color * Li
-        payload.radiance = emissive + (baseColor * payload.radiance + inifiniteLightTerm);
+        vec3 ptLightTerm = vec3(0.0);
+        {
+            vec3 direction = sampleHemisphereCosine(normal, payload.seed);
+            traceRay(origin, direction);
+
+            // Radiance (with Diffuse Importance sampling)
+            // Lo = Le + brdf         * Li * cos(theta) / pdf
+            //    = Le + (color / PI) * Li * cos(theta) / (cos(theta) / PI)
+            //    = Le + color * Li
+            ptLightTerm = baseColor * payload.radiance;
+        }
+
+        payload.radiance = emissive + ptLightTerm + infLightTerm;
     }
 }

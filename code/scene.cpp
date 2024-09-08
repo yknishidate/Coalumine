@@ -152,3 +152,7 @@ void Scene::updateTopAccel(int frame) {
     topAccel->updateInstances(accelInstances);
     nodeDataBuffer->copy(nodeData.data());
 }
+
+void Scene::updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer) {
+    commandBuffer->copyBuffer(materialBuffer, materials.data());
+}
