@@ -87,6 +87,10 @@ struct NodeData {
     FIELD(int, _dummy0, 0);
     FIELD(int, _dummy1, 0);
     FIELD(int, _dummy2, 0);
+    FIELD(vec3, meshAabbMin, vec3(0.0f));
+    FIELD(int, _dummy3, 0);
+    FIELD(vec3, meshAabbMax, vec3(0.0f));
+    FIELD(int, _dummy4, 0);
 };
 
 #ifndef __cplusplus

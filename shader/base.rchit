@@ -284,6 +284,10 @@ void main()
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);
     vec2 texCoord = v0.texCoord * barycentricCoords.x + v1.texCoord * barycentricCoords.y + v2.texCoord * barycentricCoords.z;
 
+    // Mesh AABB 内でのUVW座標を計算
+    vec3 localPos = v0.pos * barycentricCoords.x + v1.pos * barycentricCoords.y + v2.pos * barycentricCoords.z;
+    vec3 localUvw = (localPos - data.meshAabbMin) / (data.meshAabbMax - data.meshAabbMin);
+
     mat3 normalMatrix = mat3(data.normalMatrix);
     normal = normalize(normalMatrix * normal);
 

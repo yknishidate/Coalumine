@@ -10,6 +10,7 @@ struct Mesh {
     uint32_t vertexCount;
     uint32_t triangleCount;
     int materialIndex = -1;
+    rv::AABB aabb;
 };
 
 struct KeyFrame {
@@ -85,6 +86,7 @@ public:
     // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
+    std::vector<rv::ImageHandle> textures3d;
 
     // Accel
     std::vector<rv::BottomAccelHandle> bottomAccels;

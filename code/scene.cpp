@@ -39,10 +39,13 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
     for (auto& node : nodes) {
         NodeData data;
         if (node.meshIndex != -1) {
-            data.vertexBufferAddress = meshes[node.meshIndex].vertexBuffer->getAddress();
-            data.indexBufferAddress = meshes[node.meshIndex].indexBuffer->getAddress();
+            const auto& mesh = meshes[node.meshIndex];
+            data.vertexBufferAddress = mesh.vertexBuffer->getAddress();
+            data.indexBufferAddress = mesh.indexBuffer->getAddress();
+            data.meshAabbMin = mesh.aabb.getMin();
+            data.meshAabbMax = mesh.aabb.getMax();
             data.materialIndex = node.materialIndex == -1
-                                     ? meshes[node.meshIndex].materialIndex
+                                     ? mesh.materialIndex
                                      : node.materialIndex;  // マテリアルオーバーライド
             data.normalMatrix = node.computeNormalMatrix(0);
         }

@@ -72,6 +72,12 @@ void LoaderObj::loadFromFile(Scene& scene,
         auto& node = scene.nodes[shapeIndex];
         auto& shape = objShapes[shapeIndex];
 
+        glm::vec3 aabbMin;
+        aabbMin.x = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 0];
+        aabbMin.y = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 1];
+        aabbMin.z = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 2];
+        glm::vec3 aabbMax = aabbMin;
+
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
         for (const auto& index : shape.mesh.indices) {
@@ -79,6 +85,8 @@ void LoaderObj::loadFromFile(Scene& scene,
             vertex.pos.x = objAttrib.vertices[3 * index.vertex_index + 0];
             vertex.pos.y = objAttrib.vertices[3 * index.vertex_index + 1];
             vertex.pos.z = objAttrib.vertices[3 * index.vertex_index + 2];
+            aabbMin = glm::min(aabbMin, vertex.pos);
+            aabbMax = glm::max(aabbMax, vertex.pos);
             if (index.normal_index != -1) {
                 vertex.normal.x = objAttrib.normals[3 * index.normal_index + 0];
                 vertex.normal.y = objAttrib.normals[3 * index.normal_index + 1];
@@ -105,6 +113,7 @@ void LoaderObj::loadFromFile(Scene& scene,
             .size = sizeof(uint32_t) * indices.size(),
             .debugName = std::format("indexBuffers[{}]", scene.meshes.size()).c_str(),
         });
+        mesh.aabb = rv::AABB(aabbMin, aabbMax);
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
@@ -138,6 +147,13 @@ void LoaderObj::loadMesh(Mesh& mesh,
 
     // メッシュは1つだけと想定して最初の要素だけ読み込む
     auto& shape = objShapes.front();
+
+    glm::vec3 aabbMin;
+    aabbMin.x = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 0];
+    aabbMin.y = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 1];
+    aabbMin.z = objAttrib.vertices[3 * shape.mesh.indices[0].vertex_index + 2];
+    glm::vec3 aabbMax = aabbMin;
+
     std::unordered_map<rv::Vertex, uint32_t> uniqueVertices;
     std::vector<rv::Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -146,6 +162,8 @@ void LoaderObj::loadMesh(Mesh& mesh,
         vertex.pos.x = objAttrib.vertices[3 * index.vertex_index + 0];
         vertex.pos.y = objAttrib.vertices[3 * index.vertex_index + 1];
         vertex.pos.z = objAttrib.vertices[3 * index.vertex_index + 2];
+        aabbMin = glm::min(aabbMin, vertex.pos);
+        aabbMax = glm::max(aabbMax, vertex.pos);
         if (index.normal_index != -1) {
             vertex.normal.x = objAttrib.normals[3 * index.normal_index + 0];
             vertex.normal.y = objAttrib.normals[3 * index.normal_index + 1];
@@ -172,6 +190,7 @@ void LoaderObj::loadMesh(Mesh& mesh,
         .size = sizeof(uint32_t) * indices.size(),
         .debugName = "indexBuffer",
     });
+    mesh.aabb = rv::AABB(aabbMin, aabbMax);
 
     context.oneTimeSubmit([&](auto commandBuffer) {
         commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
