@@ -32,6 +32,8 @@
 
 #endif
 
+#define TEXTURE_TYPE_OFFSET 1024
+
 // ------------------------------
 // Struct
 // ------------------------------
@@ -62,6 +64,10 @@ struct PushConstants {
 struct Material {
     USING_GLM
 
+    // テクスチャインデックスが1024以上なら3Dテクスチャとみなす
+    // 1024は TEXTURE_TYPE_OFFSET として定義されている
+    // i: [0000~1023] => 2D[i]
+    // i: [1024~2047] => 3D[i]
     FIELD(int, baseColorTextureIndex, -1);
     FIELD(int, metallicRoughnessTextureIndex, -1);
     FIELD(int, normalTextureIndex, -1);
@@ -126,6 +132,8 @@ layout(push_constant) uniform PushConstantsBuffer {
 layout(binding = 0, rgba32f) uniform image2D baseImage;
 layout(binding = 1, rgba32f) uniform image2D bloomImage;
 layout(binding = 2) uniform sampler2D envLightTexture;
+layout(binding = 3) uniform sampler2D textures2d[];
+layout(binding = 4) uniform sampler3D textures3d[];
 
 // Accel
 layout(binding = 10) uniform accelerationStructureEXT topLevelAS;

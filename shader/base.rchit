@@ -310,6 +310,16 @@ void main()
         emissive = material.emissiveFactor.rgb;
         ior = material.ior;
         dispersion = material.dispersion;
+
+        if (material.baseColorTextureIndex != -1) {
+            if (material.baseColorTextureIndex < TEXTURE_TYPE_OFFSET) {
+                int index = material.baseColorTextureIndex;
+                baseColor *= texture(textures2d[index], texCoord).rgb;
+            } else {
+                int index = material.baseColorTextureIndex - TEXTURE_TYPE_OFFSET;
+                baseColor *= texture(textures3d[index], localUvw).rgb;
+            }
+        }
     }
     payload.depth += 1;
     if(payload.depth >= 24){

@@ -17,6 +17,7 @@ public:
               .width = width,
               .height = height,
               .title = "Coalumine",
+              .vsync = false,
               .layers = enableValidation ? rv::Layer::Validation : rv::ArrayProxy<rv::Layer>{},
               .extensions = rv::Extension::RayTracing,
               .style = rv::UIStyle::Gray,

@@ -64,6 +64,31 @@ void Scene::loadEnvLightTexture(const rv::Context& context, const std::filesyste
     envLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
 }
 
+void Scene::createDummyTextures(const rv::Context& context) {
+    if (textures2d.empty()) {
+        auto newTexture = context.createImage({
+            .usage = rv::ImageUsage::Sampled,
+            .extent = {1, 1, 1},
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .debugName = "dummy",
+        });
+        newTexture->createImageView(vk::ImageViewType::e2D);
+        newTexture->createSampler();
+        textures2d.push_back(newTexture);
+    }
+    if (textures3d.empty()) {
+        auto newTexture = context.createImage({
+            .usage = rv::ImageUsage::Sampled,
+            .extent = {1, 1, 1},
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .debugName = "dummy",
+        });
+        newTexture->createImageView(vk::ImageViewType::e3D);
+        newTexture->createSampler();
+        textures3d.push_back(newTexture);
+    }
+}
+
 void Scene::createEnvLightTexture(const rv::Context& context,
                                   const float* data,
                                   uint32_t width,

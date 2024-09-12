@@ -12,13 +12,42 @@ public:
 
     static std::vector<glm::vec4> gradientHorizontal(uint32_t width,
                                                      uint32_t height,
+                                                     uint32_t depth,
                                                      uint32_t channel,
                                                      const std::vector<Knot>& knots) {
-        std::vector<glm::vec4> data(width * height * channel);
+        std::vector<glm::vec4> data(width * height * depth * channel);
         for (uint32_t x = 0; x < width; x++) {
             glm::vec3 color = colorRamp(x / static_cast<float>(width), knots);
-            for (uint32_t y = 0; y < height; y++) {
-                data[y * width + x] = glm::vec4(color, 0.0);
+            for (uint32_t z = 0; z < depth; z++) {
+                for (uint32_t y = 0; y < height; y++) {
+                    uint32_t index = z * (width * height) + y * width + x;
+                    data[index] = glm::vec4(color, 0.0);
+                }
+            }
+        }
+        return data;
+    }
+
+    static std::vector<glm::vec4> gradientHorizontal(uint32_t width,
+                                                     uint32_t height,
+                                                     uint32_t channel,
+                                                     const std::vector<Knot>& knots) {
+        return gradientHorizontal(width, height, 1, channel, knots);
+    }
+
+    static std::vector<glm::vec4> gradientVertical(uint32_t width,
+                                                   uint32_t height,
+                                                   uint32_t depth,
+                                                   uint32_t channel,
+                                                   const std::vector<Knot>& knots) {
+        std::vector<glm::vec4> data(width * height * depth * channel);
+        for (uint32_t y = 0; y < height; y++) {
+            glm::vec3 color = colorRamp(y / static_cast<float>(height), knots);
+            for (uint32_t z = 0; z < depth; z++) {
+                for (uint32_t x = 0; x < width; x++) {
+                    uint32_t index = z * (width * height) + y * width + x;
+                    data[index] = glm::vec4(color, 0.0);
+                }
             }
         }
         return data;
@@ -28,11 +57,22 @@ public:
                                                    uint32_t height,
                                                    uint32_t channel,
                                                    const std::vector<Knot>& knots) {
-        std::vector<glm::vec4> data(width * height * channel);
-        for (uint32_t y = 0; y < height; y++) {
-            glm::vec3 color = colorRamp(y / static_cast<float>(height), knots);
-            for (uint32_t x = 0; x < width; x++) {
-                data[y * width + x] = glm::vec4(color, 0.0);
+        return gradientVertical(width, height, 1, channel, knots);
+    }
+
+    static std::vector<glm::vec4> gradientDepth(uint32_t width,
+                                                uint32_t height,
+                                                uint32_t depth,
+                                                uint32_t channel,
+                                                const std::vector<Knot>& knots) {
+        std::vector<glm::vec4> data(width * height * depth * channel);
+        for (uint32_t z = 0; z < depth; z++) {
+            glm::vec3 color = colorRamp(z / static_cast<float>(depth), knots);
+            for (uint32_t y = 0; y < height; y++) {
+                for (uint32_t x = 0; x < width; x++) {
+                    uint32_t index = z * (width * height) + y * width + x;
+                    data[index] = glm::vec4(color, 0.0);
+                }
             }
         }
         return data;

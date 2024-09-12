@@ -23,6 +23,7 @@ public:
         m_scene.loadFromFile(context, scenePath);
         m_scene.createMaterialBuffer(context);
         m_scene.createNodeDataBuffer(context);
+        m_scene.createDummyTextures(context);
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         // Build BVH
@@ -105,6 +106,8 @@ public:
                     {"baseImage", m_baseImage},
                     {"bloomImage", m_bloomPass.bloomImage},
                     {"envLightTexture", m_scene.envLightTexture},
+                    {"textures2d", m_scene.textures2d},
+                    {"textures3d", m_scene.textures3d},
                 },
             .accels = {{"topLevelAS", m_scene.topAccel}},
         });

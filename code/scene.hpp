@@ -69,6 +69,8 @@ public:
 
     void loadEnvLightTexture(const rv::Context& context, const std::filesystem::path& filepath);
 
+    void createDummyTextures(const rv::Context& context);
+
     void createEnvLightTexture(const rv::Context& context,
                                const float* data,
                                uint32_t width,
@@ -86,6 +88,7 @@ public:
     // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
+    std::vector<rv::ImageHandle> textures2d;
     std::vector<rv::ImageHandle> textures3d;
 
     // Accel

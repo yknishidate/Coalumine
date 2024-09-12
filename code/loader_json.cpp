@@ -88,6 +88,32 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (const auto& itr = material.find("dispersion"); itr != material.end()) {
             mat.dispersion = *itr;
         }
+
+        // textures
+        if (const auto& itr = material.find("base_color_texture"); itr != material.end()) {
+            if (itr->at("projection") == "2d") {
+                mat.baseColorTextureIndex = itr->at("texture_index");
+            }
+            if (itr->at("projection") == "3d") {
+                mat.baseColorTextureIndex = TEXTURE_TYPE_OFFSET + itr->at("texture_index");
+            }
+        }
+        if (const auto& itr = material.find("emissive_texture"); itr != material.end()) {
+            if (itr->at("projection") == "2d") {
+                mat.emissiveTextureIndex = itr->at("texture_index");
+            }
+            if (itr->at("projection") == "3d") {
+                mat.emissiveTextureIndex = TEXTURE_TYPE_OFFSET + itr->at("texture_index");
+            }
+        }
+        if (const auto& itr = material.find("metallic_roughness_texture"); itr != material.end()) {
+            if (itr->at("projection") == "2d") {
+                mat.metallicRoughnessTextureIndex = itr->at("texture_index");
+            }
+            if (itr->at("projection") == "3d") {
+                mat.metallicRoughnessTextureIndex = TEXTURE_TYPE_OFFSET + itr->at("texture_index");
+            }
+        }
         scene.materials.push_back(mat);
     }
 
@@ -167,5 +193,65 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
             scene.infiniteLightIntensity = *intensity;
         }
+    }
+
+    if (const auto& textures = jsonData.find("3d_textures"); textures != jsonData.end()) {
+        for (const auto& texture : *textures) {
+            uint32_t width = texture["width"];
+            uint32_t height = texture["height"];
+            uint32_t depth = 1;
+            if (const auto d = texture.find("depth"); d != texture.end()) {
+                depth = *d;
+            }
+
+            std::vector<ImageGenerator::Knot> knots;
+            for (const auto& knot : texture["knots"]) {
+                const auto& color = knot["color"];
+                knots.push_back(
+                    {knot["position"], {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f}});
+            }
+            std::vector<glm::vec4> data;
+            if (texture["method"] == "gradient_x") {
+                data = ImageGenerator::gradientHorizontal(width, height, depth, 4, knots);
+            } else if (texture["method"] == "gradient_y") {
+                data = ImageGenerator::gradientVertical(width, height, depth, 4, knots);
+            }
+
+            auto newTexture = context.createImage({
+                .usage = rv::ImageUsage::Sampled,
+                .extent = {width, height, 1},
+                .format = vk::Format::eR32G32B32A32Sfloat,
+                .debugName = std::format("texture3d[{}]", scene.textures3d.size()),
+            });
+            newTexture->createImageView(vk::ImageViewType::e3D);
+            newTexture->createSampler(vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge);
+
+            rv::BufferHandle stagingBuffer = context.createBuffer({
+                .usage = rv::BufferUsage::Staging,
+                .memory = rv::MemoryUsage::Host,
+                .size = width * height * 4 * sizeof(float),
+                .debugName = "stagingBuffer",
+            });
+            stagingBuffer->copy(data.data());
+
+            context.oneTimeSubmit([&](auto commandBuffer) {
+                commandBuffer->transitionLayout(newTexture, vk::ImageLayout::eTransferDstOptimal);
+                commandBuffer->copyBufferToImage(stagingBuffer, newTexture);
+                commandBuffer->transitionLayout(newTexture,
+                                                vk::ImageLayout::eShaderReadOnlyOptimal);
+            });
+
+            scene.textures3d.push_back(newTexture);
+        }
+        // if (const auto& dir = light->find("direction"); dir != light->end()) {
+        //     scene.infiniteLightDir = glm::normalize(glm::vec3{dir->at(0), dir->at(1),
+        //     dir->at(2)});
+        // }
+        // if (const auto& color = light->find("color"); color != light->end()) {
+        //     scene.infiniteLightColor = {color->at(0), color->at(1), color->at(2)};
+        // }
+        // if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
+        //     scene.infiniteLightIntensity = *intensity;
+        // }
     }
 }
