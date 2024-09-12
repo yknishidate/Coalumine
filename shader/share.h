@@ -59,6 +59,8 @@ struct PushConstants {
     FIELD(float, infiniteLightIntensity, 0.0f);
 
     FIELD(vec4, envLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    FIELD(int, enableAdaptiveSampling, 0);
 };
 
 struct Material {

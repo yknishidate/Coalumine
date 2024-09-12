@@ -11,7 +11,14 @@ void main()
 {
     const vec2 screenPos = vec2(gl_LaunchIDEXT.xy);
     const vec2 samplingRadius = 2.0 / vec2(gl_LaunchSizeEXT.xy);
-    
+
+    // 前回の更新幅が小さければサンプル数を減らす
+    vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
+    int sampleCount = pc.sampleCount;
+    if (pc.frame > 100 && pc.enableAdaptiveSampling == 1) {
+        sampleCount = clamp(int(prevColor.w * 100000.0), 1, sampleCount);
+    }
+
     vec2 uv;
     uv.x = float(gl_LaunchIDEXT.x) / float(gl_LaunchSizeEXT.x) * 2.0 - 1.0;
     uv.y = (1.0 - float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y)) * 2.0 - 1.0;
@@ -21,7 +28,7 @@ void main()
     uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.frame + 1));
     payload.seed = s.x + s.y;
     vec3 radiance = vec3(0.0);
-    for(int i = 0; i < pc.sampleCount; i++){
+    for(int i = 0; i < sampleCount; i++){
         vec2 offset    = vec2(rand(payload.seed), rand(payload.seed)) * samplingRadius;
         vec4 target    = pc.invProj * vec4(uv.xy + offset, 1, 1);
         vec4 direction = pc.invView * vec4(normalize(target.xyz), 0);
@@ -44,7 +51,7 @@ void main()
         );
         radiance += payload.radiance;
     }
-    radiance /= pc.sampleCount;
+    radiance /= sampleCount;
     
     // Store bloom color
     float luminace = computeLuminance(radiance);
@@ -54,8 +61,10 @@ void main()
     // Store base color
     vec4 newColor = vec4(radiance, 1);
     if(pc.enableAccum == 1){
-        vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
-        newColor = (newColor + (prevColor * pc.frame)) / (pc.frame + 1);
+        newColor.xyz = (newColor.xyz + (prevColor.xyz * pc.frame)) / (pc.frame + 1);
+    }
+    if(pc.enableAdaptiveSampling == 1){
+        newColor.w = distance(newColor.xyz, prevColor.xyz);
     }
     imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), newColor);
 }

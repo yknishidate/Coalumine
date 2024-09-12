@@ -83,7 +83,6 @@ public:
 
         static int imageIndex = 0;
         static bool enableBloom = false;
-        static bool enableAccum = pushConstants.enableAccum;
         static int blurIteration = 32;
         static bool playAnimation = true;
         static bool open = true;
@@ -93,8 +92,14 @@ public:
             ImGui::SliderInt("Sample count", &pushConstants.sampleCount, 1, 512);
 
             // Accumulation
-            if (ImGui::Checkbox("Enable accum", &enableAccum)) {
-                pushConstants.enableAccum = enableAccum;
+            if (ImGui::Checkbox("Enable accum",
+                                reinterpret_cast<bool*>(&pushConstants.enableAccum))) {
+                m_renderer->reset();
+            }
+
+            // Adaptive sampling
+            if (ImGui::Checkbox("Enable adaptive sampling",
+                                reinterpret_cast<bool*>(&pushConstants.enableAdaptiveSampling))) {
                 m_renderer->reset();
             }
 
