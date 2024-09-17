@@ -162,7 +162,8 @@ void LoaderJson::loadFromFile(Scene& scene,
                 for (const auto& knot : params["knots"]) {
                     const auto& color = knot["color"];
                     knots.push_back({knot["position"],
-                                     {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f}});
+                                     {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f,
+                                      color[3] / 255.0f}});
                 }
 
                 const auto& data = ImageGenerator::gradientHorizontal(width, height, 4, knots);
@@ -208,7 +209,8 @@ void LoaderJson::loadFromFile(Scene& scene,
             for (const auto& knot : texture["knots"]) {
                 const auto& color = knot["color"];
                 knots.push_back(
-                    {knot["position"], {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f}});
+                    {knot["position"],
+                     {color[0] / 255.0f, color[1] / 255.0f, color[2] / 255.0f, color[3] / 255.0f}});
             }
             std::vector<glm::vec4> data;
             if (texture["method"] == "gradient_x") {

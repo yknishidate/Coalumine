@@ -314,10 +314,27 @@ void main()
         if (material.baseColorTextureIndex != -1) {
             if (material.baseColorTextureIndex < TEXTURE_TYPE_OFFSET) {
                 int index = material.baseColorTextureIndex;
-                baseColor *= texture(textures2d[index], texCoord).rgb;
+                vec4 color = texture(textures2d[index], texCoord);
+                baseColor *= color.rgb;
+                transmission *= 1.0 - color.a;
             } else {
                 int index = material.baseColorTextureIndex - TEXTURE_TYPE_OFFSET;
-                baseColor *= texture(textures3d[index], localUvw).rgb;
+                vec4 color = texture(textures3d[index], localUvw);
+                baseColor *= color.rgb;
+                transmission *= 1.0 - color.a;
+            }
+        }
+        if (material.metallicRoughnessTextureIndex != -1) {
+            if (material.metallicRoughnessTextureIndex < TEXTURE_TYPE_OFFSET) {
+                int index = material.baseColorTextureIndex;
+                vec2 metalRough = texture(textures2d[index], texCoord).rg;
+                metallic *= metalRough.x;
+                roughness *= metalRough.y;
+            } else {
+                int index = material.metallicRoughnessTextureIndex - TEXTURE_TYPE_OFFSET;
+                vec2 metalRough = texture(textures3d[index], localUvw).rg;
+                metallic *= metalRough.x;
+                roughness *= metalRough.y;
             }
         }
     }

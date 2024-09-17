@@ -28,6 +28,10 @@
             "base_color_texture": {
                 "projection": "3d",
                 "texture_index": 0
+            },
+            "metallic_roughness_texture": {
+                "projection": "3d",
+                "texture_index": 2
             }
         },
         {
@@ -38,6 +42,10 @@
             "base_color_texture": {
                 "projection": "3d",
                 "texture_index": 1
+            },
+            "metallic_roughness_texture": {
+                "projection": "3d",
+                "texture_index": 3
             }
         }
     ],
@@ -55,6 +63,7 @@
     },
     "3d_textures": [
         {
+            "name": "base_color_blue_gradient",
             "width": 100,
             "height": 1,
             "depth": 1,
@@ -62,15 +71,16 @@
             "knots": [
                 {
                     "position": 0.0,
-                    "color": [0, 111, 244]
+                    "color": [0, 111, 244, 0]
                 },
                 {
                     "position": 1.0,
-                    "color": [255, 1, 29]
+                    "color": [255, 255, 255, 0]
                 }
             ]
         },
         {
+            "name": "base_color_white_gradient",
             "width": 1,
             "height": 100,
             "depth": 1,
@@ -78,11 +88,45 @@
             "knots": [
                 {
                     "position": 0.0,
-                    "color": [251, 130, 39]
+                    "color": [0, 111, 244, 0]
                 },
                 {
                     "position": 1.0,
-                    "color": [37, 153, 154]
+                    "color": [255, 255, 255, 0]
+                }
+            ]
+        },
+        {
+            "name": "metal_rough_gradient_x",
+            "width": 100,
+            "height": 1,
+            "depth": 1,
+            "method": "gradient_x",
+            "knots": [
+                {
+                    "position": 0.0,
+                    "color": [0, 0, 0, 0]
+                },
+                {
+                    "position": 1.0,
+                    "color": [0, 0, 0, 0]
+                }
+            ]
+        },
+        {
+            "name": "metal_rough_gradient_y",
+            "width": 1,
+            "height": 100,
+            "depth": 1,
+            "method": "gradient_y",
+            "knots": [
+                {
+                    "position": 0.0,
+                    "color": [0, 0, 0, 0]
+                },
+                {
+                    "position": 1.0,
+                    "color": [0, 0, 0, 0]
                 }
             ]
         }

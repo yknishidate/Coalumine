@@ -7,7 +7,7 @@ class ImageGenerator {
 public:
     struct Knot {
         float position;
-        glm::vec3 color;
+        glm::vec4 color;
     };
 
     static std::vector<glm::vec4> gradientHorizontal(uint32_t width,
@@ -17,11 +17,11 @@ public:
                                                      const std::vector<Knot>& knots) {
         std::vector<glm::vec4> data(width * height * depth * channel);
         for (uint32_t x = 0; x < width; x++) {
-            glm::vec3 color = colorRamp(x / static_cast<float>(width), knots);
+            glm::vec4 color = colorRamp(x / static_cast<float>(width), knots);
             for (uint32_t z = 0; z < depth; z++) {
                 for (uint32_t y = 0; y < height; y++) {
                     uint32_t index = z * (width * height) + y * width + x;
-                    data[index] = glm::vec4(color, 0.0);
+                    data[index] = color;
                 }
             }
         }
@@ -78,9 +78,9 @@ public:
         return data;
     }
 
-    static glm::vec3 colorRamp(float value, const std::vector<Knot>& knots) {
+    static glm::vec4 colorRamp(float value, const std::vector<Knot>& knots) {
         if (knots.empty()) {
-            return glm::vec3(0.0f);  // デフォルトの色 (黒) を返す
+            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);  // デフォルトの色 (黒) を返す
         }
 
         // ノットの数が1つの場合、常にその色を返す
