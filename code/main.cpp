@@ -225,6 +225,11 @@ public:
                     camera->setFovY(glm::radians(fovY));
                     m_renderer->reset();
                 }
+                if (ImGui::DragFloat("Object distance",
+                                     &m_renderer->m_pushConstants.cameraObjectDistance,  //
+                                     0.01f, 0.0f)) {
+                    m_renderer->reset();
+                }
                 ImGui::Unindent(16.0f);
             }
 
@@ -401,6 +406,7 @@ private:
 };
 
 int main(int argc, char* argv[]) {
+    std::cout << sizeof(PushConstants) << std::endl;
     try {
         // 実行モード "window", "headless" は、
         // コマンドライン引数で与えるか、ランタイムのユーザー入力で与えることができる

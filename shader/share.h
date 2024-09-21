@@ -63,7 +63,8 @@ struct PushConstants {
     FIELD(vec4, envLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     FIELD(int, enableAdaptiveSampling, 0);
-    FIELD(float, cameraDistance, 5.0f);
+    FIELD(float, cameraImageDistance, 5.0f);
+    FIELD(float, cameraObjectDistance, 5.0f);
     FIELD(float, cameraLensRadius, 0.1f);
 };
 

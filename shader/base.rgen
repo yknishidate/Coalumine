@@ -34,9 +34,9 @@ void main()
         vec2 offset = sampleDisk(payload.seed) * pc.cameraLensRadius;
         origin = pc.cameraPos + pc.cameraRight * offset.x
                               + pc.cameraUp * offset.y;
-        vec4 target = pc.cameraPos + pc.cameraRight * uv.x * aspect
-                                   + pc.cameraUp * uv.y
-                                   + pc.cameraForward * pc.cameraDistance;
+        vec4 target = pc.cameraPos + (pc.cameraRight * uv.x * aspect
+                                      + pc.cameraUp * uv.y
+                                      + pc.cameraForward * pc.cameraImageDistance) * (pc.cameraObjectDistance / pc.cameraImageDistance);
         vec4 direction = vec4(normalize(target.xyz - origin.xyz), 0);
         payload.radiance = vec3(0.0);
         payload.depth = 0;
