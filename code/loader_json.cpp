@@ -134,14 +134,14 @@ void LoaderJson::loadFromFile(Scene& scene,
     }
 
     // "camera"セクションのパース
+    scene.camera = {rv::Camera::Type::Orbital, 1.0f};
     if (const auto& camera = jsonData.find("camera"); camera != jsonData.end()) {
-        scene.cameraExists = true;
-        if (const auto& scale = camera->find("scale"); scale != camera->end()) {
-            scene.cameraScale = *scale;
+        if (const auto& fovY = camera->find("fov_y"); fovY != camera->end()) {
+            scene.camera.setFovY(glm::radians(static_cast<float>(*fovY)));
         }
         if (const auto& rotation = camera->find("rotation"); rotation != camera->end()) {
-            scene.cameraRotation =
-                glm::quat(glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
+            scene.camera.setEulerRotation(
+                glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
         }
     }
 

@@ -10,20 +10,21 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
             if (!gltfNode.translation.empty()) {
-                scene.cameraTranslation.x = static_cast<float>(gltfNode.translation[0]);
-                scene.cameraTranslation.y = static_cast<float>(gltfNode.translation[1]);
-                scene.cameraTranslation.z = static_cast<float>(gltfNode.translation[2]);
+                scene.camera.setPosition({static_cast<float>(gltfNode.translation[0]),
+                                          static_cast<float>(gltfNode.translation[1]),
+                                          static_cast<float>(gltfNode.translation[2])});
             }
             if (!gltfNode.rotation.empty()) {
-                scene.cameraRotation.x = static_cast<float>(gltfNode.rotation[0]);
-                scene.cameraRotation.y = static_cast<float>(gltfNode.rotation[1]);
-                scene.cameraRotation.z = static_cast<float>(gltfNode.rotation[2]);
-                scene.cameraRotation.w = static_cast<float>(gltfNode.rotation[3]);
+                glm::quat rotation;
+                rotation.x = static_cast<float>(gltfNode.rotation[0]);
+                rotation.y = static_cast<float>(gltfNode.rotation[1]);
+                rotation.z = static_cast<float>(gltfNode.rotation[2]);
+                rotation.w = static_cast<float>(gltfNode.rotation[3]);
+                scene.camera.setEulerRotation(glm::eulerAngles(rotation));
             }
 
             tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
-            scene.cameraYFov = static_cast<float>(camera.perspective.yfov);
-            scene.cameraExists = true;
+            scene.camera.setFovY(static_cast<float>(camera.perspective.yfov));
             scene.nodes.push_back(Node{});
             continue;
         }

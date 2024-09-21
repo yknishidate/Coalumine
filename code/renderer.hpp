@@ -24,6 +24,7 @@ public:
         m_scene.createMaterialBuffer(context);
         m_scene.createNodeDataBuffer(context);
         m_scene.createDummyTextures(context);
+        m_scene.camera.setAspect(width / static_cast<float>(height));
         spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
         // Build BVH
@@ -44,21 +45,6 @@ public:
         });
 
         createPipelines(context);
-
-        m_orbitalCamera = {rv::Camera::Type::Orbital, width / static_cast<float>(height)};
-        m_orbitalCamera.setDistance(12.0f);
-        m_orbitalCamera.setFovY(glm::radians(30.0f));
-        m_currentCamera = &m_orbitalCamera;
-
-        if (m_scene.cameraExists) {
-            // m_fpsCamera = {rv::Camera::Type::FirstPerson, width / static_cast<float>(height)};
-            // m_fpsCamera.setPosition(m_scene.cameraTranslation);
-            // m_fpsCamera.setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
-            // m_fpsCamera.setFovY(m_scene.cameraYFov);
-            // m_currentCamera = &m_fpsCamera;
-            m_currentCamera->setScale(m_scene.cameraScale);
-            m_currentCamera->setEulerRotation(glm::eulerAngles(m_scene.cameraRotation));
-        }
 
         // Env light
         m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
@@ -124,22 +110,22 @@ public:
     }
 
     void update(glm::vec2 dragLeft, float scroll) {
-        assert(m_currentCamera && "m_currentCamera is nullptr");
-
         if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
-            m_currentCamera->processMouseDragLeft(dragLeft);
-            m_currentCamera->processMouseScroll(scroll);
+            m_scene.camera.processMouseDragLeft(dragLeft);
+            m_scene.camera.processMouseScroll(scroll);
 
             m_pushConstants.frame = 0;
         } else {
             m_pushConstants.frame++;
         }
 
-        m_pushConstants.cameraForward = glm::vec4(m_currentCamera->getFront(), 1.0f);
-        m_pushConstants.cameraPos = glm::vec4(m_currentCamera->getPosition(), 1.0f);
-        m_pushConstants.cameraRight = glm::vec4(m_currentCamera->getRight(), 1.0f);
-        m_pushConstants.cameraUp = glm::vec4(m_currentCamera->getUp(), 1.0f);
-        m_pushConstants.cameraImageDistance = m_currentCamera->getImageDistance();
+        m_pushConstants.cameraForward = glm::vec4(m_scene.camera.getFront(), 1.0f);
+        m_pushConstants.cameraPos = glm::vec4(m_scene.camera.getPosition(), 1.0f);
+        m_pushConstants.cameraRight = glm::vec4(m_scene.camera.getRight(), 1.0f);
+        m_pushConstants.cameraUp = glm::vec4(m_scene.camera.getUp(), 1.0f);
+        m_pushConstants.cameraImageDistance = m_scene.camera.getImageDistance();
+        m_pushConstants.cameraLensRadius = m_scene.camera.m_lensRadius;
+        m_pushConstants.cameraObjectDistance = m_scene.camera.m_objectDistance;
     }
 
     void reset() { m_pushConstants.frame = 0; }
@@ -149,7 +135,6 @@ public:
                 bool enableBloom,
                 int blurIteration) {
         // Update
-        // if (!playAnimation || !scene.shouldUpdate(pushConstants.frame)) {
         if (!playAnimation) {
             spdlog::info("Skipped: {}", m_pushConstants.frame);
             return;
@@ -197,10 +182,6 @@ public:
 
     rv::DescriptorSetHandle m_descSet;
     rv::RayTracingPipelineHandle m_rayTracingPipeline;
-
-    rv::Camera* m_currentCamera = nullptr;
-    rv::Camera m_fpsCamera;
-    rv::Camera m_orbitalCamera;
 
     PushConstants m_pushConstants;
 };

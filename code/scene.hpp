@@ -53,6 +53,19 @@ public:
     }
 };
 
+class PhysicalCamera : public rv::Camera {
+public:
+    PhysicalCamera() = default;
+
+    PhysicalCamera(rv::Camera::Type type, float aspect) : rv::Camera(type, aspect) {}
+
+    float getImageDistance() const { return m_sensorHeight / (2.0f * std::tan(fovY / 2.0f)); }
+
+    float m_lensRadius = 0.0f;
+    float m_objectDistance = 5.0f;
+    static constexpr float m_sensorHeight = 1.0f;
+};
+
 class Scene {
     friend class LoaderJson;
     friend class LoaderGltf;
@@ -113,9 +126,5 @@ public:
     rv::BufferHandle materialBuffer;
 
     // Camera
-    bool cameraExists = false;
-    glm::vec3 cameraTranslation;
-    glm::quat cameraRotation;
-    float cameraYFov;
-    float cameraScale = 1.0f;
+    PhysicalCamera camera;
 };
