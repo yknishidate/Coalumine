@@ -41,8 +41,10 @@
 struct PushConstants {
     USING_GLM
 
-    FIELD(mat4, invView, mat4(1.0f));
-    FIELD(mat4, invProj, mat4(1.0f));
+    FIELD(vec4, cameraPos, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    FIELD(vec4, cameraForward, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    FIELD(vec4, cameraRight, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    FIELD(vec4, cameraUp, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     FIELD(int, frame, 0);
     FIELD(int, sampleCount, 10);
@@ -61,6 +63,8 @@ struct PushConstants {
     FIELD(vec4, envLightColor, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     FIELD(int, enableAdaptiveSampling, 0);
+    FIELD(float, cameraDistance, 5.0f);
+    FIELD(float, cameraLensRadius, 0.1f);
 };
 
 struct Material {

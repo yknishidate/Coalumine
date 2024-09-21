@@ -19,19 +19,25 @@ void main()
         sampleCount = clamp(int(prevColor.w * 100000.0), 1, sampleCount);
     }
 
+    float sizeY = float(gl_LaunchSizeEXT.y);
+    float aspect = float(gl_LaunchSizeEXT.x) / float(gl_LaunchSizeEXT.y);
     vec2 uv;
     uv.x = float(gl_LaunchIDEXT.x) / float(gl_LaunchSizeEXT.x) * 2.0 - 1.0;
     uv.y = (1.0 - float(gl_LaunchIDEXT.y) / float(gl_LaunchSizeEXT.y)) * 2.0 - 1.0;
     
-    vec4 origin = pc.invView * vec4(0, 0, 0, 1);
+    vec4 origin = pc.cameraPos;
 
     uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.frame + 1));
     payload.seed = s.x + s.y;
     vec3 radiance = vec3(0.0);
     for(int i = 0; i < sampleCount; i++){
-        vec2 offset    = vec2(rand(payload.seed), rand(payload.seed)) * samplingRadius;
-        vec4 target    = pc.invProj * vec4(uv.xy + offset, 1, 1);
-        vec4 direction = pc.invView * vec4(normalize(target.xyz), 0);
+        vec2 offset = sampleDisk(payload.seed) * pc.cameraLensRadius;
+        origin = pc.cameraPos + pc.cameraRight * offset.x
+                              + pc.cameraUp * offset.y;
+        vec4 target = pc.cameraPos + pc.cameraRight * uv.x * aspect
+                                   + pc.cameraUp * uv.y
+                                   + pc.cameraForward * pc.cameraDistance;
+        vec4 direction = vec4(normalize(target.xyz - origin.xyz), 0);
         payload.radiance = vec3(0.0);
         payload.depth = 0;
         payload.component = -1;

@@ -135,8 +135,11 @@ public:
             m_pushConstants.frame++;
         }
 
-        m_pushConstants.invView = m_currentCamera->getInvView();
-        m_pushConstants.invProj = m_currentCamera->getInvProj();
+        m_pushConstants.cameraForward = glm::vec4(m_currentCamera->getFront(), 1.0f);
+        m_pushConstants.cameraPos = glm::vec4(m_currentCamera->getPosition(), 1.0f);
+        m_pushConstants.cameraRight = glm::vec4(m_currentCamera->getRight(), 1.0f);
+        m_pushConstants.cameraUp = glm::vec4(m_currentCamera->getUp(), 1.0f);
+        m_pushConstants.cameraDistance = 1.0f / std::tan(m_currentCamera->getFovY() / 2.0f);
     }
 
     void reset() { m_pushConstants.frame = 0; }

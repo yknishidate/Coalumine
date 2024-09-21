@@ -214,8 +214,17 @@ public:
                 auto camera = m_renderer->m_currentCamera;
                 auto pos = camera->getPosition();
                 auto rot = camera->getEulerRotation();
+                auto fovY = glm::degrees(camera->getFovY());
                 ImGui::Text("Position: %f %f %f", pos.x, pos.y, pos.z);
                 ImGui::Text("Rotation: %f %f %f", rot.x, rot.y, rot.z);
+                if (ImGui::DragFloat("Lens radius", &m_renderer->m_pushConstants.cameraLensRadius,
+                                     0.01f, 0.0f, 1.0f)) {
+                    m_renderer->reset();
+                }
+                if (ImGui::DragFloat("FOV Y", &fovY, 1.0f, 0.0f, 180.0f)) {
+                    camera->setFovY(glm::radians(fovY));
+                    m_renderer->reset();
+                }
                 ImGui::Unindent(16.0f);
             }
 
