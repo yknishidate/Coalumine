@@ -15,7 +15,7 @@ void main()
     // 前回の更新幅が小さければサンプル数を減らす
     vec4 prevColor = imageLoad(baseImage, ivec2(gl_LaunchIDEXT.xy));
     int sampleCount = pc.sampleCount;
-    if (pc.frame > 100 && pc.enableAdaptiveSampling == 1) {
+    if (pc.accumCount > 100 && pc.enableAdaptiveSampling == 1) {
         sampleCount = clamp(int(prevColor.w * 100000.0), 1, sampleCount);
     }
 
@@ -27,7 +27,7 @@ void main()
     
     vec4 origin = pc.cameraPos;
 
-    uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.frame + 1));
+    uvec2 s = pcg2d(gl_LaunchIDEXT.xy * (pc.accumCount + 1));
     payload.seed = s.x + s.y;
     vec3 radiance = vec3(0.0);
     for(int i = 0; i < sampleCount; i++){
@@ -67,7 +67,7 @@ void main()
     // Store base color
     vec4 newColor = vec4(radiance, 1);
     if(pc.enableAccum == 1){
-        newColor.xyz = (newColor.xyz + (prevColor.xyz * pc.frame)) / (pc.frame + 1);
+        newColor.xyz = (newColor.xyz + (prevColor.xyz * pc.accumCount)) / (pc.accumCount + 1);
     }
     if(pc.enableAdaptiveSampling == 1){
         newColor.w = distance(newColor.xyz, prevColor.xyz);

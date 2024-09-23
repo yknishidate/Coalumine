@@ -29,6 +29,7 @@ public:
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
     std::vector<KeyFrame> keyFrames;
 
+    // TODO: interpolation by time
     glm::mat4 computeTransformMatrix(int frame) const {
         if (keyFrames.empty()) {
             glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
@@ -43,6 +44,7 @@ public:
         return T * R * S;
     }
 
+    // TODO: interpolation by time
     glm::mat4 computeNormalMatrix(int frame) const {
         if (keyFrames.empty()) {
             return glm::mat4{1.0};
@@ -97,6 +99,8 @@ public:
     void updateTopAccel(int frame);
 
     void updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer);
+
+    uint32_t getMaxFrame() const;
 
     // Scene
     std::vector<Node> nodes;

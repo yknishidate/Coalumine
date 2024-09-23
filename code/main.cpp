@@ -105,18 +105,22 @@ public:
 
             // Animation
             ImGui::Checkbox("Play animation", &playAnimation);
+            if (playAnimation) {
+                frame = (frame + 1) % m_renderer->m_scene.getMaxFrame();
+                m_renderer->reset();
+            }
 
             // Frame
-            ImGui::Text("Frame: %d", pushConstants.frame);
+            ImGui::Text("Frame: %d", frame);
 
             // GPU time
-            float gpuTime = pushConstants.frame > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
+            float gpuTime = pushConstants.accumCount > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
             ImGui::Text("GPU time: %f ms", gpuTime);
 
             // Save button
             if (ImGui::Button("Save image")) {
                 m_imageWriter->wait(0);
-                m_imageWriter->writeImage(0, pushConstants.frame);
+                m_imageWriter->writeImage(0, frame, pushConstants.accumCount);
             }
 
             // Recompile button
@@ -255,6 +259,7 @@ public:
     rv::GPUTimerHandle m_gpuTimer;
 
     char m_inputTextBuffer[1024] = {0};
+    int frame = 0;
 };
 
 class HeadlessApp {
@@ -373,7 +378,7 @@ public:
             m_context.submit(commandBuffer);
             m_context.getQueue().waitIdle();
 
-            m_imageWriter->writeImage(m_imageIndex, m_renderer->m_pushConstants.frame);
+            m_imageWriter->writeImage(m_imageIndex, frame, m_renderer->m_pushConstants.accumCount);
 
             m_imageIndex = (m_imageIndex + 1) % m_imageCount;
         }
@@ -396,10 +401,10 @@ private:
     uint32_t m_imageIndex = 0;
     std::vector<rv::CommandBufferHandle> m_commandBuffers{};
     std::vector<rv::ImageHandle> m_images{};
+    int frame = 0;
 };
 
 int main(int argc, char* argv[]) {
-    std::cout << sizeof(PushConstants) << std::endl;
     try {
         // 実行モード "window", "headless" は、
         // コマンドライン引数で与えるか、ランタイムのユーザー入力で与えることができる

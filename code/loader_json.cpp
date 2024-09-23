@@ -134,8 +134,8 @@ void LoaderJson::loadFromFile(Scene& scene,
     }
 
     // "camera"セクションのパース
-    scene.camera = {rv::Camera::Type::Orbital, 1.0f};
     if (const auto& camera = jsonData.find("camera"); camera != jsonData.end()) {
+        scene.camera = {rv::Camera::Type::Orbital, 1.0f};
         if (const auto& fovY = camera->find("fov_y"); fovY != camera->end()) {
             scene.camera.setFovY(glm::radians(static_cast<float>(*fovY)));
         }
@@ -222,11 +222,15 @@ void LoaderJson::loadFromFile(Scene& scene,
             auto newTexture = context.createImage({
                 .usage = rv::ImageUsage::Sampled,
                 .extent = {width, height, 1},
+                .imageType = vk::ImageType::e3D,
                 .format = vk::Format::eR32G32B32A32Sfloat,
+                .viewInfo = rv::ImageViewCreateInfo{},
+                .samplerInfo =
+                    rv::SamplerCreateInfo{
+                        .addressMode = vk::SamplerAddressMode::eClampToEdge,
+                    },
                 .debugName = std::format("texture3d[{}]", scene.textures3d.size()),
             });
-            newTexture->createImageView(vk::ImageViewType::e3D);
-            newTexture->createSampler(vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge);
 
             rv::BufferHandle stagingBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::Staging,

@@ -84,19 +84,20 @@ public:
         finalImageRGBA = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
+            .imageType = vk::ImageType::e2D,
             .format = vk::Format::eR8G8B8A8Unorm,
+            .viewInfo = rv::ImageViewCreateInfo{},
             .debugName = "finalImageRGBA",
         });
 
         finalImageBGRA = context.createImage({
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
+            .imageType = vk::ImageType::e2D,
             .format = vk::Format::eB8G8R8A8Unorm,
+            .viewInfo = rv::ImageViewCreateInfo{},
             .debugName = "finalImageBGRA",
         });
-
-        finalImageRGBA->createImageView();
-        finalImageBGRA->createImageView();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->transitionLayout(finalImageRGBA, vk::ImageLayout::eGeneral);
@@ -160,11 +161,9 @@ public:
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
+            .viewInfo = rv::ImageViewCreateInfo{},
             .debugName = "bloomImage",
         });
-
-        bloomImage->createImageView();
-        // bloomImage->createSampler();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->transitionLayout(bloomImage, vk::ImageLayout::eGeneral);

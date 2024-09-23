@@ -46,7 +46,7 @@ struct PushConstants {
     FIELD(vec4, cameraRight, vec4(0.0f, 0.0f, 0.0f, 0.0f));
     FIELD(vec4, cameraUp, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
-    FIELD(int, frame, 0);
+    FIELD(int, accumCount, 0);
     FIELD(int, sampleCount, 10);
     FIELD(float, bloomThreshold, 0.5f);
     FIELD(float, envLightIntensity, 1.0f);

@@ -36,9 +36,9 @@ public:
             .usage = rv::ImageUsage::Storage,
             .extent = {width, height, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
+            .viewInfo = rv::ImageViewCreateInfo{},
             .debugName = "baseImage",
         });
-        m_baseImage->createImageView();
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->transitionLayout(m_baseImage, vk::ImageLayout::eGeneral);
@@ -113,10 +113,7 @@ public:
         if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
             m_scene.camera.processMouseDragLeft(dragLeft);
             m_scene.camera.processMouseScroll(scroll);
-
-            m_pushConstants.frame = 0;
         } else {
-            m_pushConstants.frame++;
         }
 
         m_pushConstants.cameraForward = glm::vec4(m_scene.camera.getFront(), 1.0f);
@@ -128,18 +125,17 @@ public:
         m_pushConstants.cameraObjectDistance = m_scene.camera.m_objectDistance;
     }
 
-    void reset() { m_pushConstants.frame = 0; }
+    void reset() { m_pushConstants.accumCount = 0; }
 
     void render(const rv::CommandBufferHandle& commandBuffer,
-                bool playAnimation,
+                int frame,
                 bool enableBloom,
                 int blurIteration) {
         // Update
-        if (!playAnimation) {
-            spdlog::info("Skipped: {}", m_pushConstants.frame);
-            return;
+        if (lastFrame != frame) {
+            m_scene.updateTopAccel(frame);
+            lastFrame = frame;
         }
-        m_scene.updateTopAccel(m_pushConstants.frame);
 
         // Ray tracing
         commandBuffer->bindDescriptorSet(m_rayTracingPipeline, m_descSet);
@@ -166,6 +162,8 @@ public:
         }
 
         m_compositePass.render(commandBuffer, m_width / 8, m_height / 8, m_compositeInfo);
+
+        m_pushConstants.accumCount++;
     }
 
     uint32_t m_width;
@@ -184,4 +182,6 @@ public:
     rv::RayTracingPipelineHandle m_rayTracingPipeline;
 
     PushConstants m_pushConstants;
+
+    int lastFrame = 0;
 };

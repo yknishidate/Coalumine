@@ -70,21 +70,28 @@ void Scene::createDummyTextures(const rv::Context& context) {
             .usage = rv::ImageUsage::Sampled,
             .extent = {1, 1, 1},
             .format = vk::Format::eR32G32B32A32Sfloat,
+            .viewInfo = rv::ImageViewCreateInfo{},
+            .samplerInfo = rv::SamplerCreateInfo{},
             .debugName = "dummy",
         });
-        newTexture->createImageView(vk::ImageViewType::e2D);
-        newTexture->createSampler();
+        context.oneTimeSubmit([&](const rv::CommandBufferHandle& commandBuffer) {
+            commandBuffer->transitionLayout(newTexture, vk::ImageLayout::eGeneral);
+        });
         textures2d.push_back(newTexture);
     }
     if (textures3d.empty()) {
         auto newTexture = context.createImage({
             .usage = rv::ImageUsage::Sampled,
             .extent = {1, 1, 1},
+            .imageType = vk::ImageType::e3D,
             .format = vk::Format::eR32G32B32A32Sfloat,
+            .viewInfo = rv::ImageViewCreateInfo{},
+            .samplerInfo = rv::SamplerCreateInfo{},
             .debugName = "dummy",
         });
-        newTexture->createImageView(vk::ImageViewType::e3D);
-        newTexture->createSampler();
+        context.oneTimeSubmit([&](const rv::CommandBufferHandle& commandBuffer) {
+            commandBuffer->transitionLayout(newTexture, vk::ImageLayout::eGeneral);
+        });
         textures3d.push_back(newTexture);
     }
 }
@@ -98,10 +105,10 @@ void Scene::createEnvLightTexture(const rv::Context& context,
         .usage = rv::ImageUsage::Sampled,
         .extent = {width, height, 1},
         .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
+        .viewInfo = rv::ImageViewCreateInfo{},
+        .samplerInfo = rv::SamplerCreateInfo{},
         .debugName = "envLightTexture",
     });
-    envLightTexture->createImageView();
-    envLightTexture->createSampler();
 
     rv::BufferHandle stagingBuffer = context.createBuffer({
         .usage = rv::BufferUsage::Staging,
@@ -183,4 +190,12 @@ void Scene::updateTopAccel(int frame) {
 
 void Scene::updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer) {
     commandBuffer->copyBuffer(materialBuffer, materials.data());
+}
+
+uint32_t Scene::getMaxFrame() const {
+    uint32_t frame = 0;
+    for (const auto& node : nodes) {
+        frame = std::max(frame, static_cast<uint32_t>(node.keyFrames.size()));
+    }
+    return frame;
 }

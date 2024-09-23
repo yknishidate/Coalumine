@@ -9,6 +9,7 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
     for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
+            scene.camera.setType(rv::Camera::Type::FirstPerson);
             if (!gltfNode.translation.empty()) {
                 scene.camera.setPosition({static_cast<float>(gltfNode.translation[0]),
                                           static_cast<float>(gltfNode.translation[1]),
