@@ -239,7 +239,7 @@ public:
         m_renderer->m_scene.updateMaterialBuffer(commandBuffer);
 
         commandBuffer->beginTimestamp(m_gpuTimer);
-        m_renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
+        m_renderer->render(commandBuffer, frame, enableBloom, blurIteration);
         commandBuffer->endTimestamp(m_gpuTimer);
 
         // Copy to swapchain image

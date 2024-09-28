@@ -181,6 +181,7 @@ void Scene::updateTopAccel(int frame) {
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(frame),
+                .customIndex = static_cast<uint32_t>(i),
             });
         }
     }
