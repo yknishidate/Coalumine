@@ -137,20 +137,10 @@ public:
 
             commandBuffer->updateTopAccel(m_scene.topAccel);
 
-            // Create a memory barrier for the acceleration structure
-            vk::MemoryBarrier2 memoryBarrier{};
-            memoryBarrier.setSrcStageMask(
-                vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR);
-            memoryBarrier.setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR);
-            memoryBarrier.setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR);
-            memoryBarrier.setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
-
-            // Pipeline barrier to ensure that the build has finished before the ray tracing shader
-            // starts
-            vk::DependencyInfoKHR dependencyInfo{};
-            dependencyInfo.setMemoryBarrierCount(1);
-            dependencyInfo.setPMemoryBarriers(&memoryBarrier);
-            commandBuffer->commandBuffer->pipelineBarrier2(dependencyInfo);
+            commandBuffer->memoryBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
+                                         vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+                                         vk::AccessFlagBits::eAccelerationStructureWriteKHR,
+                                         vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
             lastFrame = frame;
         }
