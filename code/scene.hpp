@@ -96,6 +96,8 @@ public:
 
     bool shouldUpdate(int frame) const;
 
+    void updateAccelInstances(int frame);
+
     void updateTopAccel(int frame);
 
     void updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer);
@@ -110,6 +112,7 @@ public:
 
     // Accel
     std::vector<rv::BottomAccelHandle> bottomAccels;
+    std::vector<rv::AccelInstance> accelInstances;
     rv::TopAccelHandle topAccel;
 
     // Light
@@ -117,6 +120,7 @@ public:
     glm::vec3 envLightColor;
     float envLightIntensity = 1.0f;
     bool useEnvLightTexture = false;
+    bool visibleEnvLightTexture = true;
 
     glm::vec3 infiniteLightDir = {};
     glm::vec3 infiniteLightColor = {};

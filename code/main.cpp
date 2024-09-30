@@ -17,6 +17,7 @@ public:
               .width = width,
               .height = height,
               .title = "Coalumine",
+              .windowResizable = false,
               .vsync = false,
               .layers = enableValidation ? rv::Layer::Validation : rv::ArrayProxy<rv::Layer>{},
               .extensions = rv::Extension::RayTracing,
@@ -61,7 +62,9 @@ public:
         // RendererはWindowに依存させたくないため。DebugAppが処理する
         auto dragLeft = rv::Window::getMouseDragLeft();
         auto scroll = rv::Window::getMouseScroll();
-
+        if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
+            m_renderer->reset();
+        }
         m_renderer->update(dragLeft, scroll);
     }
 
@@ -106,8 +109,11 @@ public:
             // Animation
             ImGui::Checkbox("Play animation", &playAnimation);
             if (playAnimation) {
-                frame = (frame + 1) % m_renderer->m_scene.getMaxFrame();
-                m_renderer->reset();
+                const uint32_t maxFrame = m_renderer->m_scene.getMaxFrame();
+                if (maxFrame > 0) {
+                    frame = (frame + 1) % maxFrame;
+                    m_renderer->reset();
+                }
             }
 
             // Frame

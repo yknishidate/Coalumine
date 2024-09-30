@@ -15,12 +15,26 @@ vec2 sampleSphericalMap(vec3 v)
     return uv;
 }
 
+vec3 sampleEnvLightTexture() {
+    vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
+    uv.x = mod(uv.x + radians(pc.envLightPhi) / (2 * PI), 1.0); // rotate phi
+    return clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0) * pc.envLightIntensity;
+    //return texture(envLightTexture, uv).rgb * pc.envLightIntensity;
+}
+
 void main()
 {
     if (pc.useEnvLightTexture == 1) {
-        vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
-        uv.x = mod(uv.x + radians(pc.envLightPhi) / (2 * PI), 1.0); // rotate phi
-        payload.radiance = clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0) * pc.envLightIntensity;
+        if (pc.visibleEnvLightTexture == 1) {
+            payload.radiance = sampleEnvLightTexture();
+        } else {
+            // invisible from primary ray
+            if (payload.depth == 0) {
+                payload.radiance = pc.envLightColor.xyz;
+            } else {
+                payload.radiance = sampleEnvLightTexture();
+            }
+        }
     } else {
         payload.radiance = pc.envLightColor.xyz;
     }

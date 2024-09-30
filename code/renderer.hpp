@@ -50,6 +50,7 @@ public:
         m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
         m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
         m_pushConstants.envLightIntensity = m_scene.envLightIntensity;
+        m_pushConstants.visibleEnvLightTexture = static_cast<int>(m_scene.visibleEnvLightTexture);
 
         // Infinite light
         m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;
@@ -113,7 +114,6 @@ public:
         if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
             m_scene.camera.processMouseDragLeft(dragLeft);
             m_scene.camera.processMouseScroll(scroll);
-        } else {
         }
 
         m_pushConstants.cameraForward = glm::vec4(m_scene.camera.getFront(), 1.0f);

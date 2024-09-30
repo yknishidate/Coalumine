@@ -66,6 +66,8 @@ struct PushConstants {
     FIELD(float, cameraImageDistance, 5.0f);
     FIELD(float, cameraObjectDistance, 5.0f);
     FIELD(float, cameraLensRadius, 0.1f);
+
+    FIELD(int, visibleEnvLightTexture, 0);
 };
 
 struct Material {

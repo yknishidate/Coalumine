@@ -108,27 +108,36 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
             // Create a vector to store the vertices
             std::vector<rv::Vertex> vertices(positionAccessor->count);
 
+            const auto getByteStride = [&](tinygltf::BufferView* bufferView,
+                                           size_t defaultSize) -> size_t {
+                if (bufferView->byteStride > 0) {
+                    return bufferView->byteStride;
+                }
+                return defaultSize;
+            };
+
             // Loop over the vertices
             for (size_t i = 0; i < positionAccessor->count; i++) {
-                // Compute the byteOffsets
-                size_t positionByteOffset = positionAccessor->byteOffset +
-                                            positionBufferView->byteOffset +
-                                            i * positionBufferView->byteStride;
-                vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
-                    &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
+                {
+                    size_t byteStride = getByteStride(positionBufferView, sizeof(glm::vec3));
+                    size_t positionByteOffset = positionAccessor->byteOffset +
+                                                positionBufferView->byteOffset + i * byteStride;
+                    vertices[i].pos = *reinterpret_cast<const glm::vec3*>(
+                        &(gltfModel.buffers[positionBufferView->buffer].data[positionByteOffset]));
+                }
 
                 if (normalBufferView) {
-                    size_t normalByteOffset = normalAccessor->byteOffset +
-                                              normalBufferView->byteOffset +
-                                              i * normalBufferView->byteStride;
+                    size_t byteStride = getByteStride(normalBufferView, sizeof(glm::vec3));
+                    size_t normalByteOffset =
+                        normalAccessor->byteOffset + normalBufferView->byteOffset + i * byteStride;
                     vertices[i].normal = *reinterpret_cast<const glm::vec3*>(
                         &(gltfModel.buffers[normalBufferView->buffer].data[normalByteOffset]));
                 }
 
                 if (texCoordBufferView) {
+                    size_t byteStride = getByteStride(texCoordBufferView, sizeof(glm::vec2));
                     size_t texCoordByteOffset = texCoordAccessor->byteOffset +
-                                                texCoordBufferView->byteOffset +
-                                                i * texCoordBufferView->byteStride;
+                                                texCoordBufferView->byteOffset + i * byteStride;
                     vertices[i].texCoord = *reinterpret_cast<const glm::vec2*>(
                         &(gltfModel.buffers[texCoordBufferView->buffer].data[texCoordByteOffset]));
                 }
@@ -314,7 +323,13 @@ void LoaderGltf::loadFromFile(Scene& scene,
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
+    bool ret = false;
+    if (filepath.extension() == ".gltf") {
+        ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath.string());
+    } else if (filepath.extension() == ".glb") {
+        ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath.string());
+    }
+
     if (!warn.empty()) {
         std::cerr << "Warn: " << warn.c_str() << std::endl;
     }

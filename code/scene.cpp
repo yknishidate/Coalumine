@@ -140,17 +140,7 @@ void Scene::buildAccels(const rv::Context& context) {
         }
     });
 
-    std::vector<rv::AccelInstance> accelInstances;
-    for (size_t i = 0; i < nodes.size(); i++) {
-        auto& node = nodes[i];
-        if (node.meshIndex != -1) {
-            accelInstances.push_back({
-                .bottomAccel = bottomAccels[node.meshIndex],
-                .transform = node.computeTransformMatrix(0),
-                .customIndex = static_cast<uint32_t>(i),
-            });
-        }
-    }
+    updateAccelInstances(0);
     topAccel = context.createTopAccel({.accelInstances = accelInstances});
     context.oneTimeSubmit([&](auto commandBuffer) {  //
         commandBuffer->buildTopAccel(topAccel);
@@ -171,8 +161,8 @@ bool Scene::shouldUpdate(int frame) const {
     return false;
 }
 
-void Scene::updateTopAccel(int frame) {
-    std::vector<rv::AccelInstance> accelInstances;
+void Scene::updateAccelInstances(int frame) {
+    accelInstances.clear();
     for (size_t i = 0; i < nodes.size(); i++) {
         auto& node = nodes[i];
 
@@ -185,6 +175,10 @@ void Scene::updateTopAccel(int frame) {
             });
         }
     }
+}
+
+void Scene::updateTopAccel(int frame) {
+    updateAccelInstances(frame);
     topAccel->updateInstances(accelInstances);
     nodeDataBuffer->copy(nodeData.data());
 }

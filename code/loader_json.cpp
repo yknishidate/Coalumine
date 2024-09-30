@@ -143,6 +143,9 @@ void LoaderJson::loadFromFile(Scene& scene,
             scene.camera.setEulerRotation(
                 glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
         }
+        if (const auto& speed = camera->find("speed"); speed != camera->end()) {
+            scene.camera.setDollySpeed(static_cast<float>(*speed));
+        }
     }
 
     // "environment_light"セクションのパース
@@ -174,13 +177,16 @@ void LoaderJson::loadFromFile(Scene& scene,
         } else if (type == "solid") {
             const float dummy = 0.0f;
             scene.createEnvLightTexture(context, &dummy, 1, 1, 4);
-
             scene.useEnvLightTexture = false;
-            scene.envLightColor = {light->at("color")[0], light->at("color")[1],
-                                   light->at("color")[2]};
+        }
+        if (const auto& values = light->find("color"); values != light->end()) {
+            scene.envLightColor = {values->at(0), values->at(1), values->at(2)};
         }
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
             scene.envLightIntensity = *intensity;
+        }
+        if (const auto& value = light->find("visible_texture"); value != light->end()) {
+            scene.visibleEnvLightTexture = static_cast<bool>(*value);
         }
     }
 
