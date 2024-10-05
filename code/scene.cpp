@@ -191,16 +191,6 @@ void Scene::updateBottomAccel(int frame) {
             bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
                                     keyFrame.triangleCount);
         }
-        // 本当に初期化時にバッファが必要？
-        // bottomAccels[i] = context.createBottomAccel({
-        //    .vertexBuffer = meshes[i].keyFrames[0].vertexBuffer,
-        //    .indexBuffer = meshes[i].keyFrames[0].indexBuffer,
-        //    .vertexStride = sizeof(rv::Vertex),
-        //    .maxVertexCount = meshes[i].getMaxVertexCount(),
-        //    .maxTriangleCount = meshes[i].getMaxTriangleCount(),
-        //    .triangleCount = meshes[i].keyFrames[0].triangleCount,
-        //});
-        // commandBuffer->buildBottomAccel(bottomAccels[i]);
     }
 }
 

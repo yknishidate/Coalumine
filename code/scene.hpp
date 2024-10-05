@@ -32,8 +32,6 @@ struct Mesh {
 
     std::vector<KeyFrameMesh> keyFrames;
 
-    // rv::BufferHandle vertexBuffer;
-    // rv::BufferHandle indexBuffer;
     int materialIndex = -1;
     rv::AABB aabb;
 };
