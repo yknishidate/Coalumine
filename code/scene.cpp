@@ -129,11 +129,13 @@ void Scene::buildAccels(const rv::Context& context) {
     bottomAccels.resize(meshes.size());
     context.oneTimeSubmit([&](auto commandBuffer) {  //
         for (int i = 0; i < meshes.size(); i++) {
+            // 本当に初期化時にバッファが必要？
             bottomAccels[i] = context.createBottomAccel({
                 .vertexBuffer = meshes[i].keyFrames[0].vertexBuffer,
                 .indexBuffer = meshes[i].keyFrames[0].indexBuffer,
                 .vertexStride = sizeof(rv::Vertex),
-                .vertexCount = meshes[i].keyFrames[0].vertexCount,
+                .maxVertexCount = meshes[i].getMaxVertexCount(),
+                .maxTriangleCount = meshes[i].getMaxTriangleCount(),
                 .triangleCount = meshes[i].keyFrames[0].triangleCount,
             });
             commandBuffer->buildBottomAccel(bottomAccels[i]);
@@ -154,6 +156,9 @@ bool Scene::shouldUpdate(int frame) const {
     for (const auto& node : nodes) {
         if (node.meshIndex != -1) {
             if (node.computeTransformMatrix(frame - 1) != node.computeTransformMatrix(frame)) {
+                return true;
+            }
+            if (meshes[node.meshIndex].hasAnimation()) {
                 return true;
             }
         }
@@ -177,6 +182,28 @@ void Scene::updateAccelInstances(int frame) {
     }
 }
 
+void Scene::updateBottomAccel(int frame) {
+    for (int i = 0; i < meshes.size(); i++) {
+        if (meshes[i].hasAnimation()) {
+            int numKeyFrames = static_cast<int>(meshes[i].keyFrames.size());
+            int index = std::clamp(frame, 0, numKeyFrames);
+            const auto& keyFrame = meshes[i].keyFrames[index];
+            bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
+                                    keyFrame.triangleCount);
+        }
+        // 本当に初期化時にバッファが必要？
+        // bottomAccels[i] = context.createBottomAccel({
+        //    .vertexBuffer = meshes[i].keyFrames[0].vertexBuffer,
+        //    .indexBuffer = meshes[i].keyFrames[0].indexBuffer,
+        //    .vertexStride = sizeof(rv::Vertex),
+        //    .maxVertexCount = meshes[i].getMaxVertexCount(),
+        //    .maxTriangleCount = meshes[i].getMaxTriangleCount(),
+        //    .triangleCount = meshes[i].keyFrames[0].triangleCount,
+        //});
+        // commandBuffer->buildBottomAccel(bottomAccels[i]);
+    }
+}
+
 void Scene::updateTopAccel(int frame) {
     updateAccelInstances(frame);
     topAccel->updateInstances(accelInstances);
@@ -191,6 +218,9 @@ uint32_t Scene::getMaxFrame() const {
     uint32_t frame = 0;
     for (const auto& node : nodes) {
         frame = std::max(frame, static_cast<uint32_t>(node.keyFrames.size()));
+    }
+    for (const auto& mesh : meshes) {
+        frame = std::max(frame, static_cast<uint32_t>(mesh.keyFrames.size()));
     }
     return frame;
 }

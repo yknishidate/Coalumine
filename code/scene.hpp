@@ -12,6 +12,24 @@ struct Mesh {
         uint32_t triangleCount;
     };
 
+    uint32_t getMaxVertexCount() const {
+        uint32_t maxCount = 0;
+        for (const auto& frame : keyFrames) {
+            maxCount = std::max(maxCount, frame.vertexCount);
+        }
+        return maxCount;
+    }
+
+    uint32_t getMaxTriangleCount() const {
+        uint32_t maxCount = 0;
+        for (const auto& frame : keyFrames) {
+            maxCount = std::max(maxCount, frame.triangleCount);
+        }
+        return maxCount;
+    }
+
+    bool hasAnimation() const { return keyFrames.size() > 1; }
+
     std::vector<KeyFrameMesh> keyFrames;
 
     // rv::BufferHandle vertexBuffer;
@@ -112,7 +130,10 @@ public:
 
     bool shouldUpdate(int frame) const;
 
+    // TODO: remove this
     void updateAccelInstances(int frame);
+
+    void updateBottomAccel(int frame);
 
     void updateTopAccel(int frame);
 

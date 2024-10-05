@@ -133,7 +133,19 @@ public:
                 int blurIteration) {
         // Update
         if (lastFrame != frame) {
+            m_scene.updateBottomAccel(frame);
             m_scene.updateTopAccel(frame);
+
+            for (int i = 0; i < m_scene.meshes.size(); i++) {
+                if (m_scene.meshes[i].hasAnimation()) {
+                    commandBuffer->updateBottomAccel(m_scene.bottomAccels[i]);
+                }
+            }
+
+            commandBuffer->memoryBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
+                                         vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
+                                         vk::AccessFlagBits::eAccelerationStructureWriteKHR,
+                                         vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
             commandBuffer->updateTopAccel(m_scene.topAccel);
 
