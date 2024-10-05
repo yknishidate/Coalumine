@@ -292,7 +292,7 @@ void main()
     normal = normalize(normalMatrix * normal);
 
     // Get material
-    vec3 baseColor = vec3(1.0, 0.0, 1.0);
+    vec3 baseColor = vec3(0.8);
     float transmission = 0.0;
     float metallic = 0.0;
     float roughness = 0.0;

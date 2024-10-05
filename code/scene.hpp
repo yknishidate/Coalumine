@@ -23,7 +23,9 @@ struct KeyFrame {
 class Node {
 public:
     int meshIndex = -1;
-    int materialIndex = -1;  // オーバーライド用
+    int overrideMaterialIndex = -1;  // オーバーライド用
+    Node* parentNode = nullptr;
+    std::vector<int> childNodeIndices;  // TODO: use this
     glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
     glm::quat rotation = glm::quat{1.0, 0.0, 0.0, 0.0};
     glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
@@ -31,17 +33,24 @@ public:
 
     // TODO: interpolation by time
     glm::mat4 computeTransformMatrix(int frame) const {
+        glm::mat4 TRS{};
         if (keyFrames.empty()) {
             glm::mat4 T = glm::translate(glm::mat4{1.0}, translation);
             glm::mat4 R = glm::mat4_cast(rotation);
             glm::mat4 S = glm::scale(glm::mat4{1.0}, scale);
-            return T * R * S;
+            TRS = T * R * S;
+        } else {
+            int index = frame % keyFrames.size();
+            glm::mat4 T = glm::translate(glm::mat4{1.0}, keyFrames[index].translation);
+            glm::mat4 R = glm::mat4_cast(keyFrames[index].rotation);
+            glm::mat4 S = glm::scale(glm::mat4{1.0}, keyFrames[index].scale);
+            TRS = T * R * S;
         }
-        int index = frame % keyFrames.size();
-        glm::mat4 T = glm::translate(glm::mat4{1.0}, keyFrames[index].translation);
-        glm::mat4 R = glm::mat4_cast(keyFrames[index].rotation);
-        glm::mat4 S = glm::scale(glm::mat4{1.0}, keyFrames[index].scale);
-        return T * R * S;
+
+        if (!parentNode) {
+            return TRS;
+        }
+        return parentNode->computeTransformMatrix(frame) * TRS;
     }
 
     // TODO: interpolation by time

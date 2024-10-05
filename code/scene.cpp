@@ -44,9 +44,9 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
             data.indexBufferAddress = mesh.indexBuffer->getAddress();
             data.meshAabbMin = mesh.aabb.getMin();
             data.meshAabbMax = mesh.aabb.getMax();
-            data.materialIndex = node.materialIndex == -1
+            data.materialIndex = node.overrideMaterialIndex == -1
                                      ? mesh.materialIndex
-                                     : node.materialIndex;  // マテリアルオーバーライド
+                                     : node.overrideMaterialIndex;  // マテリアルオーバーライド
             data.normalMatrix = node.computeNormalMatrix(0);
         }
         nodeData.push_back(data);

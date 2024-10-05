@@ -1,9 +1,10 @@
 ﻿#include "loader_alembic.hpp"
 #include "scene.hpp"
 
+#include <Imath/ImathVec.h>
+
 #include <Alembic/AbcCoreFactory/All.h>
 #include <Alembic/AbcGeom/All.h>
-#include <Imath/ImathVec.h>
 
 using Alembic::Abc::IArchive;
 using Alembic::Abc::IObject;
@@ -17,12 +18,13 @@ using Alembic::AbcGeom::kWrapExisting;
 using Alembic::AbcGeom::N3fArraySamplePtr;
 using Alembic::AbcGeom::P3fArraySamplePtr;
 using Alembic::AbcGeom::V2fArraySamplePtr;
+using Alembic::AbcGeom::XformSample;
 
 namespace {
 void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     IPolyMeshSchema& meshSchema = mesh.getSchema();
     IPolyMeshSchema::Sample meshSample;
-    meshSchema.get(meshSample, 0);
+    meshSchema.get(meshSample);
 
     // 頂点座標
     P3fArraySamplePtr positions = meshSample.getPositions();
@@ -67,6 +69,7 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
 
     // 法線が存在する場合のみ
     if (normals) {
+        // WARN: 位置は同じだが、法線が違う頂点を扱えていない可能性がある
         if (!isNormalIndexed) {
             for (size_t i = 0; i < numIndices; ++i) {
                 size_t vi = _indices[i];
@@ -75,13 +78,9 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
                 _vertices[vi].normal =
                     glm::vec3((*normals)[ni].x, (*normals)[ni].y, (*normals)[ni].z);
             }
+        } else {
+            // TODO:
         }
-        // size_t numNormals = isNormalIndexed ? numVertices : numIndices;
-        // for (size_t i = 0; i < numNormals; ++i) {
-        //     size_t ni = isNormalIndexed ? _indices[i] : i;
-        //     _vertices[i].normal = glm::vec3((*normals)[ni].x, (*normals)[ni].y,
-        //     (*normals)[ni].z);
-        // }
     }
 
     // Mesh追加
@@ -106,17 +105,13 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     _mesh.vertexCount = static_cast<uint32_t>(_vertices.size());
     _mesh.triangleCount = static_cast<uint32_t>(_indices.size() / 3);
     scene.meshes.push_back(_mesh);
-
-    // とりあえず一緒にNodeも追加
-    Node _node;
-    _node.meshIndex = static_cast<int>(meshIndex);
-    scene.nodes.push_back(_node);
 }
 
 // 再帰的にXformやメッシュを探索する関数
 void processObjectRecursive(Scene& scene,
                             const rv::Context& context,
                             const IObject& object,
+                            int parentNodeIndex,
                             uint32_t depth) {
     for (size_t i = 0; i < object.getNumChildren(); ++i) {
         IObject child = object.getChild(i);
@@ -126,13 +121,39 @@ void processObjectRecursive(Scene& scene,
             std::cout << "Found Xform node: " << child.getName() << std::endl;
             IXform xform(child, kWrapExisting);
 
+            XformSample sample;
+            xform.getSchema().get(sample);
+
+            Node _node;
+            _node.parentNode = &scene.nodes[parentNodeIndex];
+            _node.translation.x = static_cast<float>(sample.getTranslation().x);
+            _node.translation.y = static_cast<float>(sample.getTranslation().y);
+            _node.translation.z = static_cast<float>(sample.getTranslation().z);
+            _node.scale.x = static_cast<float>(sample.getScale().x);
+            _node.scale.y = static_cast<float>(sample.getScale().y);
+            _node.scale.z = static_cast<float>(sample.getScale().z);
+            glm::vec3 rot;
+            rot.x = glm::radians(static_cast<float>(sample.getXRotation()));
+            rot.y = glm::radians(static_cast<float>(sample.getYRotation()));
+            rot.z = glm::radians(static_cast<float>(sample.getZRotation()));
+            _node.rotation = glm::quat(rot);
+            scene.nodes.push_back(_node);
+
+            int nodeIndex = static_cast<int>(scene.nodes.size() - 1);
+
+            // 親ノードに追加
+            scene.nodes[parentNodeIndex].childNodeIndices.push_back(nodeIndex);
+
             // 再帰的にXformの子オブジェクトを処理
-            processObjectRecursive(scene, context, child, ++depth);
+            processObjectRecursive(scene, context, child, nodeIndex, ++depth);
         }
         // メッシュが見つかった場合
         else if (IPolyMesh::matches(child.getHeader())) {
             IPolyMesh mesh(child, kWrapExisting);
             processMesh(scene, context, mesh);
+
+            // 追加したメッシュIDを親ノードに記録
+            scene.nodes[parentNodeIndex].meshIndex = static_cast<int>(scene.meshes.size() - 1);
 
             //// 頂点アニメーションの確認
             // size_t numSamples = meshSchema.getNumSamples();
@@ -172,6 +193,9 @@ void LoaderAlembic::loadFromFile(Scene& scene,
     scene.nodes.reserve(1000);
     scene.meshes.reserve(1000);
 
+    scene.nodes.push_back(Node{});
+
     // トップレベルオブジェクトから再帰的に探索
-    processObjectRecursive(scene, context, topObject, 0);
-}
+    processObjectRecursive(scene, context, topObject, 0, 0);
+    spdlog::info("");
+};

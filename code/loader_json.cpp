@@ -47,7 +47,7 @@ void LoaderJson::loadFromFile(Scene& scene,
         Node node;
         node.meshIndex = meshOffset + object["mesh_index"];
         if (const auto& itr = object.find("material_index"); itr != object.end()) {
-            node.materialIndex = materialOffset + *itr;
+            node.overrideMaterialIndex = materialOffset + *itr;
         }
         if (const auto& itr = object.find("translation"); itr != object.end()) {
             node.translation = {itr->at(0), itr->at(1), itr->at(2)};
