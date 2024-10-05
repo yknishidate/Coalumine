@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 project(coalumine LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
+find_package(Imath CONFIG REQUIRED)
+find_package(Alembic CONFIG REQUIRED)
+
 set(REACTIVE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(reactive)
 
@@ -16,6 +19,8 @@ find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
     reactive
+    Imath::Imath Imath::ImathConfig
+    Alembic::Alembic
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

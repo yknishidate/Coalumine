@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "image_generator.hpp"
+#include "loader_alembic.hpp"
 #include "loader_gltf.hpp"
 #include "loader_obj.hpp"
 #include "scene.hpp"
@@ -33,6 +34,13 @@ void LoaderJson::loadFromFile(Scene& scene,
     // gltf読み込み時点のオフセットを取得しておく
     const int materialOffset = static_cast<int>(scene.materials.size());
     const int meshOffset = static_cast<int>(scene.meshes.size());
+
+    // "alembic"セクションのパース
+    if (const auto& value = jsonData.find("alembic"); value != jsonData.end()) {
+        std::filesystem::path path = filepath.parent_path() / *value;
+
+        LoaderAlembic::loadFromFile(scene, context, path);
+    }
 
     // "objects"セクションのパース
     for (const auto& object : jsonData["objects"]) {
@@ -138,6 +146,9 @@ void LoaderJson::loadFromFile(Scene& scene,
         scene.camera = {rv::Camera::Type::Orbital, 1.0f};
         if (const auto& fovY = camera->find("fov_y"); fovY != camera->end()) {
             scene.camera.setFovY(glm::radians(static_cast<float>(*fovY)));
+        }
+        if (const auto& value = camera->find("distance"); value != camera->end()) {
+            scene.camera.setDistance(static_cast<float>(*value));
         }
         if (const auto& rotation = camera->find("rotation"); rotation != camera->end()) {
             scene.camera.setEulerRotation(

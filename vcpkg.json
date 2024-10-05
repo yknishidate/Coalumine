@@ -21,6 +21,8 @@
       "features": ["vulkan"]
     },
     "tinygltf",
-    "imguizmo"
+    "imguizmo",
+    "alembic",
+    "imath"
   ]
 }
