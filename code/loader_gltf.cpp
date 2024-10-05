@@ -190,24 +190,25 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
             }
 
             auto& mesh = scene.meshes[meshIndex];
-            mesh.vertexBuffer = context.createBuffer({
+            mesh.keyFrames.resize(1);
+            mesh.keyFrames[0].vertexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelVertex,
                 .size = sizeof(rv::Vertex) * vertices.size(),
                 .debugName = std::format("vertexBuffers[{}]", scene.meshes.size()).c_str(),
             });
-            mesh.indexBuffer = context.createBuffer({
+            mesh.keyFrames[0].indexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelIndex,
                 .size = sizeof(uint32_t) * indices.size(),
                 .debugName = std::format("indexBuffers[{}]", scene.meshes.size()).c_str(),
             });
 
             context.oneTimeSubmit([&](auto commandBuffer) {
-                commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
-                commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
+                commandBuffer->copyBuffer(mesh.keyFrames[0].vertexBuffer, vertices.data());
+                commandBuffer->copyBuffer(mesh.keyFrames[0].indexBuffer, indices.data());
             });
 
-            mesh.vertexCount = static_cast<uint32_t>(vertices.size());
-            mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+            mesh.keyFrames[0].vertexCount = static_cast<uint32_t>(vertices.size());
+            mesh.keyFrames[0].triangleCount = static_cast<uint32_t>(indices.size() / 3);
             mesh.materialIndex = gltfPrimitive.material;
             meshIndex++;
         }

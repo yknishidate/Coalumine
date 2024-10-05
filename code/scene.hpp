@@ -5,10 +5,17 @@
 #include "../shader/share.h"
 
 struct Mesh {
-    rv::BufferHandle vertexBuffer;
-    rv::BufferHandle indexBuffer;
-    uint32_t vertexCount;
-    uint32_t triangleCount;
+    struct KeyFrameMesh {
+        rv::BufferHandle vertexBuffer;
+        rv::BufferHandle indexBuffer;
+        uint32_t vertexCount;
+        uint32_t triangleCount;
+    };
+
+    std::vector<KeyFrameMesh> keyFrames;
+
+    // rv::BufferHandle vertexBuffer;
+    // rv::BufferHandle indexBuffer;
     int materialIndex = -1;
     rv::AABB aabb;
 };

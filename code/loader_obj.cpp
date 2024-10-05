@@ -103,12 +103,13 @@ void LoaderObj::loadFromFile(Scene& scene,
             indices.push_back(uniqueVertices[vertex]);
         }
 
-        mesh.vertexBuffer = context.createBuffer({
+        mesh.keyFrames.resize(1);
+        mesh.keyFrames[0].vertexBuffer = context.createBuffer({
             .usage = rv::BufferUsage::AccelVertex,
             .size = sizeof(rv::Vertex) * vertices.size(),
             .debugName = std::format("vertexBuffers[{}]", scene.meshes.size()).c_str(),
         });
-        mesh.indexBuffer = context.createBuffer({
+        mesh.keyFrames[0].indexBuffer = context.createBuffer({
             .usage = rv::BufferUsage::AccelIndex,
             .size = sizeof(uint32_t) * indices.size(),
             .debugName = std::format("indexBuffers[{}]", scene.meshes.size()).c_str(),
@@ -116,12 +117,12 @@ void LoaderObj::loadFromFile(Scene& scene,
         mesh.aabb = rv::AABB(aabbMin, aabbMax);
 
         context.oneTimeSubmit([&](auto commandBuffer) {
-            commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
-            commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
+            commandBuffer->copyBuffer(mesh.keyFrames[0].vertexBuffer, vertices.data());
+            commandBuffer->copyBuffer(mesh.keyFrames[0].indexBuffer, indices.data());
         });
 
-        mesh.vertexCount = static_cast<uint32_t>(vertices.size());
-        mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+        mesh.keyFrames[0].vertexCount = static_cast<uint32_t>(vertices.size());
+        mesh.keyFrames[0].triangleCount = static_cast<uint32_t>(indices.size() / 3);
         mesh.materialIndex = shape.mesh.material_ids[0];
         if (mesh.materialIndex == -1) {
             mesh.materialIndex = defaultMaterialIndex;
@@ -180,12 +181,13 @@ void LoaderObj::loadMesh(Mesh& mesh,
         indices.push_back(uniqueVertices[vertex]);
     }
 
-    mesh.vertexBuffer = context.createBuffer({
+    mesh.keyFrames.resize(1);
+    mesh.keyFrames[0].vertexBuffer = context.createBuffer({
         .usage = rv::BufferUsage::AccelVertex,
         .size = sizeof(rv::Vertex) * vertices.size(),
         .debugName = "vertexBuffer",
     });
-    mesh.indexBuffer = context.createBuffer({
+    mesh.keyFrames[0].indexBuffer = context.createBuffer({
         .usage = rv::BufferUsage::AccelIndex,
         .size = sizeof(uint32_t) * indices.size(),
         .debugName = "indexBuffer",
@@ -193,11 +195,11 @@ void LoaderObj::loadMesh(Mesh& mesh,
     mesh.aabb = rv::AABB(aabbMin, aabbMax);
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->copyBuffer(mesh.vertexBuffer, vertices.data());
-        commandBuffer->copyBuffer(mesh.indexBuffer, indices.data());
+        commandBuffer->copyBuffer(mesh.keyFrames[0].vertexBuffer, vertices.data());
+        commandBuffer->copyBuffer(mesh.keyFrames[0].indexBuffer, indices.data());
     });
 
-    mesh.vertexCount = static_cast<uint32_t>(vertices.size());
-    mesh.triangleCount = static_cast<uint32_t>(indices.size() / 3);
+    mesh.keyFrames[0].vertexCount = static_cast<uint32_t>(vertices.size());
+    mesh.keyFrames[0].triangleCount = static_cast<uint32_t>(indices.size() / 3);
     mesh.materialIndex = -1;
 }

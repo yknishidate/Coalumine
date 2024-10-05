@@ -40,8 +40,8 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
         NodeData data;
         if (node.meshIndex != -1) {
             const auto& mesh = meshes[node.meshIndex];
-            data.vertexBufferAddress = mesh.vertexBuffer->getAddress();
-            data.indexBufferAddress = mesh.indexBuffer->getAddress();
+            data.vertexBufferAddress = mesh.keyFrames[0].vertexBuffer->getAddress();
+            data.indexBufferAddress = mesh.keyFrames[0].indexBuffer->getAddress();
             data.meshAabbMin = mesh.aabb.getMin();
             data.meshAabbMax = mesh.aabb.getMax();
             data.materialIndex = node.overrideMaterialIndex == -1
@@ -130,11 +130,11 @@ void Scene::buildAccels(const rv::Context& context) {
     context.oneTimeSubmit([&](auto commandBuffer) {  //
         for (int i = 0; i < meshes.size(); i++) {
             bottomAccels[i] = context.createBottomAccel({
-                .vertexBuffer = meshes[i].vertexBuffer,
-                .indexBuffer = meshes[i].indexBuffer,
+                .vertexBuffer = meshes[i].keyFrames[0].vertexBuffer,
+                .indexBuffer = meshes[i].keyFrames[0].indexBuffer,
                 .vertexStride = sizeof(rv::Vertex),
-                .vertexCount = meshes[i].vertexCount,
-                .triangleCount = meshes[i].triangleCount,
+                .vertexCount = meshes[i].keyFrames[0].vertexCount,
+                .triangleCount = meshes[i].keyFrames[0].triangleCount,
             });
             commandBuffer->buildBottomAccel(bottomAccels[i]);
         }

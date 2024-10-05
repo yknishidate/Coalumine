@@ -21,11 +21,10 @@ using Alembic::AbcGeom::V2fArraySamplePtr;
 using Alembic::AbcGeom::XformSample;
 
 namespace {
-void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
-    IPolyMeshSchema& meshSchema = mesh.getSchema();
-    IPolyMeshSchema::Sample meshSample;
-    meshSchema.get(meshSample);
-
+void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
+                            const IPolyMeshSchema::Sample& meshSample,
+                            std::vector<rv::Vertex>& _vertices,
+                            std::vector<uint32_t>& _indices) {
     // 頂点座標
     P3fArraySamplePtr positions = meshSample.getPositions();
     size_t numVertices = positions->size();
@@ -55,12 +54,12 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     // インデックス（フェイスの頂点インデックス情報）
     Int32ArraySamplePtr indices = meshSample.getFaceIndices();
     size_t numIndices = indices->size();
-    std::vector<uint32_t> _indices(numIndices);
+    _indices.resize(numIndices);
     for (size_t i = 0; i < numIndices; ++i) {
         _indices[i] = (*indices)[i];
     }
 
-    std::vector<rv::Vertex> _vertices(numVertices);
+    _vertices.resize(numVertices);
 
     // 頂点情報をrv::Vertexに格納
     for (size_t i = 0; i < numVertices; ++i) {
@@ -82,28 +81,47 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
             // TODO:
         }
     }
+}
 
-    // Mesh追加
+void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
+    IPolyMeshSchema& meshSchema = mesh.getSchema();
+
+    size_t numSamples = meshSchema.getNumSamples();
+    spdlog::info("numSamples: {}", numSamples);
+
     size_t meshIndex = scene.meshes.size();
     Mesh _mesh{};
-    _mesh.vertexBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::AccelVertex,
-        .size = sizeof(rv::Vertex) * _vertices.size(),
-        .debugName = std::format("vertexBuffers[{}]", meshIndex).c_str(),
-    });
-    _mesh.indexBuffer = context.createBuffer({
-        .usage = rv::BufferUsage::AccelIndex,
-        .size = sizeof(uint32_t) * _indices.size(),
-        .debugName = std::format("indexBuffers[{}]", meshIndex).c_str(),
-    });
 
-    context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->copyBuffer(_mesh.vertexBuffer, _vertices.data());
-        commandBuffer->copyBuffer(_mesh.indexBuffer, _indices.data());
-    });
+    _mesh.keyFrames.resize(numSamples);
+    for (size_t i = 0; i < numSamples; i++) {
+        IPolyMeshSchema::Sample meshSample;
+        meshSchema.get(meshSample, i);
 
-    _mesh.vertexCount = static_cast<uint32_t>(_vertices.size());
-    _mesh.triangleCount = static_cast<uint32_t>(_indices.size() / 3);
+        std::vector<rv::Vertex> vertices;
+        std::vector<uint32_t> indices;
+        loadVerticesAndIndices(meshSchema, meshSample, vertices, indices);
+
+        // Mesh追加
+        _mesh.keyFrames[i].vertexBuffer = context.createBuffer({
+            .usage = rv::BufferUsage::AccelVertex,
+            .size = sizeof(rv::Vertex) * vertices.size(),
+            .debugName = std::format("vertexBuffers[{}]", meshIndex).c_str(),
+        });
+        _mesh.keyFrames[i].indexBuffer = context.createBuffer({
+            .usage = rv::BufferUsage::AccelIndex,
+            .size = sizeof(uint32_t) * indices.size(),
+            .debugName = std::format("indexBuffers[{}]", meshIndex).c_str(),
+        });
+
+        context.oneTimeSubmit([&](auto commandBuffer) {
+            commandBuffer->copyBuffer(_mesh.keyFrames[i].vertexBuffer, vertices.data());
+            commandBuffer->copyBuffer(_mesh.keyFrames[i].indexBuffer, indices.data());
+        });
+
+        _mesh.keyFrames[i].vertexCount = static_cast<uint32_t>(vertices.size());
+        _mesh.keyFrames[i].triangleCount = static_cast<uint32_t>(indices.size() / 3);
+    }
+
     scene.meshes.push_back(_mesh);
 }
 
