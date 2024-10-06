@@ -4,6 +4,8 @@
 
 #include "../shader/share.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 struct Mesh {
     struct KeyFrameMesh {
         rv::BufferHandle vertexBuffer;
@@ -76,14 +78,8 @@ public:
         return parentNode->computeTransformMatrix(frame) * TRS;
     }
 
-    // TODO: interpolation by time
     glm::mat4 computeNormalMatrix(int frame) const {
-        if (keyFrames.empty()) {
-            return glm::mat4{1.0};
-        }
-
-        int index = frame % keyFrames.size();
-        return glm::mat4_cast(keyFrames[index].rotation);
+        return glm::mat4{glm::inverseTranspose(glm::mat3{computeTransformMatrix(frame)})};
     }
 };
 

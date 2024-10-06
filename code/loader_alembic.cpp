@@ -14,6 +14,7 @@ using Alembic::AbcGeom::IPolyMesh;
 using Alembic::AbcGeom::IPolyMeshSchema;
 using Alembic::AbcGeom::IV2fGeomParam;
 using Alembic::AbcGeom::IXform;
+using Alembic::AbcGeom::IXformSchema;
 using Alembic::AbcGeom::kWrapExisting;
 using Alembic::AbcGeom::N3fArraySamplePtr;
 using Alembic::AbcGeom::P3fArraySamplePtr;
@@ -138,23 +139,47 @@ void processObjectRecursive(Scene& scene,
         if (IXform::matches(child.getHeader())) {
             std::cout << "Found Xform node: " << child.getName() << std::endl;
             IXform xform(child, kWrapExisting);
+            IXformSchema xformSchema = xform.getSchema();
 
-            XformSample sample;
-            xform.getSchema().get(sample);
+            size_t numSamples = xformSchema.getNumSamples();
 
             Node _node;
             _node.parentNode = &scene.nodes[parentNodeIndex];
-            _node.translation.x = static_cast<float>(sample.getTranslation().x);
-            _node.translation.y = static_cast<float>(sample.getTranslation().y);
-            _node.translation.z = static_cast<float>(sample.getTranslation().z);
-            _node.scale.x = static_cast<float>(sample.getScale().x);
-            _node.scale.y = static_cast<float>(sample.getScale().y);
-            _node.scale.z = static_cast<float>(sample.getScale().z);
-            glm::vec3 rot;
-            rot.x = glm::radians(static_cast<float>(sample.getXRotation()));
-            rot.y = glm::radians(static_cast<float>(sample.getYRotation()));
-            rot.z = glm::radians(static_cast<float>(sample.getZRotation()));
-            _node.rotation = glm::quat(rot);
+            if (numSamples == 1) {
+                XformSample sample;
+                xformSchema.get(sample, i);
+
+                _node.translation.x = static_cast<float>(sample.getTranslation().x);
+                _node.translation.y = static_cast<float>(sample.getTranslation().y);
+                _node.translation.z = static_cast<float>(sample.getTranslation().z);
+                _node.scale.x = static_cast<float>(sample.getScale().x);
+                _node.scale.y = static_cast<float>(sample.getScale().y);
+                _node.scale.z = static_cast<float>(sample.getScale().z);
+                glm::vec3 rot;
+                rot.x = glm::radians(static_cast<float>(sample.getXRotation()));
+                rot.y = glm::radians(static_cast<float>(sample.getYRotation()));
+                rot.z = glm::radians(static_cast<float>(sample.getZRotation()));
+                _node.rotation = glm::quat(rot);
+            } else {
+                _node.keyFrames.resize(numSamples);
+                for (size_t j = 0; j < numSamples; j++) {
+                    XformSample sample;
+                    xformSchema.get(sample, j);
+
+                    auto& keyFrame = _node.keyFrames[j];
+                    keyFrame.translation.x = static_cast<float>(sample.getTranslation().x);
+                    keyFrame.translation.y = static_cast<float>(sample.getTranslation().y);
+                    keyFrame.translation.z = static_cast<float>(sample.getTranslation().z);
+                    keyFrame.scale.x = static_cast<float>(sample.getScale().x);
+                    keyFrame.scale.y = static_cast<float>(sample.getScale().y);
+                    keyFrame.scale.z = static_cast<float>(sample.getScale().z);
+                    glm::vec3 rot;
+                    rot.x = glm::radians(static_cast<float>(sample.getXRotation()));
+                    rot.y = glm::radians(static_cast<float>(sample.getYRotation()));
+                    rot.z = glm::radians(static_cast<float>(sample.getZRotation()));
+                    keyFrame.rotation = glm::quat(rot);
+                }
+            }
             scene.nodes.push_back(_node);
 
             int nodeIndex = static_cast<int>(scene.nodes.size() - 1);
@@ -172,30 +197,6 @@ void processObjectRecursive(Scene& scene,
 
             // 追加したメッシュIDを親ノードに記録
             scene.nodes[parentNodeIndex].meshIndex = static_cast<int>(scene.meshes.size() - 1);
-
-            //// 頂点アニメーションの確認
-            // size_t numSamples = meshSchema.getNumSamples();
-            // if (numSamples > 1) {
-            //     // std::cout << "Mesh has vertex animations with " << numSamples << " samples."
-            //     std::cout << std::format("{:<{}}Num Samples: {}", "", depth, numSamples)
-            //               << std::endl;
-            //
-            //     // 複数のサンプルを取得して出力
-            //     for (size_t frame = 1; frame < numSamples; ++frame) {
-            //         meshSchema.get(meshSample, frame);
-            //         P3fArraySamplePtr animVertices = meshSample.getPositions();
-            //
-            //         // std::cout << "Frame " << frame << std::endl;
-            //         //  for (size_t j = 0; j < numVertices; ++j) {
-            //         //      const Imath::V3f& animVertex = (*animVertices)[j];
-            //         //      std::cout << "Vertex " << j << ": (" << animVertex.x << ", " <<
-            //         //      animVertex.y
-            //         //                << ", " << animVertex.z << ")" << std::endl;
-            //         //  }
-            //     }
-            // } else {
-            //     std::cout << "Mesh does not have vertex animations." << std::endl;
-            // }
         }
     }
 }
