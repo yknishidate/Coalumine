@@ -12,45 +12,47 @@ using Alembic::AbcGeom::IN3fGeomParam;
 using Alembic::AbcGeom::Int32ArraySamplePtr;
 using Alembic::AbcGeom::IPolyMesh;
 using Alembic::AbcGeom::IPolyMeshSchema;
+using Alembic::AbcGeom::ISampleSelector;
 using Alembic::AbcGeom::IV2fGeomParam;
 using Alembic::AbcGeom::IXform;
 using Alembic::AbcGeom::IXformSchema;
 using Alembic::AbcGeom::kWrapExisting;
 using Alembic::AbcGeom::N3fArraySamplePtr;
 using Alembic::AbcGeom::P3fArraySamplePtr;
+using Alembic::AbcGeom::UInt32ArraySamplePtr;
 using Alembic::AbcGeom::V2fArraySamplePtr;
 using Alembic::AbcGeom::XformSample;
 
 namespace {
 void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
-                            const IPolyMeshSchema::Sample& meshSample,
+                            size_t frame,
                             std::vector<rv::Vertex>& _vertices,
                             std::vector<uint32_t>& _indices) {
     // 頂点座標
+    IPolyMeshSchema::Sample meshSample;
+    meshSchema.get(meshSample, frame);
     P3fArraySamplePtr positions = meshSample.getPositions();
     size_t numVertices = positions->size();
 
     // 法線
     N3fArraySamplePtr normals;
-    bool isNormalIndexed = false;
     if (meshSchema.getNormalsParam().valid()) {
         IN3fGeomParam normalsParam = meshSchema.getNormalsParam();
-        isNormalIndexed = normalsParam.isIndexed();
         IN3fGeomParam::Sample normalsSample;
-        normalsParam.getExpanded(normalsSample);
+        normalsParam.getExpanded(normalsSample, frame);
         normals = normalsSample.getVals();
     }
 
-    // テクスチャ座標
-    V2fArraySamplePtr uv;
-    bool isUvIndexed;
-    if (meshSchema.getUVsParam().valid()) {
-        IV2fGeomParam uvsParam = meshSchema.getUVsParam();
-        isUvIndexed = uvsParam.isIndexed();
-        IV2fGeomParam::Sample uvSample;
-        uvsParam.getExpanded(uvSample);
-        uv = uvSample.getVals();
-    }
+    //// テクスチャ座標
+    // V2fArraySamplePtr uv;
+    // bool isUvIndexed = false;
+    // if (meshSchema.getUVsParam().valid()) {
+    //     IV2fGeomParam uvsParam = meshSchema.getUVsParam();
+    //     isUvIndexed = uvsParam.isIndexed();
+    //     IV2fGeomParam::Sample uvSample;
+    //     uvsParam.getExpanded(uvSample, frame);
+    //     uv = uvSample.getVals();
+    // }
 
     // インデックス（フェイスの頂点インデックス情報）
     Int32ArraySamplePtr indices = meshSample.getFaceIndices();
@@ -67,19 +69,52 @@ void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
         _vertices[i].pos = glm::vec3((*positions)[i].x, (*positions)[i].y, (*positions)[i].z);
     }
 
-    // 法線が存在する場合のみ
+    // 法線データがある場合の処理
     if (normals) {
-        // WARN: 位置は同じだが、法線が違う頂点を扱えていない可能性がある
-        if (!isNormalIndexed) {
-            for (size_t i = 0; i < numIndices; ++i) {
-                size_t vi = _indices[i];
-                size_t ni = i;
-
-                _vertices[vi].normal =
-                    glm::vec3((*normals)[ni].x, (*normals)[ni].y, (*normals)[ni].z);
+        switch (meshSchema.getNormalsParam().getScope()) {
+            case Alembic::AbcGeom::kFacevaryingScope: {
+                // 法線は各フェイスの頂点ごとに異なる（フェイス頂点に沿った法線）
+                // assert(numIndices == normals->m_dimensions.m_vector[0]);
+                assert(numIndices == normals->getDimensions().numPoints());
+                for (size_t i = 0; i < numIndices; ++i) {
+                    size_t vi = _indices[i];
+                    // if (glm::length(_vertices[vi].normal) > 0.0f) {
+                    //     glm::vec3 normal = _vertices[vi].normal;
+                    //     normal.x += (*normals)[i].x;
+                    //     normal.y += (*normals)[i].y;
+                    //     normal.z += (*normals)[i].z;
+                    //     normal = glm::normalize(normal * 0.5f);
+                    //
+                    //     _vertices[vi].normal = normal;
+                    //     // glm::vec3 diff =
+                    //     //     _vertices[vi].normal -
+                    //     //     glm::vec3((*normals)[i].x, (*normals)[i].y, (*normals)[i].z);
+                    //     // if (glm::length(diff) > 0.1f) {
+                    //     //     spdlog::warn("Override: {} -> {}",
+                    //     //     glm::to_string(_vertices[vi].normal),
+                    //     //                  glm::to_string(glm::vec3((*normals)[i].x,
+                    //     //                  (*normals)[i].y,
+                    //     //                                           (*normals)[i].z)));
+                    //     // }
+                    // } else {
+                    _vertices[vi].normal =
+                        glm::vec3((*normals)[i].x, (*normals)[i].y, (*normals)[i].z);
+                    //}
+                    assert(std::abs(glm::length(_vertices[vi].normal) - 1.0f) < 0.001);
+                }
+                break;
             }
-        } else {
-            // TODO:
+            case Alembic::AbcGeom::kVaryingScope:
+            case Alembic::AbcGeom::kVertexScope: {
+                // 法線は頂点ごとに一つ（通常の頂点ごとの法線）
+                for (size_t i = 0; i < numVertices; ++i) {
+                    _vertices[i].normal =
+                        glm::vec3((*normals)[i].x, (*normals)[i].y, (*normals)[i].z);
+                }
+                break;
+            }
+            default:
+                break;
         }
     }
 }
@@ -95,12 +130,9 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
 
     _mesh.keyFrames.resize(numSamples);
     for (size_t i = 0; i < numSamples; i++) {
-        IPolyMeshSchema::Sample meshSample;
-        meshSchema.get(meshSample, i);
-
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
-        loadVerticesAndIndices(meshSchema, meshSample, vertices, indices);
+        loadVerticesAndIndices(meshSchema, i, vertices, indices);
 
         // Mesh追加
         _mesh.keyFrames[i].vertexBuffer = context.createBuffer({

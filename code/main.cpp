@@ -108,8 +108,8 @@ public:
 
             // Animation
             ImGui::Checkbox("Play animation", &playAnimation);
+            const uint32_t maxFrame = m_renderer->m_scene.getMaxFrame();
             if (playAnimation) {
-                const uint32_t maxFrame = m_renderer->m_scene.getMaxFrame();
                 if (maxFrame > 0) {
                     frame = (frame + 1) % maxFrame;
                     m_renderer->reset();
@@ -117,7 +117,9 @@ public:
             }
 
             // Frame
-            ImGui::Text("Frame: %d", frame);
+            if (ImGui::SliderInt("Frame", &frame, 0, maxFrame - 1)) {
+                m_renderer->reset();
+            }
 
             // GPU time
             float gpuTime = pushConstants.accumCount > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
@@ -219,25 +221,12 @@ public:
             }
 
             // Camera
-            if (ImGui::CollapsingHeader("Camera")) {
-                ImGui::Indent(16.0f);
-                auto& camera = m_renderer->m_scene.camera;
-                float fovY = glm::degrees(camera.getFovY());
-                if (ImGui::DragFloat("FOV Y", &fovY, 1.0f, 0.0f, 180.0f)) {
-                    camera.setFovY(glm::radians(fovY));
-                    m_renderer->reset();
-                }
-                if (ImGui::DragFloat("Lens radius", &camera.m_lensRadius, 0.01f, 0.0f, 1.0f)) {
-                    m_renderer->reset();
-                }
-                if (ImGui::DragFloat("Object distance", &camera.m_objectDistance, 0.01f, 0.0f)) {
-                    m_renderer->reset();
-                }
-                ImGui::Unindent(16.0f);
-            }
+            m_renderer->m_scene.camera.drawAttributes();
 
             // Memo
-            ImGui::InputTextMultiline("Memo", m_inputTextBuffer, sizeof(m_inputTextBuffer));
+            if (ImGui::CollapsingHeader("Memo")) {
+                ImGui::InputTextMultiline("Text", m_inputTextBuffer, sizeof(m_inputTextBuffer));
+            }
 
             ImGui::End();
         }

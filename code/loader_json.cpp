@@ -154,6 +154,9 @@ void LoaderJson::loadFromFile(Scene& scene,
             scene.camera.setEulerRotation(
                 glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
         }
+        if (const auto& values = camera->find("target"); values != camera->end()) {
+            scene.camera.setTarget(glm::vec3(values->at(0), values->at(1), values->at(2)));
+        }
         if (const auto& speed = camera->find("speed"); speed != camera->end()) {
             scene.camera.setDollySpeed(static_cast<float>(*speed));
         }
