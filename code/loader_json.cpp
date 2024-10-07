@@ -125,6 +125,12 @@ void LoaderJson::loadFromFile(Scene& scene,
         scene.materials.push_back(mat);
     }
 
+    for (const auto& material_override : jsonData["material_overrides"]) {
+        int nodeIndex = material_override["node_index"];
+        int materialIndex = material_override["material_index"];
+        scene.nodes[nodeIndex].overrideMaterialIndex = materialIndex;
+    }
+
     if (const auto& defaultMat = jsonData.find("default_material"); defaultMat != jsonData.end()) {
         if (defaultMat->at("type") == "random") {
             const auto& matIndices = defaultMat->at("material_indices");
@@ -159,6 +165,12 @@ void LoaderJson::loadFromFile(Scene& scene,
         }
         if (const auto& speed = camera->find("speed"); speed != camera->end()) {
             scene.camera.setDollySpeed(static_cast<float>(*speed));
+        }
+        if (const auto& value = camera->find("lens_radius"); value != camera->end()) {
+            scene.camera.m_lensRadius = static_cast<float>(*value);
+        }
+        if (const auto& value = camera->find("object_distance"); value != camera->end()) {
+            scene.camera.m_objectDistance = static_cast<float>(*value);
         }
     }
 

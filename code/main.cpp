@@ -128,7 +128,7 @@ public:
             // Save button
             if (ImGui::Button("Save image")) {
                 m_imageWriter->wait(0);
-                m_imageWriter->writeImage(0, frame, pushConstants.accumCount);
+                m_imageWriter->writeImage(0, frame);
             }
 
             // Recompile button
@@ -167,6 +167,9 @@ public:
                 // Dome light
                 if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0,
                                        "%.0f")) {
+                    m_renderer->reset();
+                }
+                if (ImGui::ColorEdit3("Env light color", &pushConstants.envLightColor[0])) {
                     m_renderer->reset();
                 }
                 if (ImGui::SliderFloat("Env light intensity", &pushConstants.envLightIntensity,
@@ -221,7 +224,9 @@ public:
             }
 
             // Camera
-            m_renderer->m_scene.camera.drawAttributes();
+            if (m_renderer->m_scene.camera.drawAttributes()) {
+                m_renderer->reset();
+            }
 
             // Memo
             if (ImGui::CollapsingHeader("Memo")) {
@@ -230,8 +235,6 @@ public:
 
             ImGui::End();
         }
-
-        m_renderer->m_scene.updateMaterialBuffer(commandBuffer);
 
         commandBuffer->beginTimestamp(m_gpuTimer);
         m_renderer->render(commandBuffer, frame, enableBloom, blurIteration);
@@ -336,12 +339,15 @@ public:
 
         m_renderer = std::make_unique<Renderer>(m_context, width, height, scenePath);
         m_imageWriter = std::make_unique<ImageWriter>(m_context, width, height, m_imageCount);
+
+        m_totalFrames = m_renderer->m_scene.getMaxFrame();
     }
 
     void run() {
         rv::CPUTimer timer;
 
         m_renderer->m_pushConstants.sampleCount = 128;
+        m_renderer->m_pushConstants.enableAccum = false;
         for (uint32_t i = 0; i < m_totalFrames; i++) {
             m_imageWriter->wait(m_imageIndex);
 
@@ -350,10 +356,9 @@ public:
             auto& commandBuffer = m_commandBuffers[m_imageIndex];
             commandBuffer->begin();
 
-            bool playAnimation = true;
             bool enableBloom = false;
             int blurIteration = 32;
-            m_renderer->render(commandBuffer, playAnimation, enableBloom, blurIteration);
+            m_renderer->render(commandBuffer, frame, enableBloom, blurIteration);
 
             commandBuffer->imageBarrier(
                 m_renderer->m_compositePass.finalImageRGBA,  //
@@ -373,9 +378,10 @@ public:
             m_context.submit(commandBuffer);
             m_context.getQueue().waitIdle();
 
-            m_imageWriter->writeImage(m_imageIndex, frame, m_renderer->m_pushConstants.accumCount);
+            m_imageWriter->writeImage(m_imageIndex, frame);
 
             m_imageIndex = (m_imageIndex + 1) % m_imageCount;
+            frame++;
         }
 
         m_context.getDevice().waitIdle();
@@ -391,7 +397,7 @@ private:
 
     uint32_t m_width;
     uint32_t m_height;
-    uint32_t m_totalFrames = 180;
+    uint32_t m_totalFrames = 0;
     uint32_t m_imageCount = 3;
     uint32_t m_imageIndex = 0;
     std::vector<rv::CommandBufferHandle> m_commandBuffers{};

@@ -74,33 +74,11 @@ void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
         switch (meshSchema.getNormalsParam().getScope()) {
             case Alembic::AbcGeom::kFacevaryingScope: {
                 // 法線は各フェイスの頂点ごとに異なる（フェイス頂点に沿った法線）
-                // assert(numIndices == normals->m_dimensions.m_vector[0]);
                 assert(numIndices == normals->getDimensions().numPoints());
                 for (size_t i = 0; i < numIndices; ++i) {
                     size_t vi = _indices[i];
-                    // if (glm::length(_vertices[vi].normal) > 0.0f) {
-                    //     glm::vec3 normal = _vertices[vi].normal;
-                    //     normal.x += (*normals)[i].x;
-                    //     normal.y += (*normals)[i].y;
-                    //     normal.z += (*normals)[i].z;
-                    //     normal = glm::normalize(normal * 0.5f);
-                    //
-                    //     _vertices[vi].normal = normal;
-                    //     // glm::vec3 diff =
-                    //     //     _vertices[vi].normal -
-                    //     //     glm::vec3((*normals)[i].x, (*normals)[i].y, (*normals)[i].z);
-                    //     // if (glm::length(diff) > 0.1f) {
-                    //     //     spdlog::warn("Override: {} -> {}",
-                    //     //     glm::to_string(_vertices[vi].normal),
-                    //     //                  glm::to_string(glm::vec3((*normals)[i].x,
-                    //     //                  (*normals)[i].y,
-                    //     //                                           (*normals)[i].z)));
-                    //     // }
-                    // } else {
                     _vertices[vi].normal =
                         glm::vec3((*normals)[i].x, (*normals)[i].y, (*normals)[i].z);
-                    //}
-                    assert(std::abs(glm::length(_vertices[vi].normal) - 1.0f) < 0.001);
                 }
                 break;
             }
@@ -133,6 +111,9 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
         loadVerticesAndIndices(meshSchema, i, vertices, indices);
+        if (indices.empty()) {
+            continue;
+        }
 
         // Mesh追加
         _mesh.keyFrames[i].vertexBuffer = context.createBuffer({

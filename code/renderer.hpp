@@ -132,6 +132,8 @@ public:
                 bool enableBloom,
                 int blurIteration) {
         // Update
+        m_scene.updateMaterialBuffer(commandBuffer);
+
         if (lastFrame != frame) {
             m_scene.updateBottomAccel(frame);
             m_scene.updateTopAccel(frame);

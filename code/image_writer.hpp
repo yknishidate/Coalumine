@@ -27,9 +27,9 @@ public:
         }
     }
 
-    void writeImage(uint32_t index, uint32_t frame, uint32_t accumCount) {
+    void writeImage(uint32_t index, uint32_t frame) {
         auto* pixels = static_cast<uint8_t*>(m_imageSavingBuffers[index]->map());
-        std::string img = std::format("{:03}_{:04}.jpg", frame, accumCount);
+        std::string img = std::format("{:03}.jpg", frame);
         m_writeTasks[index] = std::async(std::launch::async, [=]() {
             stbi_write_jpg(img.c_str(), m_width, m_height, 4, pixels, 90);
             spdlog::info("Saved: {}", frame);
