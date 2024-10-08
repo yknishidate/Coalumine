@@ -345,7 +345,7 @@ public:
     }
 
     void run() {
-        rv::CPUTimer timer;
+        rv::CPUTimer renderTimer;
 
         m_renderer->m_pushConstants.sampleCount = 128;
         m_renderer->m_pushConstants.enableAccum = false;
@@ -383,15 +383,23 @@ public:
 
             m_imageIndex = (m_imageIndex + 1) % m_imageCount;
             frame++;
+
+            if (timer.elapsedInMilli() > kTimeLimit) {
+                spdlog::warn("Time over...: {}", timer.elapsedInMilli());
+                break;
+            }
         }
 
         m_context.getDevice().waitIdle();
         m_imageWriter->waitAll();
 
-        spdlog::info("Total time: {} s", timer.elapsedInMilli() / 1000);
+        spdlog::info("Total render time: {} s", renderTimer.elapsedInMilli() / 1000);
     }
 
 private:
+    static constexpr float kTimeLimit = 250000.0f;  // [ms]
+    rv::CPUTimer timer;
+
     rv::Context m_context;
     std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<ImageWriter> m_imageWriter;
