@@ -185,7 +185,9 @@ public:
 
         m_compositePass.render(commandBuffer, m_width / 8, m_height / 8, m_compositeInfo);
 
-        m_pushConstants.accumCount++;
+        if (m_pushConstants.enableAccum) {
+            m_pushConstants.accumCount++;
+        }
     }
 
     uint32_t m_width;

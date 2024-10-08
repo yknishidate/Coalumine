@@ -123,6 +123,7 @@ public:
 
             // GPU time
             float gpuTime = pushConstants.accumCount > 1 ? m_gpuTimer->elapsedInMilli() : 0.0f;
+            ImGui::Text("Accum count: %d", pushConstants.accumCount);
             ImGui::Text("GPU time: %f ms", gpuTime);
 
             // Save button
