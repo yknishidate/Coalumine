@@ -347,8 +347,9 @@ public:
     void run() {
         rv::CPUTimer renderTimer;
 
-        m_renderer->m_pushConstants.sampleCount = 128;
+        m_renderer->m_pushConstants.sampleCount = 256;
         m_renderer->m_pushConstants.enableAccum = false;
+        m_renderer->m_compositeInfo.exposure = 1.8f;
         for (uint32_t i = 0; i < m_totalFrames; i++) {
             m_imageWriter->wait(m_imageIndex);
 
@@ -436,7 +437,7 @@ int main(int argc, char* argv[]) {
             WindowApp app{true, 1920, 1080, scenePath};
             app.run();
         } else if (mode == "headless" || mode == "h") {
-            HeadlessApp app{false, 1920, 1080, scenePath};
+            HeadlessApp app{false, 1280, 720, scenePath};
             app.run();
         } else {
             throw std::runtime_error("Invalid mode. Please input \"window\" or \"headless\".");
