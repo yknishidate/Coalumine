@@ -27,7 +27,8 @@ namespace {
 void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
                             size_t frame,
                             std::vector<rv::Vertex>& _vertices,
-                            std::vector<uint32_t>& _indices) {
+                            std::vector<uint32_t>& _indices,
+                            rv::AABB& aabb) {
     // 頂点座標
     IPolyMeshSchema::Sample meshSample;
     meshSchema.get(meshSample, frame);
@@ -64,10 +65,19 @@ void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
 
     _vertices.resize(numVertices);
 
+    glm::vec3 aabbMin;
+    aabbMin.x = (*positions)[0].x;
+    aabbMin.y = (*positions)[0].x;
+    aabbMin.z = (*positions)[0].x;
+    glm::vec3 aabbMax = aabbMin;
+
     // 頂点情報をrv::Vertexに格納
     for (size_t i = 0; i < numVertices; ++i) {
         _vertices[i].pos = glm::vec3((*positions)[i].x, (*positions)[i].y, (*positions)[i].z);
+        aabbMin = glm::min(aabbMin, _vertices[i].pos);
+        aabbMax = glm::max(aabbMax, _vertices[i].pos);
     }
+    aabb = rv::AABB{aabbMin, aabbMax};
 
     // 法線データがある場合の処理
     if (normals) {
@@ -110,7 +120,8 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     for (size_t i = 0; i < numSamples; i++) {
         std::vector<rv::Vertex> vertices;
         std::vector<uint32_t> indices;
-        loadVerticesAndIndices(meshSchema, i, vertices, indices);
+        rv::AABB aabb;
+        loadVerticesAndIndices(meshSchema, i, vertices, indices, aabb);
         if (indices.empty()) {
             continue;
         }
@@ -126,6 +137,7 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
             .size = sizeof(uint32_t) * indices.size(),
             .debugName = std::format("indexBuffers[{}]", meshIndex).c_str(),
         });
+        _mesh.aabb = aabb;
 
         context.oneTimeSubmit([&](auto commandBuffer) {
             commandBuffer->copyBuffer(_mesh.keyFrames[i].vertexBuffer, vertices.data());
