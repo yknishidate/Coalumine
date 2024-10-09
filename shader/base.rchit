@@ -278,7 +278,7 @@ void main()
     Vertex v1 = vertexBuffer.vertices[index[1]];
     Vertex v2 = vertexBuffer.vertices[index[2]];
     
-    const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
+    const vec3 barycentricCoords = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
     float t = gl_HitTEXT;
     vec3 pos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 normal = normalize(v0.normal * barycentricCoords.x + v1.normal * barycentricCoords.y + v2.normal * barycentricCoords.z);

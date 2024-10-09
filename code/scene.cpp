@@ -172,6 +172,12 @@ void Scene::updateAccelInstances(int frame) {
         auto& node = nodes[i];
 
         if (node.meshIndex != -1) {
+            const auto& keyFrame = meshes[node.meshIndex].keyFrames[frame];
+
+            // バッファ更新わすれずに！
+            nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
+            nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+
             nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],

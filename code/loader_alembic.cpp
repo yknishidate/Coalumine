@@ -111,7 +111,7 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     IPolyMeshSchema& meshSchema = mesh.getSchema();
 
     size_t numSamples = meshSchema.getNumSamples();
-    spdlog::info("numSamples: {}", numSamples);
+    spdlog::info("PolyMesh: {} ({} samples)", mesh.getName(), numSamples);
 
     size_t meshIndex = scene.meshes.size();
     Mesh _mesh{};
@@ -162,11 +162,11 @@ void processObjectRecursive(Scene& scene,
 
         // Xformが見つかった場合
         if (IXform::matches(child.getHeader())) {
-            std::cout << "Found Xform node: " << child.getName() << std::endl;
             IXform xform(child, kWrapExisting);
             IXformSchema xformSchema = xform.getSchema();
 
             size_t numSamples = xformSchema.getNumSamples();
+            spdlog::info("Xform: {}", child.getName());
 
             Node _node;
             _node.parentNode = &scene.nodes[parentNodeIndex];
