@@ -18,8 +18,7 @@ vec2 sampleSphericalMap(vec3 v)
 vec3 sampleEnvLightTexture() {
     vec2 uv = sampleSphericalMap(gl_WorldRayDirectionEXT.xyz);
     uv.x = mod(uv.x + radians(pc.envLightPhi) / (2 * PI), 1.0); // rotate phi
-    return clamp(texture(envLightTexture, uv).rgb, 0.0, 100.0) * pc.envLightIntensity;
-    //return texture(envLightTexture, uv).rgb * pc.envLightIntensity;
+    return texture(envLightTexture, uv).rgb * pc.envLightIntensity;
 }
 
 void main()
