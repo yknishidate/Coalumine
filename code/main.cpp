@@ -87,7 +87,7 @@ public:
         static int imageIndex = 0;
         static bool enableBloom = false;
         static int blurIteration = 32;
-        static bool playAnimation = true;
+        static bool playAnimation = false;
         static bool open = true;
         if (open) {
             ImGui::Begin("Settings", &open);
@@ -139,6 +139,11 @@ public:
 
             // Material
             if (ImGui::CollapsingHeader("Material")) {
+                if (ImGui::SliderInt("Seed", &m_renderer->m_scene.randomMatSeed, 0, 100)) {
+                    m_renderer->m_scene.updateRandomMat();
+                    m_renderer->reset();
+                }
+
                 size_t count = m_renderer->m_scene.materials.size();
                 for (size_t i = 0u; i < count; i++) {
                     auto& mat = m_renderer->m_scene.materials[i];
@@ -347,7 +352,7 @@ public:
     void run() {
         rv::CPUTimer renderTimer;
 
-        m_renderer->m_pushConstants.sampleCount = 256;
+        m_renderer->m_pushConstants.sampleCount = 300;
         m_renderer->m_pushConstants.enableAccum = false;
         m_renderer->m_compositeInfo.exposure = 1.8f;
         for (uint32_t i = 0; i < m_totalFrames; i++) {

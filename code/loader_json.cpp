@@ -34,6 +34,7 @@ void LoaderJson::loadFromFile(Scene& scene,
     // gltf読み込み時点のオフセットを取得しておく
     const int materialOffset = static_cast<int>(scene.materials.size());
     const int meshOffset = static_cast<int>(scene.meshes.size());
+    scene.materialOffset = materialOffset;
 
     // "alembic"セクションのパース
     if (const auto& value = jsonData.find("alembic"); value != jsonData.end()) {
@@ -134,6 +135,12 @@ void LoaderJson::loadFromFile(Scene& scene,
     if (const auto& defaultMat = jsonData.find("default_material"); defaultMat != jsonData.end()) {
         if (defaultMat->at("type") == "random") {
             const auto& matIndices = defaultMat->at("material_indices");
+
+            scene.randomMatSeed = static_cast<int>(defaultMat->at("seed"));
+            scene.randomMatIndices.resize(matIndices.size());
+            for (size_t mi = 0; mi < matIndices.size(); mi++) {
+                scene.randomMatIndices[mi] = matIndices[mi];
+            }
 
             std::mt19937 rng(defaultMat->at("seed"));
             std::uniform_real_distribution<float> dist(0.0f, 1.0f);

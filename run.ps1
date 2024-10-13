@@ -1,1 +1,0 @@
-.\coalumine.exe headless alembic

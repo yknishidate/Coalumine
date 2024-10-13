@@ -179,6 +179,7 @@ void Scene::updateAccelInstances(int frame) {
             nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
 
             nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
+
             accelInstances.push_back({
                 .bottomAccel = bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(frame),

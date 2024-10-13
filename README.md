@@ -4,9 +4,14 @@ Coalumine is a path tracing renderer by Vulkan.
 
 ![](https://github.com/user-attachments/assets/8719c890-4db9-4cee-be83-54b75fab3b6c)
 
-## Build
+## Build & Run
 
 ```sh
 # for visual studio
 cmake . --preset vs
+
+# --- Build ---
+
+# Run sample scene
+coalumine.exe window rtcamp10
 ```

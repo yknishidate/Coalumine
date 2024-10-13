@@ -121,7 +121,7 @@ public:
                 fovY = glm::radians(fovYDeg);
                 changed = true;
             }
-            if (ImGui::DragFloat("Lens radius", &m_lensRadius, 0.01f, 0.0f, 1.0f)) {
+            if (ImGui::DragFloat("Lens radius", &m_lensRadius, 0.01f, 0.0f, 30.0f)) {
                 changed = true;
             }
             if (ImGui::DragFloat("Object distance", &m_objectDistance, 0.01f, 0.0f)) {
@@ -177,6 +177,26 @@ public:
 
     uint32_t getMaxFrame() const;
 
+    void updateRandomMat() {
+        std::mt19937 rng(randomMatSeed);
+        std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+        // 強制的に全メッシュ上書き（よくない）
+        for (auto& mesh : meshes) {
+            double randomValue = dist(rng);
+            int indexIndex = static_cast<int>(std::floor(randomValue * randomMatIndices.size()));
+            mesh.materialIndex = materialOffset + randomMatIndices[indexIndex];
+        }
+
+        for (size_t i = 0; i < nodes.size(); i++) {
+            auto& node = nodes[i];
+            if (node.meshIndex != -1) {
+                // 強制上書き（よくない）
+                nodeData[i].materialIndex = meshes[node.meshIndex].materialIndex;
+            }
+        }
+        nodeDataBuffer->copy(nodeData.data());
+    }
+
     // Scene
     std::vector<Node> nodes;
     std::vector<Mesh> meshes;
@@ -208,4 +228,8 @@ public:
 
     // Camera
     PhysicalCamera camera;
+
+    std::vector<int> randomMatIndices;
+    int materialOffset;
+    int randomMatSeed = 0;
 };
