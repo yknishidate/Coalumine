@@ -4,9 +4,28 @@
 
 #include <glm/glm.hpp>
 
-#include "loader_gltf.hpp"
-#include "loader_json.hpp"
-#include "loader_obj.hpp"
+#include "loader/loader_gltf.hpp"
+#include "loader/loader_json.hpp"
+#include "loader/loader_obj.hpp"
+
+void Scene::initialize(const rv::Context& context,
+                       const std::filesystem::path& scenePath,
+                       uint32_t width,
+                       uint32_t height) {
+    // Load scene
+    rv::CPUTimer timer;
+    loadFromFile(context, scenePath);
+    createMaterialBuffer(context);
+    createNodeDataBuffer(context);
+    createDummyTextures(context);
+    camera.setAspect(width / static_cast<float>(height));
+    spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
+
+    // Build BVH
+    timer.restart();
+    buildAccels(context);
+    spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
+}
 
 void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path& filepath) {
     if (filepath.extension() == ".gltf") {
@@ -172,11 +191,12 @@ void Scene::updateAccelInstances(int frame) {
         auto& node = nodes[i];
 
         if (node.meshIndex != -1) {
-            const auto& keyFrame = meshes[node.meshIndex].keyFrames[frame];
-
-            // バッファ更新わすれずに！
-            nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
-            nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+            // BLASをUpdate/Rebuildする場合はバッファも更新して合わせる必要がある
+            if (meshes[node.meshIndex].hasAnimation()) {
+                const auto& keyFrame = meshes[node.meshIndex].getKeyFrameMesh(frame);
+                nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
+                nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+            }
 
             nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
 
@@ -192,9 +212,7 @@ void Scene::updateAccelInstances(int frame) {
 void Scene::updateBottomAccel(int frame) {
     for (int i = 0; i < meshes.size(); i++) {
         if (meshes[i].hasAnimation()) {
-            int numKeyFrames = static_cast<int>(meshes[i].keyFrames.size());
-            int index = std::clamp(frame, 0, numKeyFrames);
-            const auto& keyFrame = meshes[i].keyFrames[index];
+            const auto& keyFrame = meshes[i].getKeyFrameMesh(frame);
             bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
                                     keyFrame.triangleCount);
         }

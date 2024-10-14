@@ -6,7 +6,7 @@ Coalumine is a path tracing renderer by Vulkan.
 
 ![rtcamp10](https://github.com/user-attachments/assets/a65f3133-190a-4bfa-8c4b-0d78e9215163)
 
-## Build & Run
+## Build
 
 ```sh
 # for visual studio

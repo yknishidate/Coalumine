@@ -7,14 +7,14 @@
             "roughness": 1.0
         },
         {
-            "base_color": [1.0, 1.0, 1.0, 0.0],
-            "metallic": 0.0,
-            "roughness": 0.1
-        },
-        {
             "base_color": [1.0, 1.0, 1.0, 1.0],
             "metallic": 1.0,
             "roughness": 0.2
+        },
+        {
+            "base_color": [1.0, 1.0, 1.0, 0.0],
+            "metallic": 0.0,
+            "roughness": 0.1
         }
     ],
     "default_material": {
@@ -24,7 +24,6 @@
     },
     "environment_light": {
         "type": "procedural",
-        "texture": "../environments/hochsal_field_4k.hdr",
         "procedural_parameters": {
             "width": 1000,
             "height": 100,

@@ -6,6 +6,12 @@
 
 #include <glm/gtc/matrix_inverse.hpp>
 
+// TODO:
+// enum class AnimationMode {
+//    kOnce,
+//    kRepeat,
+// };
+
 struct Mesh {
     struct KeyFrameMesh {
         rv::BufferHandle vertexBuffer;
@@ -33,6 +39,10 @@ struct Mesh {
     bool hasAnimation() const { return keyFrames.size() > 1; }
 
     std::vector<KeyFrameMesh> keyFrames;
+
+    const KeyFrameMesh& getKeyFrameMesh(int frame) {
+        return keyFrames[std::clamp(frame, 0, static_cast<int>(keyFrames.size() - 1))];
+    }
 
     int materialIndex = -1;
     rv::AABB aabb;
@@ -146,6 +156,11 @@ class Scene {
 public:
     Scene() = default;
 
+    void initialize(const rv::Context& context,
+                    const std::filesystem::path& scenePath,
+                    uint32_t width,
+                    uint32_t height);
+
     void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
 
     void createMaterialBuffer(const rv::Context& context);
@@ -166,7 +181,6 @@ public:
 
     bool shouldUpdate(int frame) const;
 
-    // TODO: remove this
     void updateAccelInstances(int frame);
 
     void updateBottomAccel(int frame);

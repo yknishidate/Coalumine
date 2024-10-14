@@ -4,64 +4,9 @@
 #include <reactive/Graphics/DescriptorSet.hpp>
 #include <reactive/Graphics/Pipeline.hpp>
 
-namespace fs = std::filesystem;
-fs::path getExecutableDirectory();
+#include "shader.hpp"
 
-inline fs::path getShaderSourceDirectory() {
-    // executable:  project/build/preset/config/*.exe
-    // shader:     project/shader/*.glsl
-    const auto projectRoot =
-        getExecutableDirectory().parent_path().parent_path().parent_path().parent_path();
-    return projectRoot / "shader";
-}
-
-inline fs::path getSpvDirectory() {
-    return getExecutableDirectory() / "spv";
-}
-
-inline fs::path getSpvFilePath(const std::string& shaderFileName, const std::string& entryPoint) {
-    auto glslFile = getShaderSourceDirectory() / shaderFileName;
-    std::string spvFileName =
-        glslFile.stem().string() + "_" + entryPoint + glslFile.extension().string() + ".spv";
-    return getSpvDirectory() / spvFileName;
-}
-
-inline fs::path getAssetDirectory() {
-    return getExecutableDirectory() / "asset";
-}
-
-inline bool shouldRecompile(const std::string& shaderFileName, const std::string& entryPoint) {
-    assert(!shaderFileName.empty());
-    auto glslFile = getShaderSourceDirectory() / shaderFileName;
-    if (!fs::exists(glslFile)) {
-        spdlog::warn("GLSL file doesn't exists: {}", glslFile.string());
-        return false;
-    }
-    auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    auto glslWriteTime = rv::Compiler::getLastWriteTimeWithIncludeFiles(glslFile);
-    return !fs::exists(spvFile) || glslWriteTime > fs::last_write_time(spvFile);
-}
-
-inline std::vector<uint32_t> compileShader(const std::string& shaderFileName,
-                                           const std::string& entryPoint) {
-    auto glslFile = getShaderSourceDirectory() / shaderFileName;
-    auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    spdlog::info("Compile shader: {}", spvFile.string());
-    std::vector<uint32_t> spvCode = rv::Compiler::compileToSPV(glslFile.string());
-    rv::File::writeBinary(spvFile, spvCode);
-    return spvCode;
-}
-
-inline std::vector<uint32_t> readShader(const std::string& shaderFileName,
-                                        const std::string& entryPoint) {
-    auto glslFile = getShaderSourceDirectory() / shaderFileName;
-    auto spvFile = getSpvFilePath(shaderFileName, entryPoint);
-    std::vector<uint32_t> spvCode;
-    rv::File::readBinary(spvFile, spvCode);
-    return spvCode;
-}
-
-struct CompositeInfo {
+struct CompositeConstants {
     float bloomIntensity = 1.0f;
     float saturation = 1.0f;
     float exposure = 1.0f;
@@ -80,75 +25,26 @@ public:
                   rv::ImageHandle baseImage,
                   rv::ImageHandle bloomImage,
                   uint32_t width,
-                  uint32_t height) {
-        finalImageRGBA = context.createImage({
-            .usage = rv::ImageUsage::Storage,
-            .extent = {width, height, 1},
-            .imageType = vk::ImageType::e2D,
-            .format = vk::Format::eR8G8B8A8Unorm,
-            .viewInfo = rv::ImageViewCreateInfo{},
-            .debugName = "finalImageRGBA",
-        });
-
-        finalImageBGRA = context.createImage({
-            .usage = rv::ImageUsage::Storage,
-            .extent = {width, height, 1},
-            .imageType = vk::ImageType::e2D,
-            .format = vk::Format::eB8G8R8A8Unorm,
-            .viewInfo = rv::ImageViewCreateInfo{},
-            .debugName = "finalImageBGRA",
-        });
-
-        context.oneTimeSubmit([&](auto commandBuffer) {
-            commandBuffer->transitionLayout(finalImageRGBA, vk::ImageLayout::eGeneral);
-            commandBuffer->transitionLayout(finalImageBGRA, vk::ImageLayout::eGeneral);
-        });
-
-        shader = context.createShader({
-            .code = readShader("composite.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
-
-        descSet = context.createDescriptorSet({
-            .shaders = shader,
-            .images =
-                {
-                    {"baseImage", baseImage},
-                    {"bloomImage", bloomImage},
-                    {"finalImageRGBA", finalImageRGBA},
-                    {"finalImageBGRA", finalImageBGRA},
-                },
-        });
-        descSet->update();
-
-        pipeline = context.createComputePipeline({
-            .descSetLayout = descSet->getLayout(),
-            .pushSize = sizeof(CompositeInfo),
-            .computeShader = shader,
-        });
-    }
+                  uint32_t height);
 
     void render(const rv::CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
-                CompositeInfo info) {
-        commandBuffer->bindDescriptorSet(pipeline, descSet);
-        commandBuffer->bindPipeline(pipeline);
-        commandBuffer->pushConstants(pipeline, &info);
-        commandBuffer->dispatch(countX, countY, 1);
-    }
+                CompositeConstants info);
 
-    vk::Image getOutputImageRGBA() const { return finalImageRGBA->getImage(); }
-    vk::Image getOutputImageBGRA() const { return finalImageBGRA->getImage(); }
+    const rv::ImageHandle& getOutputImageRGBA() const { return m_finalImageRGBA; }
 
-    rv::ShaderHandle shader;
-    rv::DescriptorSetHandle descSet;
-    rv::ComputePipelineHandle pipeline;
-    rv::ImageHandle finalImageRGBA;
-    rv::ImageHandle finalImageBGRA;
+    const rv::ImageHandle& getOutputImageBGRA() const { return m_finalImageBGRA; }
+
+private:
+    rv::ShaderHandle m_shader;
+    rv::DescriptorSetHandle m_descSet;
+    rv::ComputePipelineHandle m_pipeline;
+    rv::ImageHandle m_finalImageRGBA;
+    rv::ImageHandle m_finalImageBGRA;
 };
 
-struct BloomInfo {
+struct BloomConstants {
     int blurSize = 16;
 };
 
@@ -156,58 +52,18 @@ class BloomPass {
 public:
     BloomPass() = default;
 
-    BloomPass(const rv::Context& context, uint32_t width, uint32_t height) {
-        bloomImage = context.createImage({
-            .usage = rv::ImageUsage::Storage,
-            .extent = {width, height, 1},
-            .format = vk::Format::eR32G32B32A32Sfloat,
-            .viewInfo = rv::ImageViewCreateInfo{},
-            .debugName = "bloomImage",
-        });
-
-        context.oneTimeSubmit([&](auto commandBuffer) {
-            commandBuffer->transitionLayout(bloomImage, vk::ImageLayout::eGeneral);
-        });
-
-        shader = context.createShader({
-            .code = readShader("blur.comp", "main"),
-            .stage = vk::ShaderStageFlagBits::eCompute,
-        });
-
-        descSet = context.createDescriptorSet({
-            .shaders = shader,
-            .images =
-                {
-                    {"bloomImage", bloomImage},
-                },
-        });
-        descSet->update();
-
-        pipeline = context.createComputePipeline({
-            .descSetLayout = descSet->getLayout(),
-            .pushSize = sizeof(BloomInfo),
-            .computeShader = shader,
-        });
-    }
+    BloomPass(const rv::Context& context, uint32_t width, uint32_t height);
 
     void render(const rv::CommandBufferHandle& commandBuffer,
                 uint32_t countX,
                 uint32_t countY,
-                BloomInfo info) {
-        commandBuffer->bindDescriptorSet(pipeline, descSet);
-        commandBuffer->bindPipeline(pipeline);
-        commandBuffer->pushConstants(pipeline, &info);
-        commandBuffer->dispatch(countX, countY, 1);
-        commandBuffer->imageBarrier(bloomImage, vk::PipelineStageFlagBits::eComputeShader,
-                                    vk::PipelineStageFlagBits::eComputeShader,
-                                    vk::AccessFlagBits::eShaderWrite,
-                                    vk::AccessFlagBits::eShaderRead);
-    }
+                BloomConstants info);
 
-    vk::Image getOutputImage() const { return bloomImage->getImage(); }
+    const rv::ImageHandle& getOutputImage() const { return m_bloomImage; }
 
-    rv::ShaderHandle shader;
-    rv::DescriptorSetHandle descSet;
-    rv::ComputePipelineHandle pipeline;
-    rv::ImageHandle bloomImage;
+private:
+    rv::ShaderHandle m_shader;
+    rv::DescriptorSetHandle m_descSet;
+    rv::ComputePipelineHandle m_pipeline;
+    rv::ImageHandle m_bloomImage;
 };

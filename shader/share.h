@@ -5,30 +5,30 @@
 
 // For C++
 #ifdef __cplusplus
-#pragma once
+    #pragma once
 
-#include <glm/glm.hpp>
+    #include <glm/glm.hpp>
 
-#define USING_GLM           \
-    using vec3 = glm::vec3; \
-    using vec4 = glm::vec4; \
-    using mat3 = glm::mat3; \
-    using mat4 = glm::mat4;
+    #define USING_GLM           \
+        using vec3 = glm::vec3; \
+        using vec4 = glm::vec4; \
+        using mat3 = glm::mat3; \
+        using mat4 = glm::mat4;
 
-#define FIELD(type, name, default_value) type name = default_value
+    #define FIELD(type, name, default_value) type name = default_value
 
 // For GLSL
 #else
 
-// To use uint64_t, this needs to be written here
-#extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#extension GL_EXT_buffer_reference2 : require
+    // To use uint64_t, this needs to be written here
+    #extension GL_EXT_nonuniform_qualifier : enable
+    #extension GL_EXT_scalar_block_layout : enable
+    #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+    #extension GL_EXT_buffer_reference2 : require
 
-#define USING_GLM /* nothing */
+    #define USING_GLM /* nothing */
 
-#define FIELD(type, name, default_value) type name
+    #define FIELD(type, name, default_value) type name
 
 #endif
 
@@ -38,7 +38,7 @@
 // Struct
 // ------------------------------
 
-struct PushConstants {
+struct RayTracingConstants {
     USING_GLM
 
     FIELD(vec4, cameraPos, vec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -134,7 +134,7 @@ struct Vertex {
 };
 
 layout(push_constant) uniform PushConstantsBuffer {
-    PushConstants pc;
+    RayTracingConstants pc;
 };
 
 // Image

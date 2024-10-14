@@ -1,4 +1,5 @@
-﻿#include <future>
+﻿#pragma once
+#include <future>
 #include <random>
 
 #include "../shader/share.h"
@@ -18,19 +19,7 @@ public:
              uint32_t height,
              const std::filesystem::path& scenePath)
         : m_width{width}, m_height{height} {
-        // Load scene
-        rv::CPUTimer timer;
-        m_scene.loadFromFile(context, scenePath);
-        m_scene.createMaterialBuffer(context);
-        m_scene.createNodeDataBuffer(context);
-        m_scene.createDummyTextures(context);
-        m_scene.camera.setAspect(width / static_cast<float>(height));
-        spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
-
-        // Build BVH
-        timer.restart();
-        m_scene.buildAccels(context);
-        spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
+        m_scene.initialize(context, scenePath, width, height);
 
         m_baseImage = context.createImage({
             .usage = rv::ImageUsage::Storage,
@@ -77,9 +66,8 @@ public:
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
 
-        m_bloomPass = BloomPass(context, m_width, m_height);
-        m_compositePass =
-            CompositePass(context, m_baseImage, m_bloomPass.bloomImage, m_width, m_height);
+        m_bloomPass = {context, m_width, m_height};
+        m_compositePass = {context, m_baseImage, m_bloomPass.getOutputImage(), m_width, m_height};
 
         m_descSet = context.createDescriptorSet({
             .shaders = shaders,
@@ -91,7 +79,7 @@ public:
             .images =
                 {
                     {"baseImage", m_baseImage},
-                    {"bloomImage", m_bloomPass.bloomImage},
+                    {"bloomImage", m_bloomPass.getOutputImage()},
                     {"envLightTexture", m_scene.envLightTexture},
                     {"textures2d", m_scene.textures2d},
                     {"textures3d", m_scene.textures3d},
@@ -105,7 +93,7 @@ public:
             .missGroups = {{shaders[1]}, {shaders[2]}},
             .hitGroups = {{shaders[3]}},
             .descSetLayout = m_descSet->getLayout(),
-            .pushSize = sizeof(PushConstants),
+            .pushSize = sizeof(RayTracingConstants),
             .maxRayRecursionDepth = 31,
         });
     }
@@ -134,7 +122,7 @@ public:
         // Update
         m_scene.updateMaterialBuffer(commandBuffer);
 
-        if (lastFrame != frame) {
+        if (m_lastFrame != frame) {
             m_scene.updateBottomAccel(frame);
             m_scene.updateTopAccel(frame);
 
@@ -156,7 +144,7 @@ public:
                                          vk::AccessFlagBits::eAccelerationStructureWriteKHR,
                                          vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
-            lastFrame = frame;
+            m_lastFrame = frame;
         }
 
         // Ray tracing
@@ -170,7 +158,7 @@ public:
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
                                     vk::AccessFlagBits::eShaderRead);
-        commandBuffer->imageBarrier(m_bloomPass.bloomImage,  //
+        commandBuffer->imageBarrier(m_bloomPass.getOutputImage(),  //
                                     vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
@@ -195,9 +183,9 @@ public:
 
     Scene m_scene;
 
-    CompositeInfo m_compositeInfo;
+    CompositeConstants m_compositeInfo;
     CompositePass m_compositePass;
-    BloomInfo m_bloomInfo;
+    BloomConstants m_bloomInfo;
     BloomPass m_bloomPass;
 
     rv::ImageHandle m_baseImage;
@@ -205,7 +193,7 @@ public:
     rv::DescriptorSetHandle m_descSet;
     rv::RayTracingPipelineHandle m_rayTracingPipeline;
 
-    PushConstants m_pushConstants;
+    RayTracingConstants m_pushConstants;
 
-    int lastFrame = 0;
+    int m_lastFrame = 0;
 };
