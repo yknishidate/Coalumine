@@ -7,7 +7,7 @@
 #include "../shader/share.h"
 #include "image_generator.hpp"
 #include "render_pass.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 
 class Renderer {
 public:
@@ -42,7 +42,7 @@ public:
         // Infinite light
         auto& infLight = m_scene.getInfiniteLight();
         m_pushConstants.infiniteLightDirection = infLight.direction;
-        m_pushConstants.infiniteLightColor.xyz = infLight.color;
+        m_pushConstants.infiniteLightColor = {infLight.color, 1.0f};
         m_pushConstants.infiniteLightIntensity = infLight.intensity;
     }
 

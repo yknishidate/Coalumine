@@ -5,7 +5,7 @@
 #include "image_writer.hpp"
 #include "render_pass.hpp"
 #include "renderer.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 
 class WindowApp : public rv::App {
 public:

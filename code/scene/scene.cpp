@@ -1,12 +1,8 @@
 ﻿#include "scene.hpp"
 
-#include <iostream>
-
-#include <glm/glm.hpp>
-
-#include "loader/loader_gltf.hpp"
-#include "loader/loader_json.hpp"
-#include "loader/loader_obj.hpp"
+#include "../loader/loader_gltf.hpp"
+#include "../loader/loader_json.hpp"
+#include "../loader/loader_obj.hpp"
 
 void Scene::initialize(const rv::Context& context,
                        const std::filesystem::path& scenePath,
