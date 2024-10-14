@@ -195,9 +195,9 @@ public:
 
     Scene m_scene;
 
-    CompositeInfo m_compositeInfo;
+    CompositeConstants m_compositeInfo;
     CompositePass m_compositePass;
-    BloomInfo m_bloomInfo;
+    BloomConstants m_bloomInfo;
     BloomPass m_bloomPass;
 
     rv::ImageHandle m_baseImage;
