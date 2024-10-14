@@ -38,7 +38,7 @@
 // Struct
 // ------------------------------
 
-struct PushConstants {
+struct RayTracingConstants {
     USING_GLM
 
     FIELD(vec4, cameraPos, vec4(0.0f, 0.0f, 0.0f, 0.0f));
@@ -134,7 +134,7 @@ struct Vertex {
 };
 
 layout(push_constant) uniform PushConstantsBuffer {
-    PushConstants pc;
+    RayTracingConstants pc;
 };
 
 // Image

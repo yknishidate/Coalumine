@@ -32,14 +32,16 @@ public:
                 uint32_t countY,
                 CompositeConstants info);
 
-    vk::Image getOutputImageRGBA() const { return finalImageRGBA->getImage(); }
-    vk::Image getOutputImageBGRA() const { return finalImageBGRA->getImage(); }
+    const rv::ImageHandle& getOutputImageRGBA() const { return m_finalImageRGBA; }
 
-    rv::ShaderHandle shader;
-    rv::DescriptorSetHandle descSet;
-    rv::ComputePipelineHandle pipeline;
-    rv::ImageHandle finalImageRGBA;
-    rv::ImageHandle finalImageBGRA;
+    const rv::ImageHandle& getOutputImageBGRA() const { return m_finalImageBGRA; }
+
+private:
+    rv::ShaderHandle m_shader;
+    rv::DescriptorSetHandle m_descSet;
+    rv::ComputePipelineHandle m_pipeline;
+    rv::ImageHandle m_finalImageRGBA;
+    rv::ImageHandle m_finalImageBGRA;
 };
 
 struct BloomConstants {
@@ -57,10 +59,11 @@ public:
                 uint32_t countY,
                 BloomConstants info);
 
-    vk::Image getOutputImage() const { return bloomImage->getImage(); }
+    const rv::ImageHandle& getOutputImage() const { return m_bloomImage; }
 
-    rv::ShaderHandle shader;
-    rv::DescriptorSetHandle descSet;
-    rv::ComputePipelineHandle pipeline;
-    rv::ImageHandle bloomImage;
+private:
+    rv::ShaderHandle m_shader;
+    rv::DescriptorSetHandle m_descSet;
+    rv::ComputePipelineHandle m_pipeline;
+    rv::ImageHandle m_bloomImage;
 };

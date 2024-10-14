@@ -5,7 +5,7 @@ CompositePass::CompositePass(const rv::Context& context,
                              rv::ImageHandle bloomImage,
                              uint32_t width,
                              uint32_t height) {
-    finalImageRGBA = context.createImage({
+    m_finalImageRGBA = context.createImage({
         .usage = rv::ImageUsage::Storage,
         .extent = {width, height, 1},
         .imageType = vk::ImageType::e2D,
@@ -14,7 +14,7 @@ CompositePass::CompositePass(const rv::Context& context,
         .debugName = "finalImageRGBA",
     });
 
-    finalImageBGRA = context.createImage({
+    m_finalImageBGRA = context.createImage({
         .usage = rv::ImageUsage::Storage,
         .extent = {width, height, 1},
         .imageType = vk::ImageType::e2D,
@@ -24,31 +24,31 @@ CompositePass::CompositePass(const rv::Context& context,
     });
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(finalImageRGBA, vk::ImageLayout::eGeneral);
-        commandBuffer->transitionLayout(finalImageBGRA, vk::ImageLayout::eGeneral);
+        commandBuffer->transitionLayout(m_finalImageRGBA, vk::ImageLayout::eGeneral);
+        commandBuffer->transitionLayout(m_finalImageBGRA, vk::ImageLayout::eGeneral);
     });
 
-    shader = context.createShader({
+    m_shader = context.createShader({
         .code = readShader("composite.comp", "main"),
         .stage = vk::ShaderStageFlagBits::eCompute,
     });
 
-    descSet = context.createDescriptorSet({
-        .shaders = shader,
+    m_descSet = context.createDescriptorSet({
+        .shaders = m_shader,
         .images =
             {
                 {"baseImage", baseImage},
                 {"bloomImage", bloomImage},
-                {"finalImageRGBA", finalImageRGBA},
-                {"finalImageBGRA", finalImageBGRA},
+                {"finalImageRGBA", m_finalImageRGBA},
+                {"finalImageBGRA", m_finalImageBGRA},
             },
     });
-    descSet->update();
+    m_descSet->update();
 
-    pipeline = context.createComputePipeline({
-        .descSetLayout = descSet->getLayout(),
+    m_pipeline = context.createComputePipeline({
+        .descSetLayout = m_descSet->getLayout(),
         .pushSize = sizeof(CompositeConstants),
-        .computeShader = shader,
+        .computeShader = m_shader,
     });
 }
 
@@ -56,14 +56,14 @@ void CompositePass::render(const rv::CommandBufferHandle& commandBuffer,
                            uint32_t countX,
                            uint32_t countY,
                            CompositeConstants info) {
-    commandBuffer->bindDescriptorSet(pipeline, descSet);
-    commandBuffer->bindPipeline(pipeline);
-    commandBuffer->pushConstants(pipeline, &info);
+    commandBuffer->bindDescriptorSet(m_pipeline, m_descSet);
+    commandBuffer->bindPipeline(m_pipeline);
+    commandBuffer->pushConstants(m_pipeline, &info);
     commandBuffer->dispatch(countX, countY, 1);
 }
 
 BloomPass::BloomPass(const rv::Context& context, uint32_t width, uint32_t height) {
-    bloomImage = context.createImage({
+    m_bloomImage = context.createImage({
         .usage = rv::ImageUsage::Storage,
         .extent = {width, height, 1},
         .format = vk::Format::eR32G32B32A32Sfloat,
@@ -72,27 +72,27 @@ BloomPass::BloomPass(const rv::Context& context, uint32_t width, uint32_t height
     });
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(bloomImage, vk::ImageLayout::eGeneral);
+        commandBuffer->transitionLayout(m_bloomImage, vk::ImageLayout::eGeneral);
     });
 
-    shader = context.createShader({
+    m_shader = context.createShader({
         .code = readShader("blur.comp", "main"),
         .stage = vk::ShaderStageFlagBits::eCompute,
     });
 
-    descSet = context.createDescriptorSet({
-        .shaders = shader,
+    m_descSet = context.createDescriptorSet({
+        .shaders = m_shader,
         .images =
             {
-                {"bloomImage", bloomImage},
+                {"bloomImage", m_bloomImage},
             },
     });
-    descSet->update();
+    m_descSet->update();
 
-    pipeline = context.createComputePipeline({
-        .descSetLayout = descSet->getLayout(),
+    m_pipeline = context.createComputePipeline({
+        .descSetLayout = m_descSet->getLayout(),
         .pushSize = sizeof(BloomConstants),
-        .computeShader = shader,
+        .computeShader = m_shader,
     });
 }
 
@@ -100,11 +100,11 @@ void BloomPass::render(const rv::CommandBufferHandle& commandBuffer,
                        uint32_t countX,
                        uint32_t countY,
                        BloomConstants info) {
-    commandBuffer->bindDescriptorSet(pipeline, descSet);
-    commandBuffer->bindPipeline(pipeline);
-    commandBuffer->pushConstants(pipeline, &info);
+    commandBuffer->bindDescriptorSet(m_pipeline, m_descSet);
+    commandBuffer->bindPipeline(m_pipeline);
+    commandBuffer->pushConstants(m_pipeline, &info);
     commandBuffer->dispatch(countX, countY, 1);
-    commandBuffer->imageBarrier(bloomImage, vk::PipelineStageFlagBits::eComputeShader,
+    commandBuffer->imageBarrier(m_bloomImage, vk::PipelineStageFlagBits::eComputeShader,
                                 vk::PipelineStageFlagBits::eComputeShader,
                                 vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
 }

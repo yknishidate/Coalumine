@@ -106,15 +106,15 @@ public:
 
             bool enableBloom = false;
             int blurIteration = 32;
-            m_renderer->render(commandBuffer, frame, enableBloom, blurIteration);
+            m_renderer->render(commandBuffer, m_frame, enableBloom, blurIteration);
 
             commandBuffer->imageBarrier(
-                m_renderer->m_compositePass.finalImageRGBA,  //
+                m_renderer->m_compositePass.getOutputImageRGBA(),  //
                 vk::PipelineStageFlagBits::eComputeShader, vk::PipelineStageFlagBits::eTransfer,
                 vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
 
             // Copy to buffer
-            rv::ImageHandle outputImage = m_renderer->m_compositePass.finalImageRGBA;
+            rv::ImageHandle outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
             commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(m_imageIndex));
             commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
@@ -126,13 +126,13 @@ public:
             m_context.submit(commandBuffer);
             m_context.getQueue().waitIdle();
 
-            m_imageWriter->writeImage(m_imageIndex, frame);
+            m_imageWriter->writeImage(m_imageIndex, m_frame);
 
             m_imageIndex = (m_imageIndex + 1) % m_imageCount;
-            frame++;
+            m_frame++;
 
-            if (timer.elapsedInMilli() > kTimeLimit) {
-                spdlog::warn("Time over...: {}", timer.elapsedInMilli());
+            if (m_timer.elapsedInMilli() > kTimeLimit) {
+                spdlog::warn("Time over...: {}", m_timer.elapsedInMilli());
                 break;
             }
         }
@@ -145,7 +145,7 @@ public:
 
 private:
     static constexpr float kTimeLimit = 250000.0f;  // [ms]
-    rv::CPUTimer timer;
+    rv::CPUTimer m_timer;
 
     rv::Context m_context;
     std::unique_ptr<Renderer> m_renderer;
@@ -158,5 +158,5 @@ private:
     uint32_t m_imageIndex = 0;
     std::vector<rv::CommandBufferHandle> m_commandBuffers{};
     std::vector<rv::ImageHandle> m_images{};
-    int frame = 0;
+    int m_frame = 0;
 };

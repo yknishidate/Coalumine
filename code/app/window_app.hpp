@@ -113,13 +113,13 @@ public:
             const uint32_t maxFrame = m_renderer->m_scene.getMaxFrame();
             if (playAnimation) {
                 if (maxFrame > 0) {
-                    frame = (frame + 1) % maxFrame;
+                    m_frame = (m_frame + 1) % maxFrame;
                     m_renderer->reset();
                 }
             }
 
             // Frame
-            if (ImGui::SliderInt("Frame", &frame, 0, maxFrame - 1)) {
+            if (ImGui::SliderInt("Frame", &m_frame, 0, maxFrame - 1)) {
                 m_renderer->reset();
             }
 
@@ -131,7 +131,7 @@ public:
             // Save button
             if (ImGui::Button("Save image")) {
                 m_imageWriter->wait(0);
-                m_imageWriter->writeImage(0, frame);
+                m_imageWriter->writeImage(0, m_frame);
             }
 
             // Recompile button
@@ -240,15 +240,16 @@ public:
         }
 
         commandBuffer->beginTimestamp(m_gpuTimer);
-        m_renderer->render(commandBuffer, frame, enableBloom, blurIteration);
+        m_renderer->render(commandBuffer, m_frame, enableBloom, blurIteration);
         commandBuffer->endTimestamp(m_gpuTimer);
 
         // Copy to swapchain image
-        commandBuffer->copyImage(m_renderer->m_compositePass.finalImageBGRA, getCurrentColorImage(),
-                                 vk::ImageLayout::eGeneral, vk::ImageLayout::ePresentSrcKHR);
+        commandBuffer->copyImage(m_renderer->m_compositePass.getOutputImageBGRA(),
+                                 getCurrentColorImage(), vk::ImageLayout::eGeneral,
+                                 vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
-        rv::ImageHandle outputImage = m_renderer->m_compositePass.finalImageRGBA;
+        rv::ImageHandle outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
         commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(0));
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);
@@ -260,5 +261,5 @@ public:
     rv::GPUTimerHandle m_gpuTimer;
 
     char m_inputTextBuffer[1024] = {0};
-    int frame = 0;
+    int m_frame = 0;
 };

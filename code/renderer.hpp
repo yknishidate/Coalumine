@@ -78,9 +78,8 @@ public:
             .stage = vk::ShaderStageFlagBits::eClosestHitKHR,
         });
 
-        m_bloomPass = BloomPass(context, m_width, m_height);
-        m_compositePass =
-            CompositePass(context, m_baseImage, m_bloomPass.bloomImage, m_width, m_height);
+        m_bloomPass = {context, m_width, m_height};
+        m_compositePass = {context, m_baseImage, m_bloomPass.getOutputImage(), m_width, m_height};
 
         m_descSet = context.createDescriptorSet({
             .shaders = shaders,
@@ -92,7 +91,7 @@ public:
             .images =
                 {
                     {"baseImage", m_baseImage},
-                    {"bloomImage", m_bloomPass.bloomImage},
+                    {"bloomImage", m_bloomPass.getOutputImage()},
                     {"envLightTexture", m_scene.envLightTexture},
                     {"textures2d", m_scene.textures2d},
                     {"textures3d", m_scene.textures3d},
@@ -106,7 +105,7 @@ public:
             .missGroups = {{shaders[1]}, {shaders[2]}},
             .hitGroups = {{shaders[3]}},
             .descSetLayout = m_descSet->getLayout(),
-            .pushSize = sizeof(PushConstants),
+            .pushSize = sizeof(RayTracingConstants),
             .maxRayRecursionDepth = 31,
         });
     }
@@ -135,7 +134,7 @@ public:
         // Update
         m_scene.updateMaterialBuffer(commandBuffer);
 
-        if (lastFrame != frame) {
+        if (m_lastFrame != frame) {
             m_scene.updateBottomAccel(frame);
             m_scene.updateTopAccel(frame);
 
@@ -157,7 +156,7 @@ public:
                                          vk::AccessFlagBits::eAccelerationStructureWriteKHR,
                                          vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
-            lastFrame = frame;
+            m_lastFrame = frame;
         }
 
         // Ray tracing
@@ -171,7 +170,7 @@ public:
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
                                     vk::AccessFlagBits::eShaderRead);
-        commandBuffer->imageBarrier(m_bloomPass.bloomImage,  //
+        commandBuffer->imageBarrier(m_bloomPass.getOutputImage(),  //
                                     vk::PipelineStageFlagBits::eRayTracingShaderKHR,
                                     vk::PipelineStageFlagBits::eComputeShader,
                                     vk::AccessFlagBits::eShaderWrite,
@@ -206,7 +205,7 @@ public:
     rv::DescriptorSetHandle m_descSet;
     rv::RayTracingPipelineHandle m_rayTracingPipeline;
 
-    PushConstants m_pushConstants;
+    RayTracingConstants m_pushConstants;
 
-    int lastFrame = 0;
+    int m_lastFrame = 0;
 };
