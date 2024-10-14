@@ -33,16 +33,17 @@ public:
         createPipelines(context);
 
         // Env light
-        m_pushConstants.useEnvLightTexture = m_scene.m_useEnvLightTexture;
-        m_pushConstants.envLightColor = {m_scene.m_envLightColor, 1.0f};
-        m_pushConstants.envLightIntensity = m_scene.m_envLightIntensity;
-        m_pushConstants.isEnvLightTextureVisible =
-            static_cast<int>(m_scene.m_isEnvLightTextureVisible);
+        auto& envLight = m_scene.getEnvironmentLight();
+        m_pushConstants.useEnvLightTexture = envLight.useTexture;
+        m_pushConstants.envLightColor = {envLight.color, 1.0f};
+        m_pushConstants.envLightIntensity = envLight.intensity;
+        m_pushConstants.isEnvLightTextureVisible = static_cast<int>(envLight.isVisible);
 
         // Infinite light
-        m_pushConstants.infiniteLightColor.xyz = m_scene.m_infiniteLightColor;
-        m_pushConstants.infiniteLightDirection = m_scene.m_infiniteLightDir;
-        m_pushConstants.infiniteLightIntensity = m_scene.m_infiniteLightIntensity;
+        auto& infLight = m_scene.getInfiniteLight();
+        m_pushConstants.infiniteLightDirection = infLight.direction;
+        m_pushConstants.infiniteLightColor.xyz = infLight.color;
+        m_pushConstants.infiniteLightIntensity = infLight.intensity;
     }
 
     void createPipelines(const rv::Context& context) {
@@ -71,18 +72,18 @@ public:
             .shaders = shaders,
             .buffers =
                 {
-                    {"NodeDataBuffer", m_scene.m_nodeDataBuffer},
-                    {"MaterialBuffer", m_scene.m_materialBuffer},
+                    {"NodeDataBuffer", m_scene.getNodeDataBuffer()},
+                    {"MaterialBuffer", m_scene.getMaterialDataBuffer()},
                 },
             .images =
                 {
                     {"baseImage", m_baseImage},
                     {"bloomImage", m_bloomPass.getOutputImage()},
-                    {"envLightTexture", m_scene.m_envLightTexture},
-                    {"textures2d", m_scene.m_textures2d},
-                    {"textures3d", m_scene.m_textures3d},
+                    {"envLightTexture", m_scene.getEnvironmentLight().texture},
+                    {"textures2d", m_scene.get2dTextures()},
+                    {"textures3d", m_scene.get3dTextures()},
                 },
-            .accels = {{"topLevelAS", m_scene.m_topAccel}},
+            .accels = {{"topLevelAS", m_scene.getTopAccel()}},
         });
         m_descSet->update();
 
@@ -97,18 +98,16 @@ public:
     }
 
     void update(glm::vec2 dragLeft, float scroll) {
-        if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
-            m_scene.m_camera.processMouseDragLeft(dragLeft);
-            m_scene.m_camera.processMouseScroll(scroll);
-        }
+        m_scene.update(dragLeft, scroll);
 
-        m_pushConstants.cameraForward = glm::vec4(m_scene.m_camera.getFront(), 1.0f);
-        m_pushConstants.cameraPos = glm::vec4(m_scene.m_camera.getPosition(), 1.0f);
-        m_pushConstants.cameraRight = glm::vec4(m_scene.m_camera.getRight(), 1.0f);
-        m_pushConstants.cameraUp = glm::vec4(m_scene.m_camera.getUp(), 1.0f);
-        m_pushConstants.cameraImageDistance = m_scene.m_camera.getImageDistance();
-        m_pushConstants.cameraLensRadius = m_scene.m_camera.m_lensRadius;
-        m_pushConstants.cameraObjectDistance = m_scene.m_camera.m_objectDistance;
+        const PhysicalCamera& camera = m_scene.getCamera();
+        m_pushConstants.cameraForward = glm::vec4(camera.getFront(), 1.0f);
+        m_pushConstants.cameraPos = glm::vec4(camera.getPosition(), 1.0f);
+        m_pushConstants.cameraRight = glm::vec4(camera.getRight(), 1.0f);
+        m_pushConstants.cameraUp = glm::vec4(camera.getUp(), 1.0f);
+        m_pushConstants.cameraImageDistance = camera.getImageDistance();
+        m_pushConstants.cameraLensRadius = camera.m_lensRadius;
+        m_pushConstants.cameraObjectDistance = camera.m_objectDistance;
     }
 
     void reset() { m_pushConstants.accumCount = 0; }
@@ -121,21 +120,14 @@ public:
         m_scene.updateMaterialBuffer(commandBuffer);
 
         if (m_lastFrame != frame) {
-            m_scene.updateBottomAccel(frame);
-            m_scene.updateTopAccel(frame);
-
-            for (int i = 0; i < m_scene.m_meshes.size(); i++) {
-                if (m_scene.m_meshes[i].hasAnimation()) {
-                    commandBuffer->updateBottomAccel(m_scene.m_bottomAccels[i]);
-                }
-            }
+            m_scene.updateBottomAccel(commandBuffer, frame);
 
             commandBuffer->memoryBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
                                          vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
                                          vk::AccessFlagBits::eAccelerationStructureWriteKHR,
                                          vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
-            commandBuffer->updateTopAccel(m_scene.m_topAccel);
+            m_scene.updateTopAccel(commandBuffer, frame);
 
             commandBuffer->memoryBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
                                          vk::PipelineStageFlagBits::eRayTracingShaderKHR,

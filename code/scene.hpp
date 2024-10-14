@@ -149,10 +149,25 @@ public:
     static constexpr float m_sensorHeight = 1.0f;
 };
 
+struct InfiniteLight {
+    glm::vec3 direction = {};
+    glm::vec3 color = {};
+    float intensity = 0.0f;
+};
+
+struct EnvironmentLight {
+    rv::ImageHandle texture;
+    glm::vec3 color;
+    float intensity = 1.0f;
+    bool useTexture = false;
+    bool isVisible = true;
+};
+
 class Scene {
     friend class LoaderJson;
     friend class LoaderGltf;
     friend class LoaderObj;
+    friend class LoaderAlembic;
 
 public:
     Scene() = default;
@@ -184,15 +199,66 @@ public:
 
     void updateAccelInstances(int frame);
 
-    void updateBottomAccel(int frame);
+    void updateBottomAccel(const rv::CommandBufferHandle& commandBuffer, int frame);
 
-    void updateTopAccel(int frame);
+    void updateTopAccel(const rv::CommandBufferHandle& commandBuffer, int frame);
 
     void updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer);
 
     uint32_t getMaxFrame() const;
 
-    // private:
+    const PhysicalCamera& getCamera() const { return m_camera; }
+
+    EnvironmentLight& getEnvironmentLight() { return m_envLight; }
+
+    InfiniteLight& getInfiniteLight() { return m_infiniteLight; }
+
+    const rv::BufferHandle& getNodeDataBuffer() const { return m_nodeDataBuffer; }
+
+    const rv::BufferHandle& getMaterialDataBuffer() const { return m_materialBuffer; }
+
+    const rv::TopAccelHandle& getTopAccel() const { return m_topAccel; }
+
+    const std::vector<rv::ImageHandle>& get2dTextures() const { return m_textures2d; }
+
+    const std::vector<rv::ImageHandle>& get3dTextures() const { return m_textures3d; }
+
+    void update(glm::vec2 dragLeft, float scroll);
+
+    bool drawAttributes() {
+        bool changed = false;
+        if (ImGui::CollapsingHeader("Material")) {
+            size_t count = m_materials.size();
+            for (size_t i = 0u; i < count; i++) {
+                auto& mat = m_materials[i];
+                if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
+                    if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
+                        changed = true;
+                    }
+                    if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
+                                           "%.2f")) {
+                        changed = true;
+                    }
+                    if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
+                        changed = true;
+                    }
+                    if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
+                        changed = true;
+                    }
+
+                    ImGui::TreePop();
+                }
+            }
+        }
+
+        if (m_camera.drawAttributes()) {
+            changed = true;
+        }
+
+        return changed;
+    }
+
+private:
     //  Scene
     std::vector<Node> m_nodes;
     std::vector<Mesh> m_meshes;
@@ -205,15 +271,8 @@ public:
     rv::TopAccelHandle m_topAccel;
 
     // Light
-    rv::ImageHandle m_envLightTexture;
-    glm::vec3 m_envLightColor;
-    float m_envLightIntensity = 1.0f;
-    bool m_useEnvLightTexture = false;
-    bool m_isEnvLightTextureVisible = true;
-
-    glm::vec3 m_infiniteLightDir = {};
-    glm::vec3 m_infiniteLightColor = {};
-    float m_infiniteLightIntensity = 0.0f;
+    EnvironmentLight m_envLight;
+    InfiniteLight m_infiniteLight;
 
     // Buffer
     std::vector<NodeData> m_nodeData;

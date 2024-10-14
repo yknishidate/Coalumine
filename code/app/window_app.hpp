@@ -138,31 +138,10 @@ public:
             }
 
             // Material
-            if (ImGui::CollapsingHeader("Material")) {
-                size_t count = m_renderer->m_scene.m_materials.size();
-                for (size_t i = 0u; i < count; i++) {
-                    auto& mat = m_renderer->m_scene.m_materials[i];
-                    if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
-                        if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
-                                               "%.2f")) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
-                            m_renderer->reset();
-                        }
-
-                        ImGui::TreePop();
-                    }
-                }
-            }
+            m_renderer->m_scene.drawAttributes();
 
             // Light
+            // TODO: move to Scene
             if (ImGui::CollapsingHeader("Light")) {
                 ImGui::Indent(16.0f);
                 // Dome light
@@ -221,11 +200,6 @@ public:
                     ImGui::SliderFloat("Gamma", &compositeInfo.gamma, 0.0, 5.0);
                 }
                 ImGui::Unindent(16.0f);
-            }
-
-            // Camera
-            if (m_renderer->m_scene.m_camera.drawAttributes()) {
-                m_renderer->reset();
             }
 
             // Memo

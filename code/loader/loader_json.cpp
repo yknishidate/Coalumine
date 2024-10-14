@@ -180,7 +180,7 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (type == "texture") {
             std::filesystem::path texPath = filepath.parent_path() / light->at("texture");
             scene.loadEnvLightTexture(context, texPath);
-            scene.m_useEnvLightTexture = true;
+            scene.m_envLight.useTexture = true;
         } else if (type == "procedural") {
             auto params = light->at("procedural_parameters");
             if (params["method"] == "gradient_horizontal") {
@@ -198,34 +198,34 @@ void LoaderJson::loadFromFile(Scene& scene,
                 const auto& data = ImageGenerator::gradientHorizontal(width, height, 4, knots);
                 scene.createEnvLightTexture(context, static_cast<const float*>(&data[0][0]),  //
                                             width, height, 4);
-                scene.m_useEnvLightTexture = true;
+                scene.m_envLight.useTexture = true;
             }
         } else if (type == "solid") {
             const float dummy = 0.0f;
             scene.createEnvLightTexture(context, &dummy, 1, 1, 4);
-            scene.m_useEnvLightTexture = false;
+            scene.m_envLight.useTexture = false;
         }
         if (const auto& values = light->find("color"); values != light->end()) {
-            scene.m_envLightColor = {values->at(0), values->at(1), values->at(2)};
+            scene.m_envLight.color = {values->at(0), values->at(1), values->at(2)};
         }
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
-            scene.m_envLightIntensity = *intensity;
+            scene.m_envLight.intensity = *intensity;
         }
         if (const auto& value = light->find("visible_texture"); value != light->end()) {
-            scene.m_isEnvLightTextureVisible = static_cast<bool>(*value);
+            scene.m_envLight.isVisible = static_cast<bool>(*value);
         }
     }
 
     if (const auto& light = jsonData.find("infinite_light"); light != jsonData.end()) {
+        auto& infLight = scene.m_infiniteLight;
         if (const auto& dir = light->find("direction"); dir != light->end()) {
-            scene.m_infiniteLightDir =
-                glm::normalize(glm::vec3{dir->at(0), dir->at(1), dir->at(2)});
+            infLight.direction = glm::normalize(glm::vec3{dir->at(0), dir->at(1), dir->at(2)});
         }
         if (const auto& color = light->find("color"); color != light->end()) {
-            scene.m_infiniteLightColor = {color->at(0), color->at(1), color->at(2)};
+            infLight.color = {color->at(0), color->at(1), color->at(2)};
         }
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
-            scene.m_infiniteLightIntensity = *intensity;
+            infLight.intensity = *intensity;
         }
     }
 

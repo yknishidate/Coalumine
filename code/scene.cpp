@@ -80,7 +80,7 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
 }
 
 void Scene::loadEnvLightTexture(const rv::Context& context, const std::filesystem::path& filepath) {
-    m_envLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
+    m_envLight.texture = rv::Image::loadFromFileHDR(context, filepath.string());
 }
 
 void Scene::createDummyTextures(const rv::Context& context) {
@@ -120,7 +120,7 @@ void Scene::createEnvLightTexture(const rv::Context& context,
                                   uint32_t width,
                                   uint32_t height,
                                   uint32_t channel) {
-    m_envLightTexture = context.createImage({
+    m_envLight.texture = context.createImage({
         .usage = rv::ImageUsage::Sampled,
         .extent = {width, height, 1},
         .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
@@ -138,9 +138,10 @@ void Scene::createEnvLightTexture(const rv::Context& context,
     stagingBuffer->copy(data);
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(m_envLightTexture, vk::ImageLayout::eTransferDstOptimal);
-        commandBuffer->copyBufferToImage(stagingBuffer, m_envLightTexture);
-        commandBuffer->transitionLayout(m_envLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
+        const auto& texture = m_envLight.texture;
+        commandBuffer->transitionLayout(texture, vk::ImageLayout::eTransferDstOptimal);
+        commandBuffer->copyBufferToImage(stagingBuffer, texture);
+        commandBuffer->transitionLayout(texture, vk::ImageLayout::eShaderReadOnlyOptimal);
     });
 }
 
@@ -208,20 +209,22 @@ void Scene::updateAccelInstances(int frame) {
     }
 }
 
-void Scene::updateBottomAccel(int frame) {
+void Scene::updateBottomAccel(const rv::CommandBufferHandle& commandBuffer, int frame) {
     for (int i = 0; i < m_meshes.size(); i++) {
         if (m_meshes[i].hasAnimation()) {
             const auto& keyFrame = m_meshes[i].getKeyFrameMesh(frame);
             m_bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
                                       keyFrame.triangleCount);
+            commandBuffer->updateBottomAccel(m_bottomAccels[i]);
         }
     }
 }
 
-void Scene::updateTopAccel(int frame) {
+void Scene::updateTopAccel(const rv::CommandBufferHandle& commandBuffer, int frame) {
     updateAccelInstances(frame);
     m_topAccel->updateInstances(m_accelInstances);
     m_nodeDataBuffer->copy(m_nodeData.data());
+    commandBuffer->updateTopAccel(m_topAccel);
 }
 
 void Scene::updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer) {
@@ -237,4 +240,11 @@ uint32_t Scene::getMaxFrame() const {
         frame = std::max(frame, static_cast<uint32_t>(mesh.keyFrames.size()));
     }
     return frame;
+}
+
+void Scene::update(glm::vec2 dragLeft, float scroll) {
+    if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
+        m_camera.processMouseDragLeft(dragLeft);
+        m_camera.processMouseScroll(scroll);
+    }
 }
