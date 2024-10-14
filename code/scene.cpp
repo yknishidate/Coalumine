@@ -8,6 +8,25 @@
 #include "loader/loader_json.hpp"
 #include "loader/loader_obj.hpp"
 
+void Scene::initialize(const rv::Context& context,
+                       const std::filesystem::path& scenePath,
+                       uint32_t width,
+                       uint32_t height) {
+    // Load scene
+    rv::CPUTimer timer;
+    loadFromFile(context, scenePath);
+    createMaterialBuffer(context);
+    createNodeDataBuffer(context);
+    createDummyTextures(context);
+    camera.setAspect(width / static_cast<float>(height));
+    spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
+
+    // Build BVH
+    timer.restart();
+    buildAccels(context);
+    spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
+}
+
 void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path& filepath) {
     if (filepath.extension() == ".gltf") {
         LoaderGltf::loadFromFile(*this, context, filepath);

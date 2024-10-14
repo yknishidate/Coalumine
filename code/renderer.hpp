@@ -19,19 +19,7 @@ public:
              uint32_t height,
              const std::filesystem::path& scenePath)
         : m_width{width}, m_height{height} {
-        // Load scene
-        rv::CPUTimer timer;
-        m_scene.loadFromFile(context, scenePath);
-        m_scene.createMaterialBuffer(context);
-        m_scene.createNodeDataBuffer(context);
-        m_scene.createDummyTextures(context);
-        m_scene.camera.setAspect(width / static_cast<float>(height));
-        spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
-
-        // Build BVH
-        timer.restart();
-        m_scene.buildAccels(context);
-        spdlog::info("Build accels: {} ms", timer.elapsedInMilli());
+        m_scene.initialize(context, scenePath, width, height);
 
         m_baseImage = context.createImage({
             .usage = rv::ImageUsage::Storage,

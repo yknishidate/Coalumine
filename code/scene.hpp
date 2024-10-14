@@ -156,6 +156,11 @@ class Scene {
 public:
     Scene() = default;
 
+    void initialize(const rv::Context& context,
+                    const std::filesystem::path& scenePath,
+                    uint32_t width,
+                    uint32_t height);
+
     void loadFromFile(const rv::Context& context, const std::filesystem::path& filepath);
 
     void createMaterialBuffer(const rv::Context& context);
