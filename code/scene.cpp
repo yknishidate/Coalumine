@@ -172,11 +172,12 @@ void Scene::updateAccelInstances(int frame) {
         auto& node = nodes[i];
 
         if (node.meshIndex != -1) {
-            const auto& keyFrame = meshes[node.meshIndex].keyFrames[frame];
-
-            // バッファ更新わすれずに！
-            nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
-            nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+            // BLASをUpdate/Rebuildする場合はバッファも更新して合わせる必要がある
+            if (meshes[node.meshIndex].hasAnimation()) {
+                const auto& keyFrame = meshes[node.meshIndex].getKeyFrameMesh(frame);
+                nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
+                nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+            }
 
             nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
             accelInstances.push_back({
@@ -191,9 +192,7 @@ void Scene::updateAccelInstances(int frame) {
 void Scene::updateBottomAccel(int frame) {
     for (int i = 0; i < meshes.size(); i++) {
         if (meshes[i].hasAnimation()) {
-            int numKeyFrames = static_cast<int>(meshes[i].keyFrames.size());
-            int index = std::clamp(frame, 0, numKeyFrames);
-            const auto& keyFrame = meshes[i].keyFrames[index];
+            const auto& keyFrame = meshes[i].getKeyFrameMesh(frame);
             bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
                                     keyFrame.triangleCount);
         }
