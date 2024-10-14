@@ -8,15 +8,18 @@
 #include <glm/gtc/type_ptr.hpp>
 
 namespace {
-void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
+void loadNodes(std::vector<Node>& nodes,
+               PhysicalCamera& camera,
+               const rv::Context& context,
+               tinygltf::Model& gltfModel) {
     for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
-            scene.m_camera.setType(rv::Camera::Type::FirstPerson);
+            camera.setType(rv::Camera::Type::FirstPerson);
             if (!gltfNode.translation.empty()) {
-                scene.m_camera.setPosition({static_cast<float>(gltfNode.translation[0]),
-                                            static_cast<float>(gltfNode.translation[1]),
-                                            static_cast<float>(gltfNode.translation[2])});
+                camera.setPosition({static_cast<float>(gltfNode.translation[0]),
+                                    static_cast<float>(gltfNode.translation[1]),
+                                    static_cast<float>(gltfNode.translation[2])});
             }
             if (!gltfNode.rotation.empty()) {
                 glm::quat rotation;
@@ -24,17 +27,17 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
                 rotation.y = static_cast<float>(gltfNode.rotation[1]);
                 rotation.z = static_cast<float>(gltfNode.rotation[2]);
                 rotation.w = static_cast<float>(gltfNode.rotation[3]);
-                scene.m_camera.setEulerRotation(glm::eulerAngles(rotation));
+                camera.setEulerRotation(glm::eulerAngles(rotation));
             }
 
-            tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
-            scene.m_camera.setFovY(static_cast<float>(camera.perspective.yfov));
-            scene.m_nodes.push_back(Node{});
+            tinygltf::Camera gltfCamera = gltfModel.cameras[gltfNode.camera];
+            camera.setFovY(static_cast<float>(gltfCamera.perspective.yfov));
+            nodes.push_back(Node{});
             continue;
         }
 
         if (gltfNode.skin != -1) {
-            scene.m_nodes.push_back(Node{});
+            nodes.push_back(Node{});
             continue;
         }
 
@@ -59,22 +62,22 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
                 node.scale.y = static_cast<float>(gltfNode.scale[1]);
                 node.scale.z = static_cast<float>(gltfNode.scale[2]);
             }
-            scene.m_nodes.push_back(node);
+            nodes.push_back(node);
             continue;
         }
 
-        scene.m_nodes.push_back(Node{});
+        nodes.push_back(Node{});
     }
 }
 
-void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
+void loadMeshes(std::vector<Mesh>& meshes, const rv::Context& context, tinygltf::Model& gltfModel) {
     // Count the meshes and reserve the vector
     size_t meshCount = 0;
     for (size_t gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
         auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
         meshCount += gltfMesh.primitives.size();
     }
-    scene.m_meshes.resize(meshCount);
+    meshes.resize(meshCount);
 
     size_t meshIndex = 0;
     for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
@@ -192,17 +195,17 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                 }
             }
 
-            auto& mesh = scene.m_meshes[meshIndex];
+            auto& mesh = meshes[meshIndex];
             mesh.keyFrames.resize(1);
             mesh.keyFrames[0].vertexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelVertex,
                 .size = sizeof(rv::Vertex) * vertices.size(),
-                .debugName = std::format("vertexBuffers[{}]", scene.m_meshes.size()).c_str(),
+                .debugName = std::format("vertexBuffers[{}]", meshes.size()).c_str(),
             });
             mesh.keyFrames[0].indexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelIndex,
                 .size = sizeof(uint32_t) * indices.size(),
-                .debugName = std::format("indexBuffers[{}]", scene.m_meshes.size()).c_str(),
+                .debugName = std::format("indexBuffers[{}]", meshes.size()).c_str(),
             });
 
             context.oneTimeSubmit([&](auto commandBuffer) {
@@ -218,7 +221,9 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
     }
 }
 
-void loadMaterials(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
+void loadMaterials(std::vector<Material>& materials,
+                   const rv::Context& context,
+                   tinygltf::Model& gltfModel) {
     for (auto& mat : gltfModel.materials) {
         Material material;
 
@@ -262,11 +267,13 @@ void loadMaterials(Scene& scene, const rv::Context& context, tinygltf::Model& gl
                 mat.additionalValues["occlusionTexture"].TextureIndex();
         }
 
-        scene.m_materials.push_back(material);
+        materials.push_back(material);
     }
 }
 
-void loadAnimation(Scene& scene, const rv::Context& context, const tinygltf::Model& model) {
+void loadAnimation(std::vector<Node>& nodes,
+                   const rv::Context& context,
+                   const tinygltf::Model& model) {
     for (const auto& animation : model.animations) {
         for (const auto& channel : animation.channels) {
             const auto& sampler = animation.samplers[channel.sampler];
@@ -288,7 +295,7 @@ void loadAnimation(Scene& scene, const rv::Context& context, const tinygltf::Mod
                 const float* outputData = reinterpret_cast<const float*>(
                     &outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
 
-                auto& keyFrames = scene.m_nodes[channel.target_node].keyFrames;
+                auto& keyFrames = nodes[channel.target_node].keyFrames;
                 if (keyFrames.empty()) {
                     keyFrames.resize(inputCount);
                 }
@@ -346,8 +353,8 @@ void LoaderGltf::loadFromFile(Scene& scene,
 
     spdlog::info("Nodes: {}", model.nodes.size());
     spdlog::info("Meshes: {}", model.meshes.size());
-    loadNodes(scene, context, model);
-    loadMeshes(scene, context, model);
-    loadMaterials(scene, context, model);
-    loadAnimation(scene, context, model);
+    loadNodes(scene.m_nodes, scene.m_camera, context, model);
+    loadMeshes(scene.m_meshes, context, model);
+    loadMaterials(scene.m_materials, context, model);
+    loadAnimation(scene.m_nodes, context, model);
 }

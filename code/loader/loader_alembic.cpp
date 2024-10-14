@@ -107,13 +107,13 @@ void loadVerticesAndIndices(const IPolyMeshSchema& meshSchema,
     }
 }
 
-void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
+void processMesh(std::vector<Mesh>& meshes, const rv::Context& context, IPolyMesh& mesh) {
     IPolyMeshSchema& meshSchema = mesh.getSchema();
 
     size_t numSamples = meshSchema.getNumSamples();
     spdlog::info("PolyMesh: {} ({} samples)", mesh.getName(), numSamples);
 
-    size_t meshIndex = scene.m_meshes.size();
+    size_t meshIndex = meshes.size();
     Mesh _mesh{};
 
     _mesh.keyFrames.resize(numSamples);
@@ -148,11 +148,12 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
         _mesh.keyFrames[i].triangleCount = static_cast<uint32_t>(indices.size() / 3);
     }
 
-    scene.m_meshes.push_back(_mesh);
+    meshes.push_back(_mesh);
 }
 
 // 再帰的にXformやメッシュを探索する関数
-void processObjectRecursive(Scene& scene,
+void processObjectRecursive(std::vector<Node>& nodes,
+                            std::vector<Mesh>& meshes,
                             const rv::Context& context,
                             const IObject& object,
                             int parentNodeIndex,
@@ -169,7 +170,7 @@ void processObjectRecursive(Scene& scene,
             spdlog::info("Xform: {}", child.getName());
 
             Node _node;
-            _node.parentNode = &scene.m_nodes[parentNodeIndex];
+            _node.parentNode = &nodes[parentNodeIndex];
             if (numSamples == 1) {
                 XformSample sample;
                 xformSchema.get(sample, i);
@@ -205,23 +206,23 @@ void processObjectRecursive(Scene& scene,
                     keyFrame.rotation = glm::quat(rot);
                 }
             }
-            scene.m_nodes.push_back(_node);
+            nodes.push_back(_node);
 
-            int nodeIndex = static_cast<int>(scene.m_nodes.size() - 1);
+            int nodeIndex = static_cast<int>(nodes.size() - 1);
 
             // 親ノードに追加
-            scene.m_nodes[parentNodeIndex].childNodeIndices.push_back(nodeIndex);
+            nodes[parentNodeIndex].childNodeIndices.push_back(nodeIndex);
 
             // 再帰的にXformの子オブジェクトを処理
-            processObjectRecursive(scene, context, child, nodeIndex, ++depth);
+            processObjectRecursive(nodes, meshes, context, child, nodeIndex, ++depth);
         }
         // メッシュが見つかった場合
         else if (IPolyMesh::matches(child.getHeader())) {
             IPolyMesh mesh(child, kWrapExisting);
-            processMesh(scene, context, mesh);
+            processMesh(meshes, context, mesh);
 
             // 追加したメッシュIDを親ノードに記録
-            scene.m_nodes[parentNodeIndex].meshIndex = static_cast<int>(scene.m_meshes.size() - 1);
+            nodes[parentNodeIndex].meshIndex = static_cast<int>(meshes.size() - 1);
         }
     }
 }
@@ -240,6 +241,5 @@ void LoaderAlembic::loadFromFile(Scene& scene,
     scene.m_nodes.push_back(Node{});
 
     // トップレベルオブジェクトから再帰的に探索
-    processObjectRecursive(scene, context, topObject, 0, 0);
-    spdlog::info("");
+    processObjectRecursive(scene.m_nodes, scene.m_meshes, context, topObject, 0, 0);
 };
