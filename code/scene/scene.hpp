@@ -7,15 +7,25 @@
 #include "physical_camera.hpp"
 
 struct InfiniteLight {
-    glm::vec3 direction = {};
-    glm::vec3 color = {};
+    float theta = 0.0f;
+    float phi = 0.0f;
+    glm::vec3 color = {0.0f, 0.0f, 0.0f};
     float intensity = 0.0f;
+
+    glm::vec3 getDirection() const {
+        const float sinTheta = std::sin(theta);
+        const float cosTheta = std::cos(theta);
+        const float sinPhi = std::sin(phi);
+        const float cosPhi = std::cos(phi);
+        return {sinTheta * sinPhi, cosTheta, sinTheta * cosPhi};
+    }
 };
 
 struct EnvironmentLight {
     rv::ImageHandle texture;
-    glm::vec3 color;
+    glm::vec3 color = {0.0f, 0.0f, 0.0f};
     float intensity = 1.0f;
+    float phi = 0.0f;
     bool useTexture = false;
     bool isVisible = true;
 };
@@ -82,38 +92,7 @@ public:
 
     void update(glm::vec2 dragLeft, float scroll);
 
-    bool drawAttributes() {
-        bool changed = false;
-        if (ImGui::CollapsingHeader("Material")) {
-            size_t count = m_materials.size();
-            for (size_t i = 0u; i < count; i++) {
-                auto& mat = m_materials[i];
-                if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
-                    if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
-                        changed = true;
-                    }
-                    if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
-                                           "%.2f")) {
-                        changed = true;
-                    }
-                    if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
-                        changed = true;
-                    }
-                    if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
-                        changed = true;
-                    }
-
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-        if (m_camera.drawAttributes()) {
-            changed = true;
-        }
-
-        return changed;
-    }
+    bool drawAttributes();
 
 private:
     //  Scene

@@ -1,5 +1,5 @@
 #include "loader_gltf.hpp"
-#include "../scene.hpp"
+#include "../scene/scene.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>

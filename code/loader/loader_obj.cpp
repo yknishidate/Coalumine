@@ -5,7 +5,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#include "../scene.hpp"
+#include "../scene/scene.hpp"
 
 void LoaderObj::loadFromFile(Scene& scene,
                              const rv::Context& context,

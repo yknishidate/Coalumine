@@ -1,5 +1,5 @@
 ﻿#include "loader_alembic.hpp"
-#include "../scene.hpp"
+#include "../scene/scene.hpp"
 
 #include <Imath/ImathVec.h>
 

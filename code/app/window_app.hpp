@@ -137,36 +137,9 @@ public:
                 recompile();
             }
 
-            // Material
-            m_renderer->m_scene.drawAttributes();
-
-            // Light
-            // TODO: move to Scene
-            if (ImGui::CollapsingHeader("Light")) {
-                ImGui::Indent(16.0f);
-                // Dome light
-                if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0,
-                                       "%.0f")) {
-                    m_renderer->reset();
-                }
-                if (ImGui::ColorEdit3("Env light color", &pushConstants.envLightColor[0])) {
-                    m_renderer->reset();
-                }
-                if (ImGui::SliderFloat("Env light intensity", &pushConstants.envLightIntensity,
-                                       0.0f, 10.0f)) {
-                    m_renderer->reset();
-                }
-
-                // Infinite light
-                if (ImGui::SliderFloat3("Infinite light direction",
-                                        &pushConstants.infiniteLightDirection[0], -1.0, 1.0)) {
-                    m_renderer->reset();
-                }
-                if (ImGui::SliderFloat("Infinite light intensity",
-                                       &pushConstants.infiniteLightIntensity, 0.0f, 1.0f)) {
-                    m_renderer->reset();
-                }
-                ImGui::Unindent(16.0f);
+            // Scene
+            if (m_renderer->m_scene.drawAttributes()) {
+                m_renderer->reset();
             }
 
             // Post process

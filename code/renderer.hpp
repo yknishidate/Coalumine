@@ -31,19 +31,6 @@ public:
         });
 
         createPipelines(context);
-
-        // Env light
-        auto& envLight = m_scene.getEnvironmentLight();
-        m_pushConstants.useEnvLightTexture = envLight.useTexture;
-        m_pushConstants.envLightColor = {envLight.color, 1.0f};
-        m_pushConstants.envLightIntensity = envLight.intensity;
-        m_pushConstants.isEnvLightTextureVisible = static_cast<int>(envLight.isVisible);
-
-        // Infinite light
-        auto& infLight = m_scene.getInfiniteLight();
-        m_pushConstants.infiniteLightDirection = infLight.direction;
-        m_pushConstants.infiniteLightColor = {infLight.color, 1.0f};
-        m_pushConstants.infiniteLightIntensity = infLight.intensity;
     }
 
     void createPipelines(const rv::Context& context) {
@@ -100,6 +87,21 @@ public:
     void update(glm::vec2 dragLeft, float scroll) {
         m_scene.update(dragLeft, scroll);
 
+        // Env light
+        auto& envLight = m_scene.getEnvironmentLight();
+        m_pushConstants.envLightPhi = envLight.phi;
+        m_pushConstants.envLightColor = {envLight.color, 1.0f};
+        m_pushConstants.envLightIntensity = envLight.intensity;
+        m_pushConstants.useEnvLightTexture = envLight.useTexture;
+        m_pushConstants.isEnvLightTextureVisible = static_cast<int>(envLight.isVisible);
+
+        // Infinite light
+        auto& infLight = m_scene.getInfiniteLight();
+        m_pushConstants.infiniteLightDirection = infLight.getDirection();
+        m_pushConstants.infiniteLightColor = {infLight.color, 1.0f};
+        m_pushConstants.infiniteLightIntensity = infLight.intensity;
+
+        // Camera
         const PhysicalCamera& camera = m_scene.getCamera();
         m_pushConstants.cameraForward = glm::vec4(camera.getFront(), 1.0f);
         m_pushConstants.cameraPos = glm::vec4(camera.getPosition(), 1.0f);

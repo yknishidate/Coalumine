@@ -6,7 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "../image_generator.hpp"
-#include "../scene.hpp"
+#include "../scene/scene.hpp"
 #include "loader_alembic.hpp"
 #include "loader_gltf.hpp"
 #include "loader_obj.hpp"
@@ -218,8 +218,11 @@ void LoaderJson::loadFromFile(Scene& scene,
 
     if (const auto& light = jsonData.find("infinite_light"); light != jsonData.end()) {
         auto& infLight = scene.m_infiniteLight;
-        if (const auto& dir = light->find("direction"); dir != light->end()) {
-            infLight.direction = glm::normalize(glm::vec3{dir->at(0), dir->at(1), dir->at(2)});
+        if (const auto& value = light->find("theta"); value != light->end()) {
+            infLight.theta = static_cast<float>(*value);
+        }
+        if (const auto& value = light->find("phi"); value != light->end()) {
+            infLight.phi = static_cast<float>(*value);
         }
         if (const auto& color = light->find("color"); color != light->end()) {
             infLight.color = {color->at(0), color->at(1), color->at(2)};

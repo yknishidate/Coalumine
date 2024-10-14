@@ -244,3 +244,62 @@ void Scene::update(glm::vec2 dragLeft, float scroll) {
         m_camera.processMouseScroll(scroll);
     }
 }
+
+bool Scene::drawAttributes() {
+    bool changed = false;
+    if (ImGui::CollapsingHeader("Material")) {
+        for (size_t i = 0u; i < m_materials.size(); i++) {
+            auto& mat = m_materials[i];
+            if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
+                if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
+                    changed = true;
+                }
+                if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f, "%.2f")) {
+                    changed = true;
+                }
+                if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
+                    changed = true;
+                }
+                if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
+                    changed = true;
+                }
+
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    // Light
+    if (ImGui::CollapsingHeader("Light")) {
+        ImGui::Indent(16.0f);
+        // Dome light
+        if (ImGui::SliderFloat("Env light phi", &m_envLight.phi, 0.0, 360.0, "%.0f")) {
+            changed = true;
+        }
+        if (ImGui::ColorEdit3("Env light color", &m_envLight.color[0])) {
+            changed = true;
+        }
+        if (ImGui::SliderFloat("Env light intensity", &m_envLight.intensity, 0.0f, 10.0f)) {
+            changed = true;
+        }
+
+        // Infinite light
+        if (ImGui::SliderFloat("Infinite light theta", &m_infiniteLight.theta, -1.0, 1.0)) {
+            changed = true;
+        }
+        if (ImGui::SliderFloat("Infinite light phi", &m_infiniteLight.phi, -1.0, 1.0)) {
+            changed = true;
+        }
+        if (ImGui::SliderFloat("Infinite light intensity", &m_infiniteLight.intensity, 0.0f,
+                               1.0f)) {
+            changed = true;
+        }
+        ImGui::Unindent(16.0f);
+    }
+
+    if (m_camera.drawAttributes()) {
+        changed = true;
+    }
+
+    return changed;
+}
