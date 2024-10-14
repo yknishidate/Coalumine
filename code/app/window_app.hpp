@@ -1,7 +1,5 @@
 ﻿#pragma once
-
 #include <random>
-
 #include <reactive/reactive.hpp>
 
 #include "image_writer.hpp"
@@ -141,9 +139,9 @@ public:
 
             // Material
             if (ImGui::CollapsingHeader("Material")) {
-                size_t count = m_renderer->m_scene.materials.size();
+                size_t count = m_renderer->m_scene.m_materials.size();
                 for (size_t i = 0u; i < count; i++) {
-                    auto& mat = m_renderer->m_scene.materials[i];
+                    auto& mat = m_renderer->m_scene.m_materials[i];
                     if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
                         if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
                             m_renderer->reset();
@@ -201,11 +199,10 @@ public:
                 // Bloom
                 ImGui::Checkbox("Enable bloom", &enableBloom);
                 if (enableBloom) {
-                    ImGui::SliderFloat("Bloom intensity",
-                                       &compositeInfo.bloomIntensity,  //
+                    ImGui::SliderFloat("Bloom intensity", &compositeInfo.bloomIntensity,  //
                                        0.0f, 10.0f);
-                    ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f,
-                                       10.0f);
+                    ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold,  //
+                                       0.0f, 10.0f);
                     ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
                     ImGui::SliderInt("Blur size", &bloomInfo.blurSize, 0, 64);
                 }
@@ -227,7 +224,7 @@ public:
             }
 
             // Camera
-            if (m_renderer->m_scene.camera.drawAttributes()) {
+            if (m_renderer->m_scene.m_camera.drawAttributes()) {
                 m_renderer->reset();
             }
 
@@ -249,7 +246,7 @@ public:
                                  vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
-        rv::ImageHandle outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
+        const rv::ImageHandle& outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
         commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(0));
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);

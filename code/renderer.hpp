@@ -1,13 +1,10 @@
 ﻿#pragma once
+#include <stb_image_write.h>
 #include <future>
 #include <random>
-
-#include "../shader/share.h"
-
 #include <reactive/reactive.hpp>
 
-#include <stb_image_write.h>
-
+#include "../shader/share.h"
 #include "image_generator.hpp"
 #include "render_pass.hpp"
 #include "scene.hpp"
@@ -36,15 +33,16 @@ public:
         createPipelines(context);
 
         // Env light
-        m_pushConstants.useEnvLightTexture = m_scene.useEnvLightTexture;
-        m_pushConstants.envLightColor = {m_scene.envLightColor, 1.0f};
-        m_pushConstants.envLightIntensity = m_scene.envLightIntensity;
-        m_pushConstants.visibleEnvLightTexture = static_cast<int>(m_scene.visibleEnvLightTexture);
+        m_pushConstants.useEnvLightTexture = m_scene.m_useEnvLightTexture;
+        m_pushConstants.envLightColor = {m_scene.m_envLightColor, 1.0f};
+        m_pushConstants.envLightIntensity = m_scene.m_envLightIntensity;
+        m_pushConstants.isEnvLightTextureVisible =
+            static_cast<int>(m_scene.m_isEnvLightTextureVisible);
 
         // Infinite light
-        m_pushConstants.infiniteLightColor.xyz = m_scene.infiniteLightColor;
-        m_pushConstants.infiniteLightDirection = m_scene.infiniteLightDir;
-        m_pushConstants.infiniteLightIntensity = m_scene.infiniteLightIntensity;
+        m_pushConstants.infiniteLightColor.xyz = m_scene.m_infiniteLightColor;
+        m_pushConstants.infiniteLightDirection = m_scene.m_infiniteLightDir;
+        m_pushConstants.infiniteLightIntensity = m_scene.m_infiniteLightIntensity;
     }
 
     void createPipelines(const rv::Context& context) {
@@ -73,18 +71,18 @@ public:
             .shaders = shaders,
             .buffers =
                 {
-                    {"NodeDataBuffer", m_scene.nodeDataBuffer},
-                    {"MaterialBuffer", m_scene.materialBuffer},
+                    {"NodeDataBuffer", m_scene.m_nodeDataBuffer},
+                    {"MaterialBuffer", m_scene.m_materialBuffer},
                 },
             .images =
                 {
                     {"baseImage", m_baseImage},
                     {"bloomImage", m_bloomPass.getOutputImage()},
-                    {"envLightTexture", m_scene.envLightTexture},
-                    {"textures2d", m_scene.textures2d},
-                    {"textures3d", m_scene.textures3d},
+                    {"envLightTexture", m_scene.m_envLightTexture},
+                    {"textures2d", m_scene.m_textures2d},
+                    {"textures3d", m_scene.m_textures3d},
                 },
-            .accels = {{"topLevelAS", m_scene.topAccel}},
+            .accels = {{"topLevelAS", m_scene.m_topAccel}},
         });
         m_descSet->update();
 
@@ -100,17 +98,17 @@ public:
 
     void update(glm::vec2 dragLeft, float scroll) {
         if (dragLeft != glm::vec2(0.0f) || scroll != 0.0f) {
-            m_scene.camera.processMouseDragLeft(dragLeft);
-            m_scene.camera.processMouseScroll(scroll);
+            m_scene.m_camera.processMouseDragLeft(dragLeft);
+            m_scene.m_camera.processMouseScroll(scroll);
         }
 
-        m_pushConstants.cameraForward = glm::vec4(m_scene.camera.getFront(), 1.0f);
-        m_pushConstants.cameraPos = glm::vec4(m_scene.camera.getPosition(), 1.0f);
-        m_pushConstants.cameraRight = glm::vec4(m_scene.camera.getRight(), 1.0f);
-        m_pushConstants.cameraUp = glm::vec4(m_scene.camera.getUp(), 1.0f);
-        m_pushConstants.cameraImageDistance = m_scene.camera.getImageDistance();
-        m_pushConstants.cameraLensRadius = m_scene.camera.m_lensRadius;
-        m_pushConstants.cameraObjectDistance = m_scene.camera.m_objectDistance;
+        m_pushConstants.cameraForward = glm::vec4(m_scene.m_camera.getFront(), 1.0f);
+        m_pushConstants.cameraPos = glm::vec4(m_scene.m_camera.getPosition(), 1.0f);
+        m_pushConstants.cameraRight = glm::vec4(m_scene.m_camera.getRight(), 1.0f);
+        m_pushConstants.cameraUp = glm::vec4(m_scene.m_camera.getUp(), 1.0f);
+        m_pushConstants.cameraImageDistance = m_scene.m_camera.getImageDistance();
+        m_pushConstants.cameraLensRadius = m_scene.m_camera.m_lensRadius;
+        m_pushConstants.cameraObjectDistance = m_scene.m_camera.m_objectDistance;
     }
 
     void reset() { m_pushConstants.accumCount = 0; }
@@ -126,9 +124,9 @@ public:
             m_scene.updateBottomAccel(frame);
             m_scene.updateTopAccel(frame);
 
-            for (int i = 0; i < m_scene.meshes.size(); i++) {
-                if (m_scene.meshes[i].hasAnimation()) {
-                    commandBuffer->updateBottomAccel(m_scene.bottomAccels[i]);
+            for (int i = 0; i < m_scene.m_meshes.size(); i++) {
+                if (m_scene.m_meshes[i].hasAnimation()) {
+                    commandBuffer->updateBottomAccel(m_scene.m_bottomAccels[i]);
                 }
             }
 
@@ -137,7 +135,7 @@ public:
                                          vk::AccessFlagBits::eAccelerationStructureWriteKHR,
                                          vk::AccessFlagBits::eAccelerationStructureReadKHR);
 
-            commandBuffer->updateTopAccel(m_scene.topAccel);
+            commandBuffer->updateTopAccel(m_scene.m_topAccel);
 
             commandBuffer->memoryBarrier(vk::PipelineStageFlagBits::eAccelerationStructureBuildKHR,
                                          vk::PipelineStageFlagBits::eRayTracingShaderKHR,

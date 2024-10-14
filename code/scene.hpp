@@ -1,10 +1,8 @@
 ﻿#pragma once
-
+#include <glm/gtc/matrix_inverse.hpp>
 #include <reactive/reactive.hpp>
 
 #include "../shader/share.h"
-
-#include <glm/gtc/matrix_inverse.hpp>
 
 // TODO:
 // enum class AnimationMode {
@@ -61,9 +59,11 @@ public:
     int overrideMaterialIndex = -1;  // オーバーライド用
     Node* parentNode = nullptr;
     std::vector<int> childNodeIndices;  // TODO: use this
-    glm::vec3 translation = glm::vec3{0.0, 0.0, 0.0};
-    glm::quat rotation = glm::quat{1.0, 0.0, 0.0, 0.0};
-    glm::vec3 scale = glm::vec3{1.0, 1.0, 1.0};
+
+    // TODO: remove default TRS
+    glm::vec3 translation = {0.0f, 0.0f, 0.0f};
+    glm::quat rotation = {1.0f, 0.0f, 0.0f, 0.0f};
+    glm::vec3 scale = {1.0f, 1.0f, 1.0f};
     std::vector<KeyFrame> keyFrames;
 
     // TODO: interpolation by time
@@ -191,35 +191,36 @@ public:
 
     uint32_t getMaxFrame() const;
 
-    // Scene
-    std::vector<Node> nodes;
-    std::vector<Mesh> meshes;
-    std::vector<rv::ImageHandle> textures2d;
-    std::vector<rv::ImageHandle> textures3d;
+    // private:
+    //  Scene
+    std::vector<Node> m_nodes;
+    std::vector<Mesh> m_meshes;
+    std::vector<rv::ImageHandle> m_textures2d;
+    std::vector<rv::ImageHandle> m_textures3d;
 
     // Accel
-    std::vector<rv::BottomAccelHandle> bottomAccels;
-    std::vector<rv::AccelInstance> accelInstances;
-    rv::TopAccelHandle topAccel;
+    std::vector<rv::BottomAccelHandle> m_bottomAccels;
+    std::vector<rv::AccelInstance> m_accelInstances;
+    rv::TopAccelHandle m_topAccel;
 
     // Light
-    rv::ImageHandle envLightTexture;
-    glm::vec3 envLightColor;
-    float envLightIntensity = 1.0f;
-    bool useEnvLightTexture = false;
-    bool visibleEnvLightTexture = true;
+    rv::ImageHandle m_envLightTexture;
+    glm::vec3 m_envLightColor;
+    float m_envLightIntensity = 1.0f;
+    bool m_useEnvLightTexture = false;
+    bool m_isEnvLightTextureVisible = true;
 
-    glm::vec3 infiniteLightDir = {};
-    glm::vec3 infiniteLightColor = {};
-    float infiniteLightIntensity = 0.0f;
+    glm::vec3 m_infiniteLightDir = {};
+    glm::vec3 m_infiniteLightColor = {};
+    float m_infiniteLightIntensity = 0.0f;
 
     // Buffer
-    std::vector<NodeData> nodeData;
-    rv::BufferHandle nodeDataBuffer;
+    std::vector<NodeData> m_nodeData;
+    rv::BufferHandle m_nodeDataBuffer;
 
-    std::vector<Material> materials;
-    rv::BufferHandle materialBuffer;
+    std::vector<Material> m_materials;
+    rv::BufferHandle m_materialBuffer;
 
     // Camera
-    PhysicalCamera camera;
+    PhysicalCamera m_camera;
 };

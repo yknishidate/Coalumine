@@ -18,7 +18,7 @@ void Scene::initialize(const rv::Context& context,
     createMaterialBuffer(context);
     createNodeDataBuffer(context);
     createDummyTextures(context);
-    camera.setAspect(width / static_cast<float>(height));
+    m_camera.setAspect(width / static_cast<float>(height));
     spdlog::info("Load scene: {} ms", timer.elapsedInMilli());
 
     // Build BVH
@@ -40,25 +40,25 @@ void Scene::loadFromFile(const rv::Context& context, const std::filesystem::path
 }
 
 void Scene::createMaterialBuffer(const rv::Context& context) {
-    if (materials.empty()) {
-        materials.push_back({});  // dummy data
+    if (m_materials.empty()) {
+        m_materials.push_back({});  // dummy data
     }
-    materialBuffer = context.createBuffer({
+    m_materialBuffer = context.createBuffer({
         .usage = rv::BufferUsage::Storage,
-        .size = materials.size() * sizeof(Material),
+        .size = m_materials.size() * sizeof(Material),
     });
 
     context.oneTimeSubmit([&](auto commandBuffer) {  //
-        commandBuffer->copyBuffer(materialBuffer, materials.data());
+        commandBuffer->copyBuffer(m_materialBuffer, m_materials.data());
     });
 }
 
 void Scene::createNodeDataBuffer(const rv::Context& context) {
-    nodeData.clear();
-    for (auto& node : nodes) {
+    m_nodeData.clear();
+    for (auto& node : m_nodes) {
         NodeData data;
         if (node.meshIndex != -1) {
-            const auto& mesh = meshes[node.meshIndex];
+            const auto& mesh = m_meshes[node.meshIndex];
             data.vertexBufferAddress = mesh.keyFrames[0].vertexBuffer->getAddress();
             data.indexBufferAddress = mesh.keyFrames[0].indexBuffer->getAddress();
             data.meshAabbMin = mesh.aabb.getMin();
@@ -68,23 +68,23 @@ void Scene::createNodeDataBuffer(const rv::Context& context) {
                                      : node.overrideMaterialIndex;  // マテリアルオーバーライド
             data.normalMatrix = node.computeNormalMatrix(0);
         }
-        nodeData.push_back(data);
+        m_nodeData.push_back(data);
     }
-    nodeDataBuffer = context.createBuffer({
+    m_nodeDataBuffer = context.createBuffer({
         .usage = rv::BufferUsage::Storage,
         .memory = rv::MemoryUsage::DeviceHost,
-        .size = sizeof(NodeData) * nodeData.size(),
+        .size = sizeof(NodeData) * m_nodeData.size(),
         .debugName = "nodeDataBuffer",
     });
-    nodeDataBuffer->copy(nodeData.data());
+    m_nodeDataBuffer->copy(m_nodeData.data());
 }
 
 void Scene::loadEnvLightTexture(const rv::Context& context, const std::filesystem::path& filepath) {
-    envLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
+    m_envLightTexture = rv::Image::loadFromFileHDR(context, filepath.string());
 }
 
 void Scene::createDummyTextures(const rv::Context& context) {
-    if (textures2d.empty()) {
+    if (m_textures2d.empty()) {
         auto newTexture = context.createImage({
             .usage = rv::ImageUsage::Sampled,
             .extent = {1, 1, 1},
@@ -96,9 +96,9 @@ void Scene::createDummyTextures(const rv::Context& context) {
         context.oneTimeSubmit([&](const rv::CommandBufferHandle& commandBuffer) {
             commandBuffer->transitionLayout(newTexture, vk::ImageLayout::eGeneral);
         });
-        textures2d.push_back(newTexture);
+        m_textures2d.push_back(newTexture);
     }
-    if (textures3d.empty()) {
+    if (m_textures3d.empty()) {
         auto newTexture = context.createImage({
             .usage = rv::ImageUsage::Sampled,
             .extent = {1, 1, 1},
@@ -111,7 +111,7 @@ void Scene::createDummyTextures(const rv::Context& context) {
         context.oneTimeSubmit([&](const rv::CommandBufferHandle& commandBuffer) {
             commandBuffer->transitionLayout(newTexture, vk::ImageLayout::eGeneral);
         });
-        textures3d.push_back(newTexture);
+        m_textures3d.push_back(newTexture);
     }
 }
 
@@ -120,7 +120,7 @@ void Scene::createEnvLightTexture(const rv::Context& context,
                                   uint32_t width,
                                   uint32_t height,
                                   uint32_t channel) {
-    envLightTexture = context.createImage({
+    m_envLightTexture = context.createImage({
         .usage = rv::ImageUsage::Sampled,
         .extent = {width, height, 1},
         .format = channel == 3 ? vk::Format::eR32G32B32Sfloat : vk::Format::eR32G32B32A32Sfloat,
@@ -138,33 +138,33 @@ void Scene::createEnvLightTexture(const rv::Context& context,
     stagingBuffer->copy(data);
 
     context.oneTimeSubmit([&](auto commandBuffer) {
-        commandBuffer->transitionLayout(envLightTexture, vk::ImageLayout::eTransferDstOptimal);
-        commandBuffer->copyBufferToImage(stagingBuffer, envLightTexture);
-        commandBuffer->transitionLayout(envLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
+        commandBuffer->transitionLayout(m_envLightTexture, vk::ImageLayout::eTransferDstOptimal);
+        commandBuffer->copyBufferToImage(stagingBuffer, m_envLightTexture);
+        commandBuffer->transitionLayout(m_envLightTexture, vk::ImageLayout::eShaderReadOnlyOptimal);
     });
 }
 
 void Scene::buildAccels(const rv::Context& context) {
-    bottomAccels.resize(meshes.size());
+    m_bottomAccels.resize(m_meshes.size());
     context.oneTimeSubmit([&](auto commandBuffer) {  //
-        for (int i = 0; i < meshes.size(); i++) {
+        for (int i = 0; i < m_meshes.size(); i++) {
             // 本当に初期化時にバッファが必要？
-            bottomAccels[i] = context.createBottomAccel({
-                .vertexBuffer = meshes[i].keyFrames[0].vertexBuffer,
-                .indexBuffer = meshes[i].keyFrames[0].indexBuffer,
+            m_bottomAccels[i] = context.createBottomAccel({
+                .vertexBuffer = m_meshes[i].keyFrames[0].vertexBuffer,
+                .indexBuffer = m_meshes[i].keyFrames[0].indexBuffer,
                 .vertexStride = sizeof(rv::Vertex),
-                .maxVertexCount = meshes[i].getMaxVertexCount(),
-                .maxTriangleCount = meshes[i].getMaxTriangleCount(),
-                .triangleCount = meshes[i].keyFrames[0].triangleCount,
+                .maxVertexCount = m_meshes[i].getMaxVertexCount(),
+                .maxTriangleCount = m_meshes[i].getMaxTriangleCount(),
+                .triangleCount = m_meshes[i].keyFrames[0].triangleCount,
             });
-            commandBuffer->buildBottomAccel(bottomAccels[i]);
+            commandBuffer->buildBottomAccel(m_bottomAccels[i]);
         }
     });
 
     updateAccelInstances(0);
-    topAccel = context.createTopAccel({.accelInstances = accelInstances});
+    m_topAccel = context.createTopAccel({.accelInstances = m_accelInstances});
     context.oneTimeSubmit([&](auto commandBuffer) {  //
-        commandBuffer->buildTopAccel(topAccel);
+        commandBuffer->buildTopAccel(m_topAccel);
     });
 }
 
@@ -172,12 +172,12 @@ bool Scene::shouldUpdate(int frame) const {
     if (frame <= 1) {
         return true;
     }
-    for (const auto& node : nodes) {
+    for (const auto& node : m_nodes) {
         if (node.meshIndex != -1) {
             if (node.computeTransformMatrix(frame - 1) != node.computeTransformMatrix(frame)) {
                 return true;
             }
-            if (meshes[node.meshIndex].hasAnimation()) {
+            if (m_meshes[node.meshIndex].hasAnimation()) {
                 return true;
             }
         }
@@ -186,21 +186,21 @@ bool Scene::shouldUpdate(int frame) const {
 }
 
 void Scene::updateAccelInstances(int frame) {
-    accelInstances.clear();
-    for (size_t i = 0; i < nodes.size(); i++) {
-        auto& node = nodes[i];
+    m_accelInstances.clear();
+    for (size_t i = 0; i < m_nodes.size(); i++) {
+        auto& node = m_nodes[i];
 
         if (node.meshIndex != -1) {
             // BLASをUpdate/Rebuildする場合はバッファも更新して合わせる必要がある
-            if (meshes[node.meshIndex].hasAnimation()) {
-                const auto& keyFrame = meshes[node.meshIndex].getKeyFrameMesh(frame);
-                nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
-                nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
+            if (m_meshes[node.meshIndex].hasAnimation()) {
+                const auto& keyFrame = m_meshes[node.meshIndex].getKeyFrameMesh(frame);
+                m_nodeData[i].vertexBufferAddress = keyFrame.vertexBuffer->getAddress();
+                m_nodeData[i].indexBufferAddress = keyFrame.indexBuffer->getAddress();
             }
 
-            nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
-            accelInstances.push_back({
-                .bottomAccel = bottomAccels[node.meshIndex],
+            m_nodeData[i].normalMatrix = node.computeNormalMatrix(frame);
+            m_accelInstances.push_back({
+                .bottomAccel = m_bottomAccels[node.meshIndex],
                 .transform = node.computeTransformMatrix(frame),
                 .customIndex = static_cast<uint32_t>(i),
             });
@@ -209,31 +209,31 @@ void Scene::updateAccelInstances(int frame) {
 }
 
 void Scene::updateBottomAccel(int frame) {
-    for (int i = 0; i < meshes.size(); i++) {
-        if (meshes[i].hasAnimation()) {
-            const auto& keyFrame = meshes[i].getKeyFrameMesh(frame);
-            bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
-                                    keyFrame.triangleCount);
+    for (int i = 0; i < m_meshes.size(); i++) {
+        if (m_meshes[i].hasAnimation()) {
+            const auto& keyFrame = m_meshes[i].getKeyFrameMesh(frame);
+            m_bottomAccels[i]->update(keyFrame.vertexBuffer, keyFrame.indexBuffer,
+                                      keyFrame.triangleCount);
         }
     }
 }
 
 void Scene::updateTopAccel(int frame) {
     updateAccelInstances(frame);
-    topAccel->updateInstances(accelInstances);
-    nodeDataBuffer->copy(nodeData.data());
+    m_topAccel->updateInstances(m_accelInstances);
+    m_nodeDataBuffer->copy(m_nodeData.data());
 }
 
 void Scene::updateMaterialBuffer(const rv::CommandBufferHandle& commandBuffer) {
-    commandBuffer->copyBuffer(materialBuffer, materials.data());
+    commandBuffer->copyBuffer(m_materialBuffer, m_materials.data());
 }
 
 uint32_t Scene::getMaxFrame() const {
     uint32_t frame = 0;
-    for (const auto& node : nodes) {
+    for (const auto& node : m_nodes) {
         frame = std::max(frame, static_cast<uint32_t>(node.keyFrames.size()));
     }
-    for (const auto& mesh : meshes) {
+    for (const auto& mesh : m_meshes) {
         frame = std::max(frame, static_cast<uint32_t>(mesh.keyFrames.size()));
     }
     return frame;

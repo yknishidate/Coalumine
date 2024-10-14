@@ -1,5 +1,5 @@
 ﻿#include "loader_alembic.hpp"
-#include "scene.hpp"
+#include "../scene.hpp"
 
 #include <Imath/ImathVec.h>
 
@@ -113,7 +113,7 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
     size_t numSamples = meshSchema.getNumSamples();
     spdlog::info("PolyMesh: {} ({} samples)", mesh.getName(), numSamples);
 
-    size_t meshIndex = scene.meshes.size();
+    size_t meshIndex = scene.m_meshes.size();
     Mesh _mesh{};
 
     _mesh.keyFrames.resize(numSamples);
@@ -148,7 +148,7 @@ void processMesh(Scene& scene, const rv::Context& context, IPolyMesh& mesh) {
         _mesh.keyFrames[i].triangleCount = static_cast<uint32_t>(indices.size() / 3);
     }
 
-    scene.meshes.push_back(_mesh);
+    scene.m_meshes.push_back(_mesh);
 }
 
 // 再帰的にXformやメッシュを探索する関数
@@ -169,7 +169,7 @@ void processObjectRecursive(Scene& scene,
             spdlog::info("Xform: {}", child.getName());
 
             Node _node;
-            _node.parentNode = &scene.nodes[parentNodeIndex];
+            _node.parentNode = &scene.m_nodes[parentNodeIndex];
             if (numSamples == 1) {
                 XformSample sample;
                 xformSchema.get(sample, i);
@@ -205,12 +205,12 @@ void processObjectRecursive(Scene& scene,
                     keyFrame.rotation = glm::quat(rot);
                 }
             }
-            scene.nodes.push_back(_node);
+            scene.m_nodes.push_back(_node);
 
-            int nodeIndex = static_cast<int>(scene.nodes.size() - 1);
+            int nodeIndex = static_cast<int>(scene.m_nodes.size() - 1);
 
             // 親ノードに追加
-            scene.nodes[parentNodeIndex].childNodeIndices.push_back(nodeIndex);
+            scene.m_nodes[parentNodeIndex].childNodeIndices.push_back(nodeIndex);
 
             // 再帰的にXformの子オブジェクトを処理
             processObjectRecursive(scene, context, child, nodeIndex, ++depth);
@@ -221,7 +221,7 @@ void processObjectRecursive(Scene& scene,
             processMesh(scene, context, mesh);
 
             // 追加したメッシュIDを親ノードに記録
-            scene.nodes[parentNodeIndex].meshIndex = static_cast<int>(scene.meshes.size() - 1);
+            scene.m_nodes[parentNodeIndex].meshIndex = static_cast<int>(scene.m_meshes.size() - 1);
         }
     }
 }
@@ -234,10 +234,10 @@ void LoaderAlembic::loadFromFile(Scene& scene,
     IArchive archive(Alembic::AbcCoreFactory::IFactory().getArchive(filepath.string()));
     IObject topObject = archive.getTop();
 
-    scene.nodes.reserve(1000);
-    scene.meshes.reserve(1000);
+    scene.m_nodes.reserve(1000);
+    scene.m_meshes.reserve(1000);
 
-    scene.nodes.push_back(Node{});
+    scene.m_nodes.push_back(Node{});
 
     // トップレベルオブジェクトから再帰的に探索
     processObjectRecursive(scene, context, topObject, 0, 0);

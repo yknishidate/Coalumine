@@ -1,5 +1,4 @@
 ﻿#include <random>
-
 #include <reactive/reactive.hpp>
 
 #include "app/headless_app.hpp"

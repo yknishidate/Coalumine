@@ -24,7 +24,7 @@ vec3 sampleEnvLightTexture() {
 void main()
 {
     if (pc.useEnvLightTexture == 1) {
-        if (pc.visibleEnvLightTexture == 1) {
+        if (pc.isEnvLightTextureVisible == 1) {
             payload.radiance = sampleEnvLightTexture();
         } else {
             // invisible from primary ray

@@ -1,19 +1,22 @@
 #include "loader_gltf.hpp"
-#include "scene.hpp"
+#include "../scene.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace {
 void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfModel) {
     for (int gltfNodeIndex = 0; gltfNodeIndex < gltfModel.nodes.size(); gltfNodeIndex++) {
         auto& gltfNode = gltfModel.nodes.at(gltfNodeIndex);
         if (gltfNode.camera != -1) {
-            scene.camera.setType(rv::Camera::Type::FirstPerson);
+            scene.m_camera.setType(rv::Camera::Type::FirstPerson);
             if (!gltfNode.translation.empty()) {
-                scene.camera.setPosition({static_cast<float>(gltfNode.translation[0]),
-                                          static_cast<float>(gltfNode.translation[1]),
-                                          static_cast<float>(gltfNode.translation[2])});
+                scene.m_camera.setPosition({static_cast<float>(gltfNode.translation[0]),
+                                            static_cast<float>(gltfNode.translation[1]),
+                                            static_cast<float>(gltfNode.translation[2])});
             }
             if (!gltfNode.rotation.empty()) {
                 glm::quat rotation;
@@ -21,17 +24,17 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
                 rotation.y = static_cast<float>(gltfNode.rotation[1]);
                 rotation.z = static_cast<float>(gltfNode.rotation[2]);
                 rotation.w = static_cast<float>(gltfNode.rotation[3]);
-                scene.camera.setEulerRotation(glm::eulerAngles(rotation));
+                scene.m_camera.setEulerRotation(glm::eulerAngles(rotation));
             }
 
             tinygltf::Camera camera = gltfModel.cameras[gltfNode.camera];
-            scene.camera.setFovY(static_cast<float>(camera.perspective.yfov));
-            scene.nodes.push_back(Node{});
+            scene.m_camera.setFovY(static_cast<float>(camera.perspective.yfov));
+            scene.m_nodes.push_back(Node{});
             continue;
         }
 
         if (gltfNode.skin != -1) {
-            scene.nodes.push_back(Node{});
+            scene.m_nodes.push_back(Node{});
             continue;
         }
 
@@ -56,11 +59,11 @@ void loadNodes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfMo
                 node.scale.y = static_cast<float>(gltfNode.scale[1]);
                 node.scale.z = static_cast<float>(gltfNode.scale[2]);
             }
-            scene.nodes.push_back(node);
+            scene.m_nodes.push_back(node);
             continue;
         }
 
-        scene.nodes.push_back(Node{});
+        scene.m_nodes.push_back(Node{});
     }
 }
 
@@ -71,7 +74,7 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
         auto& gltfMesh = gltfModel.meshes.at(gltfMeshIndex);
         meshCount += gltfMesh.primitives.size();
     }
-    scene.meshes.resize(meshCount);
+    scene.m_meshes.resize(meshCount);
 
     size_t meshIndex = 0;
     for (int gltfMeshIndex = 0; gltfMeshIndex < gltfModel.meshes.size(); gltfMeshIndex++) {
@@ -183,23 +186,23 @@ void loadMeshes(Scene& scene, const rv::Context& context, tinygltf::Model& gltfM
                         break;
                     }
                     default:
-                        std::cerr << "Index component type " << accessor.componentType
-                                  << " not supported!" << std::endl;
+                        spdlog::error("Index component type {} not supported!",
+                                      accessor.componentType);
                         return;
                 }
             }
 
-            auto& mesh = scene.meshes[meshIndex];
+            auto& mesh = scene.m_meshes[meshIndex];
             mesh.keyFrames.resize(1);
             mesh.keyFrames[0].vertexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelVertex,
                 .size = sizeof(rv::Vertex) * vertices.size(),
-                .debugName = std::format("vertexBuffers[{}]", scene.meshes.size()).c_str(),
+                .debugName = std::format("vertexBuffers[{}]", scene.m_meshes.size()).c_str(),
             });
             mesh.keyFrames[0].indexBuffer = context.createBuffer({
                 .usage = rv::BufferUsage::AccelIndex,
                 .size = sizeof(uint32_t) * indices.size(),
-                .debugName = std::format("indexBuffers[{}]", scene.meshes.size()).c_str(),
+                .debugName = std::format("indexBuffers[{}]", scene.m_meshes.size()).c_str(),
             });
 
             context.oneTimeSubmit([&](auto commandBuffer) {
@@ -259,7 +262,7 @@ void loadMaterials(Scene& scene, const rv::Context& context, tinygltf::Model& gl
                 mat.additionalValues["occlusionTexture"].TextureIndex();
         }
 
-        scene.materials.push_back(material);
+        scene.m_materials.push_back(material);
     }
 }
 
@@ -285,7 +288,7 @@ void loadAnimation(Scene& scene, const rv::Context& context, const tinygltf::Mod
                 const float* outputData = reinterpret_cast<const float*>(
                     &outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
 
-                auto& keyFrames = scene.nodes[channel.target_node].keyFrames;
+                auto& keyFrames = scene.m_nodes[channel.target_node].keyFrames;
                 if (keyFrames.empty()) {
                     keyFrames.resize(inputCount);
                 }
@@ -332,10 +335,10 @@ void LoaderGltf::loadFromFile(Scene& scene,
     }
 
     if (!warn.empty()) {
-        std::cerr << "Warn: " << warn.c_str() << std::endl;
+        spdlog::warn(warn.c_str());
     }
     if (!err.empty()) {
-        std::cerr << "Err: " << err.c_str() << std::endl;
+        spdlog::error(err.c_str());
     }
     if (!ret) {
         throw std::runtime_error("Failed to parse glTF: " + filepath.string());
