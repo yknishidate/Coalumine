@@ -1,4 +1,5 @@
-﻿#include <future>
+﻿#pragma once
+#include <future>
 #include <random>
 
 #include "../shader/share.h"
