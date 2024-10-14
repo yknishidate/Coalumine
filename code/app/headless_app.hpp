@@ -1,11 +1,11 @@
+#pragma once
 #include <random>
-
 #include <reactive/reactive.hpp>
 
 #include "image_writer.hpp"
 #include "render_pass.hpp"
 #include "renderer.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 
 class HeadlessApp {
 public:
@@ -93,9 +93,6 @@ public:
     void run() {
         rv::CPUTimer renderTimer;
 
-        m_renderer->m_pushConstants.sampleCount = 256;
-        m_renderer->m_pushConstants.enableAccum = false;
-        m_renderer->m_compositeInfo.exposure = 1.8f;
         for (uint32_t i = 0; i < m_totalFrames; i++) {
             m_imageWriter->wait(m_imageIndex);
 

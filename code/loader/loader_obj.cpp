@@ -5,7 +5,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#include "scene.hpp"
+#include "../scene/scene.hpp"
 
 void LoaderObj::loadFromFile(Scene& scene,
                              const rv::Context& context,
@@ -29,23 +29,24 @@ void LoaderObj::loadFromFile(Scene& scene,
     // 最後の1つはデフォルトマテリアルとして確保しておく
     // マテリアルが空の場合でもバッファを作成できるように
     // 最初をデフォルトにするとmaterial indexがずれるのでやめておく
-    scene.materials.resize(objMaterials.size() + 1);
-    scene.materials.back() = Material{};
-    const int defaultMaterialIndex = static_cast<int>(scene.materials.size() - 1);
+    scene.m_materials.resize(objMaterials.size() + 1);
+    scene.m_materials.back() = Material{};
+    const int defaultMaterialIndex = static_cast<int>(scene.m_materials.size() - 1);
 
     for (size_t i = 0; i < objMaterials.size(); i++) {
         spdlog::info("material: {}", objMaterials[i].name);
         auto& mat = objMaterials[i];
-        scene.materials[i].baseColorFactor = {mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0f};
-        scene.materials[i].emissiveFactor = {mat.emission[0], mat.emission[1], mat.emission[2]};
-        scene.materials[i].metallicFactor = 0.0f;
+        scene.m_materials[i].baseColorFactor = {mat.diffuse[0], mat.diffuse[1], mat.diffuse[2],
+                                                1.0f};
+        scene.m_materials[i].emissiveFactor = {mat.emission[0], mat.emission[1], mat.emission[2]};
+        scene.m_materials[i].metallicFactor = 0.0f;
 
         // diffuse
         if (!mat.diffuse_texname.empty()) {
             if (textureNames.contains(mat.diffuse_texname)) {
-                scene.materials[i].baseColorTextureIndex = textureNames[mat.diffuse_texname];
+                scene.m_materials[i].baseColorTextureIndex = textureNames[mat.diffuse_texname];
             } else {
-                scene.materials[i].baseColorTextureIndex = texCount;
+                scene.m_materials[i].baseColorTextureIndex = texCount;
                 textureNames[mat.diffuse_texname] = texCount;
                 texCount++;
             }
@@ -53,9 +54,9 @@ void LoaderObj::loadFromFile(Scene& scene,
         // emission
         if (!mat.emissive_texname.empty()) {
             if (textureNames.contains(mat.emissive_texname)) {
-                scene.materials[i].emissiveTextureIndex = textureNames[mat.emissive_texname];
+                scene.m_materials[i].emissiveTextureIndex = textureNames[mat.emissive_texname];
             } else {
-                scene.materials[i].emissiveTextureIndex = texCount;
+                scene.m_materials[i].emissiveTextureIndex = texCount;
                 textureNames[mat.emissive_texname] = texCount;
                 texCount++;
             }
@@ -65,11 +66,11 @@ void LoaderObj::loadFromFile(Scene& scene,
     scene.createMaterialBuffer(context);
 
     std::unordered_map<rv::Vertex, uint32_t> uniqueVertices;
-    scene.meshes.resize(objShapes.size());
-    scene.nodes.resize(objShapes.size());
+    scene.m_meshes.resize(objShapes.size());
+    scene.m_nodes.resize(objShapes.size());
     for (int shapeIndex = 0; shapeIndex < objShapes.size(); shapeIndex++) {
-        auto& mesh = scene.meshes[shapeIndex];
-        auto& node = scene.nodes[shapeIndex];
+        auto& mesh = scene.m_meshes[shapeIndex];
+        auto& node = scene.m_nodes[shapeIndex];
         auto& shape = objShapes[shapeIndex];
 
         glm::vec3 aabbMin;
@@ -107,12 +108,12 @@ void LoaderObj::loadFromFile(Scene& scene,
         mesh.keyFrames[0].vertexBuffer = context.createBuffer({
             .usage = rv::BufferUsage::AccelVertex,
             .size = sizeof(rv::Vertex) * vertices.size(),
-            .debugName = std::format("vertexBuffers[{}]", scene.meshes.size()).c_str(),
+            .debugName = std::format("vertexBuffers[{}]", scene.m_meshes.size()).c_str(),
         });
         mesh.keyFrames[0].indexBuffer = context.createBuffer({
             .usage = rv::BufferUsage::AccelIndex,
             .size = sizeof(uint32_t) * indices.size(),
-            .debugName = std::format("indexBuffers[{}]", scene.meshes.size()).c_str(),
+            .debugName = std::format("indexBuffers[{}]", scene.m_meshes.size()).c_str(),
         });
         mesh.aabb = rv::AABB(aabbMin, aabbMax);
 

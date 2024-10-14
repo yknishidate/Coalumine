@@ -1,13 +1,11 @@
 ﻿#pragma once
-
 #include <random>
-
 #include <reactive/reactive.hpp>
 
 #include "image_writer.hpp"
 #include "render_pass.hpp"
 #include "renderer.hpp"
-#include "scene.hpp"
+#include "scene/scene.hpp"
 
 class WindowApp : public rv::App {
 public:
@@ -88,7 +86,7 @@ public:
 
         static int imageIndex = 0;
         static bool enableBloom = false;
-        static int blurIteration = 32;
+        static int blurIteration = 16;
         static bool playAnimation = true;
         static bool open = true;
         if (open) {
@@ -139,57 +137,9 @@ public:
                 recompile();
             }
 
-            // Material
-            if (ImGui::CollapsingHeader("Material")) {
-                size_t count = m_renderer->m_scene.materials.size();
-                for (size_t i = 0u; i < count; i++) {
-                    auto& mat = m_renderer->m_scene.materials[i];
-                    if (ImGui::TreeNode(std::format("Material {}", i).c_str())) {
-                        if (ImGui::ColorEdit3("BaseColor", &mat.baseColorFactor[0])) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("Roughness", &mat.roughnessFactor, 0.01f, 1.0f,
-                                               "%.2f")) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("IOR", &mat.ior, 1.0f, 3.0f)) {
-                            m_renderer->reset();
-                        }
-                        if (ImGui::SliderFloat("Disp.", &mat.dispersion, 0.0f, 0.5f)) {
-                            m_renderer->reset();
-                        }
-
-                        ImGui::TreePop();
-                    }
-                }
-            }
-
-            // Light
-            if (ImGui::CollapsingHeader("Light")) {
-                ImGui::Indent(16.0f);
-                // Dome light
-                if (ImGui::SliderFloat("Env light phi", &pushConstants.envLightPhi, 0.0, 360.0,
-                                       "%.0f")) {
-                    m_renderer->reset();
-                }
-                if (ImGui::ColorEdit3("Env light color", &pushConstants.envLightColor[0])) {
-                    m_renderer->reset();
-                }
-                if (ImGui::SliderFloat("Env light intensity", &pushConstants.envLightIntensity,
-                                       0.0f, 10.0f)) {
-                    m_renderer->reset();
-                }
-
-                // Infinite light
-                if (ImGui::SliderFloat3("Infinite light direction",
-                                        &pushConstants.infiniteLightDirection[0], -1.0, 1.0)) {
-                    m_renderer->reset();
-                }
-                if (ImGui::SliderFloat("Infinite light intensity",
-                                       &pushConstants.infiniteLightIntensity, 0.0f, 1.0f)) {
-                    m_renderer->reset();
-                }
-                ImGui::Unindent(16.0f);
+            // Scene
+            if (m_renderer->m_scene.drawAttributes()) {
+                m_renderer->reset();
             }
 
             // Post process
@@ -201,11 +151,10 @@ public:
                 // Bloom
                 ImGui::Checkbox("Enable bloom", &enableBloom);
                 if (enableBloom) {
-                    ImGui::SliderFloat("Bloom intensity",
-                                       &compositeInfo.bloomIntensity,  //
+                    ImGui::DragFloat("Bloom intensity", &compositeInfo.bloomIntensity, 0.000001f,
+                                     0.0f, 10.0f, "%.6f");
+                    ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold,  //
                                        0.0f, 10.0f);
-                    ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold, 0.0f,
-                                       10.0f);
                     ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);
                     ImGui::SliderInt("Blur size", &bloomInfo.blurSize, 0, 64);
                 }
@@ -226,11 +175,6 @@ public:
                 ImGui::Unindent(16.0f);
             }
 
-            // Camera
-            if (m_renderer->m_scene.camera.drawAttributes()) {
-                m_renderer->reset();
-            }
-
             // Memo
             if (ImGui::CollapsingHeader("Memo")) {
                 ImGui::InputTextMultiline("Text", m_inputTextBuffer, sizeof(m_inputTextBuffer));
@@ -249,7 +193,7 @@ public:
                                  vk::ImageLayout::ePresentSrcKHR);
 
         // Copy to buffer
-        rv::ImageHandle outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
+        const rv::ImageHandle& outputImage = m_renderer->m_compositePass.getOutputImageRGBA();
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eTransferSrcOptimal);
         commandBuffer->copyImageToBuffer(outputImage, m_imageWriter->getBuffer(0));
         commandBuffer->transitionLayout(outputImage, vk::ImageLayout::eGeneral);

@@ -9,36 +9,34 @@ layout(push_constant) uniform BloomInfo {
     int blurSize;
 };
 
-float kernel[5][5] = float[][](
-    float[](0.003, 0.013, 0.022, 0.013, 0.003),
-    float[](0.013, 0.059, 0.097, 0.059, 0.013),
-    float[](0.022, 0.097, 0.159, 0.097, 0.022),
-    float[](0.013, 0.059, 0.097, 0.059, 0.013),
-    float[](0.003, 0.013, 0.022, 0.013, 0.003)
-);
+float gaussian2D(float x, float y, float sigma) {
+    const float a = 1.0 / (2.0 * 3.141592653589793 * sigma * sigma);
+    const float b = exp(-(x * x + y * y) / (2.0 * sigma * sigma));
+    return a * b;
+}
 
-vec3 blur(ivec2 st)
+vec3 stochasticGaussianBlur(ivec2 st)
 {
-    uvec2 s = pcg2d(st);
+    const uvec2 s = pcg2d(st);
     uint seed = s.x + s.y;
 
+    const int numSamples = 25;
     vec3 bluredColor = vec3(0.0);
-    int kernelSize = 5;
-    int halfKernelSize = kernelSize / 2;
-    for (int i = -halfKernelSize; i <= halfKernelSize; i++) {
-        for (int j = -halfKernelSize; j <= halfKernelSize; j++) {
-            int scale = blurSize + int(rand(seed) * (blurSize * 0.25));
-            vec3 currentColor = imageLoad(bloomImage, st + ivec2(i, j) * scale).rgb;
-            bluredColor += currentColor * kernel[j + halfKernelSize][i + halfKernelSize];
-            //bluredColor += currentColor / (kernelSize * kernelSize);
-        }
+    float totalWeight = 0.0;
+    for (int i = 0; i < numSamples; i++) {
+        const vec2 offset = sampleDisk(seed);
+        const vec3 currentColor = imageLoad(bloomImage, st + ivec2(offset * blurSize)).rgb;
+        const float sigma = blurSize * 0.3333333;
+        const float weight = gaussian2D(offset.x, offset.y, sigma);
+        totalWeight += weight;
+        bluredColor += currentColor * weight;
     }
-    return bluredColor;
+    return bluredColor / totalWeight;
 }
 
 void main()
 {
-    ivec2 st = ivec2(gl_GlobalInvocationID.xy);
-    vec3 bloomColor = blur(st);
+    const ivec2 st = ivec2(gl_GlobalInvocationID.xy);
+    const vec3 bloomColor = stochasticGaussianBlur(st);
     imageStore(bloomImage, st, vec4(bloomColor, 1.0));
 }

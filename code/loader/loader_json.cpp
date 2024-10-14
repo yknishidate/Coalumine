@@ -5,11 +5,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include "image_generator.hpp"
+#include "../image_generator.hpp"
+#include "../scene/scene.hpp"
 #include "loader_alembic.hpp"
 #include "loader_gltf.hpp"
 #include "loader_obj.hpp"
-#include "scene.hpp"
 
 void LoaderJson::loadFromFile(Scene& scene,
                               const rv::Context& context,
@@ -32,9 +32,8 @@ void LoaderJson::loadFromFile(Scene& scene,
     }
 
     // gltf読み込み時点のオフセットを取得しておく
-    const int materialOffset = static_cast<int>(scene.materials.size());
-    const int meshOffset = static_cast<int>(scene.meshes.size());
-    scene.materialOffset = materialOffset;
+    const int materialOffset = static_cast<int>(scene.m_materials.size());
+    const int meshOffset = static_cast<int>(scene.m_meshes.size());
 
     // "alembic"セクションのパース
     if (const auto& value = jsonData.find("alembic"); value != jsonData.end()) {
@@ -63,17 +62,17 @@ void LoaderJson::loadFromFile(Scene& scene,
             eularAngle.z = glm::radians(static_cast<float>(itr->at(2)));
             node.rotation = {eularAngle};
         }
-        scene.nodes.push_back(node);
+        scene.m_nodes.push_back(node);
     }
 
     // "meshes"セクションのパース
     const auto& meshes = jsonData["meshes"];
-    scene.meshes.reserve(meshes.size());
+    scene.m_meshes.reserve(meshes.size());
     for (const auto& mesh : meshes) {
         std::filesystem::path objPath = filepath.parent_path() / mesh["obj"];
 
-        scene.meshes.push_back({});
-        LoaderObj::loadMesh(scene.meshes.back(), context, objPath);
+        scene.m_meshes.push_back({});
+        LoaderObj::loadMesh(scene.m_meshes.back(), context, objPath);
     }
 
     // "materials"セクションのパース
@@ -123,28 +122,22 @@ void LoaderJson::loadFromFile(Scene& scene,
                 mat.metallicRoughnessTextureIndex = TEXTURE_TYPE_OFFSET + itr->at("texture_index");
             }
         }
-        scene.materials.push_back(mat);
+        scene.m_materials.push_back(mat);
     }
 
     for (const auto& material_override : jsonData["material_overrides"]) {
         int nodeIndex = material_override["node_index"];
         int materialIndex = material_override["material_index"];
-        scene.nodes[nodeIndex].overrideMaterialIndex = materialIndex;
+        scene.m_nodes[nodeIndex].overrideMaterialIndex = materialIndex;
     }
 
     if (const auto& defaultMat = jsonData.find("default_material"); defaultMat != jsonData.end()) {
         if (defaultMat->at("type") == "random") {
             const auto& matIndices = defaultMat->at("material_indices");
 
-            scene.randomMatSeed = static_cast<int>(defaultMat->at("seed"));
-            scene.randomMatIndices.resize(matIndices.size());
-            for (size_t mi = 0; mi < matIndices.size(); mi++) {
-                scene.randomMatIndices[mi] = matIndices[mi];
-            }
-
             std::mt19937 rng(defaultMat->at("seed"));
             std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-            for (auto& mesh : scene.meshes) {
+            for (auto& mesh : scene.m_meshes) {
                 if (mesh.materialIndex == -1) {
                     double randomValue = dist(rng);
                     int indexIndex = static_cast<int>(std::floor(randomValue * matIndices.size()));
@@ -156,28 +149,28 @@ void LoaderJson::loadFromFile(Scene& scene,
 
     // "camera"セクションのパース
     if (const auto& camera = jsonData.find("camera"); camera != jsonData.end()) {
-        scene.camera = {rv::Camera::Type::Orbital, 1.0f};
+        scene.m_camera = {rv::Camera::Type::Orbital, 1.0f};
         if (const auto& fovY = camera->find("fov_y"); fovY != camera->end()) {
-            scene.camera.setFovY(glm::radians(static_cast<float>(*fovY)));
+            scene.m_camera.setFovY(glm::radians(static_cast<float>(*fovY)));
         }
         if (const auto& value = camera->find("distance"); value != camera->end()) {
-            scene.camera.setDistance(static_cast<float>(*value));
+            scene.m_camera.setDistance(static_cast<float>(*value));
         }
         if (const auto& rotation = camera->find("rotation"); rotation != camera->end()) {
-            scene.camera.setEulerRotation(
+            scene.m_camera.setEulerRotation(
                 glm::vec3(rotation->at(0), rotation->at(1), rotation->at(2)));
         }
         if (const auto& values = camera->find("target"); values != camera->end()) {
-            scene.camera.setTarget(glm::vec3(values->at(0), values->at(1), values->at(2)));
+            scene.m_camera.setTarget(glm::vec3(values->at(0), values->at(1), values->at(2)));
         }
         if (const auto& speed = camera->find("speed"); speed != camera->end()) {
-            scene.camera.setDollySpeed(static_cast<float>(*speed));
+            scene.m_camera.setDollySpeed(static_cast<float>(*speed));
         }
         if (const auto& value = camera->find("lens_radius"); value != camera->end()) {
-            scene.camera.m_lensRadius = static_cast<float>(*value);
+            scene.m_camera.m_lensRadius = static_cast<float>(*value);
         }
         if (const auto& value = camera->find("object_distance"); value != camera->end()) {
-            scene.camera.m_objectDistance = static_cast<float>(*value);
+            scene.m_camera.m_objectDistance = static_cast<float>(*value);
         }
     }
 
@@ -187,7 +180,7 @@ void LoaderJson::loadFromFile(Scene& scene,
         if (type == "texture") {
             std::filesystem::path texPath = filepath.parent_path() / light->at("texture");
             scene.loadEnvLightTexture(context, texPath);
-            scene.useEnvLightTexture = true;
+            scene.m_envLight.useTexture = true;
         } else if (type == "procedural") {
             auto params = light->at("procedural_parameters");
             if (params["method"] == "gradient_horizontal") {
@@ -205,33 +198,37 @@ void LoaderJson::loadFromFile(Scene& scene,
                 const auto& data = ImageGenerator::gradientHorizontal(width, height, 4, knots);
                 scene.createEnvLightTexture(context, static_cast<const float*>(&data[0][0]),  //
                                             width, height, 4);
-                scene.useEnvLightTexture = true;
+                scene.m_envLight.useTexture = true;
             }
         } else if (type == "solid") {
             const float dummy = 0.0f;
             scene.createEnvLightTexture(context, &dummy, 1, 1, 4);
-            scene.useEnvLightTexture = false;
+            scene.m_envLight.useTexture = false;
         }
         if (const auto& values = light->find("color"); values != light->end()) {
-            scene.envLightColor = {values->at(0), values->at(1), values->at(2)};
+            scene.m_envLight.color = {values->at(0), values->at(1), values->at(2)};
         }
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
-            scene.envLightIntensity = *intensity;
+            scene.m_envLight.intensity = *intensity;
         }
         if (const auto& value = light->find("visible_texture"); value != light->end()) {
-            scene.visibleEnvLightTexture = static_cast<bool>(*value);
+            scene.m_envLight.isVisible = static_cast<bool>(*value);
         }
     }
 
     if (const auto& light = jsonData.find("infinite_light"); light != jsonData.end()) {
-        if (const auto& dir = light->find("direction"); dir != light->end()) {
-            scene.infiniteLightDir = glm::normalize(glm::vec3{dir->at(0), dir->at(1), dir->at(2)});
+        auto& infLight = scene.m_infiniteLight;
+        if (const auto& value = light->find("theta"); value != light->end()) {
+            infLight.theta = static_cast<float>(*value);
+        }
+        if (const auto& value = light->find("phi"); value != light->end()) {
+            infLight.phi = static_cast<float>(*value);
         }
         if (const auto& color = light->find("color"); color != light->end()) {
-            scene.infiniteLightColor = {color->at(0), color->at(1), color->at(2)};
+            infLight.color = {color->at(0), color->at(1), color->at(2)};
         }
         if (const auto& intensity = light->find("intensity"); intensity != light->end()) {
-            scene.infiniteLightIntensity = *intensity;
+            infLight.intensity = *intensity;
         }
     }
 
@@ -268,7 +265,7 @@ void LoaderJson::loadFromFile(Scene& scene,
                     rv::SamplerCreateInfo{
                         .addressMode = vk::SamplerAddressMode::eClampToEdge,
                     },
-                .debugName = std::format("texture3d[{}]", scene.textures3d.size()),
+                .debugName = std::format("texture3d[{}]", scene.m_textures3d.size()),
             });
 
             rv::BufferHandle stagingBuffer = context.createBuffer({
@@ -286,7 +283,7 @@ void LoaderJson::loadFromFile(Scene& scene,
                                                 vk::ImageLayout::eShaderReadOnlyOptimal);
             });
 
-            scene.textures3d.push_back(newTexture);
+            scene.m_textures3d.push_back(newTexture);
         }
         // if (const auto& dir = light->find("direction"); dir != light->end()) {
         //     scene.infiniteLightDir = glm::normalize(glm::vec3{dir->at(0), dir->at(1),
