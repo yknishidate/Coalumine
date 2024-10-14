@@ -86,7 +86,7 @@ public:
 
         static int imageIndex = 0;
         static bool enableBloom = false;
-        static int blurIteration = 32;
+        static int blurIteration = 16;
         static bool playAnimation = true;
         static bool open = true;
         if (open) {
@@ -199,8 +199,8 @@ public:
                 // Bloom
                 ImGui::Checkbox("Enable bloom", &enableBloom);
                 if (enableBloom) {
-                    ImGui::SliderFloat("Bloom intensity", &compositeInfo.bloomIntensity,  //
-                                       0.0f, 10.0f);
+                    ImGui::DragFloat("Bloom intensity", &compositeInfo.bloomIntensity, 0.000001f,
+                                     0.0f, 10.0f, "%.6f");
                     ImGui::SliderFloat("Bloom threshold", &pushConstants.bloomThreshold,  //
                                        0.0f, 10.0f);
                     ImGui::SliderInt("Blur iteration", &blurIteration, 0, 64);

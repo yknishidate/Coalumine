@@ -58,11 +58,6 @@ void main()
         radiance += payload.radiance;
     }
     radiance /= sampleCount;
-    
-    // Store bloom color
-    float luminace = computeLuminance(radiance);
-    vec3 bloomColor = radiance * max(vec3(0.0), luminace - pc.bloomThreshold);
-    imageStore(bloomImage, ivec2(gl_LaunchIDEXT.xy), vec4(bloomColor, 1));
 
     // Store base color
     vec4 newColor = vec4(radiance, 1);
@@ -73,4 +68,9 @@ void main()
         newColor.w = distance(newColor.xyz, prevColor.xyz);
     }
     imageStore(baseImage, ivec2(gl_LaunchIDEXT.xy), newColor);
+
+    // Store bloom color
+    float luminace = computeLuminance(newColor.xyz);
+    vec3 bloomColor = newColor.xyz * max(vec3(0.0), luminace - pc.bloomThreshold);
+    imageStore(bloomImage, ivec2(gl_LaunchIDEXT.xy), vec4(bloomColor, 1));
 }

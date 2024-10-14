@@ -57,8 +57,9 @@ class Node {
 public:
     int meshIndex = -1;
     int overrideMaterialIndex = -1;  // オーバーライド用
+
     Node* parentNode = nullptr;
-    std::vector<int> childNodeIndices;  // TODO: use this
+    std::vector<int> childNodeIndices;
 
     // TODO: remove default TRS
     glm::vec3 translation = {0.0f, 0.0f, 0.0f};
